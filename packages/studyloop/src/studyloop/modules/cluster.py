@@ -20,10 +20,12 @@ What this module guarantees, each a contract item:
   through the ``kind`` binary core resolved on the learner's PATH up front
   (:func:`runner.resolve_prerequisites`, M1 Q2) -- argv as a list, ``shell=False``, stdin
   ``DEVNULL``, stdout/stderr captured and capped, a hard timeout, ``start_new_session=True``
-  so a timeout kills the whole process group. On failure or timeout core issues one
-  ``delete`` for the name it just tried to create (the name was free a moment before, so
-  anything now carrying it is ours) and raises naming the cluster -- a half-made cluster is
-  never left behind silently.
+  so a timeout kills the whole process group. After a create that did **not** succeed core
+  deletes only when it can prove it created the cluster -- kind wrote the attempt's own
+  kubeconfig naming ``kind-<name>`` (:func:`_proof_of_creation`); otherwise it re-lists
+  read-only and reports the name and the by-hand command without deleting anything (spec
+  scenario "a failed create never deletes a cluster core cannot prove it made"). After a
+  create that succeeded, anything that goes wrong tears the cluster down again.
 - *Kubeconfig*: kind writes a kubeconfig into the attempt directory; :func:`provision` then
   rewrites it to **exactly one context** -- the new cluster's ``kind-<name>``, its cluster
   and its user -- ``current-context`` set, mode ``0o600``, written through an ``O_EXCL`` temp
@@ -353,9 +355,10 @@ def provision(
 
     Order: derive the name -> refuse if the kubeconfig already exists (an attempt provisions
     once) -> read-only listing, refuse a name collision -> ``kind create`` -> rewrite the
-    kubeconfig to one context. A create that fails or times out, or a kubeconfig that cannot
-    be reduced, is followed by one ``kind delete`` for the name we just tried to create and a
-    :class:`ClusterError` naming the cluster. Nothing here reads the attempt's record; the
+    kubeconfig to one context. A create that fails or times out is followed by
+    :func:`_undo_after_failed_create` (a delete only with proof of creation); a kubeconfig that
+    cannot be reduced after a successful create is followed by one ``kind delete``. Either way
+    the :class:`ClusterError` names the cluster. Nothing here reads the attempt's record; the
     caller persists ``handle.kubeconfig`` on the attempt.
     """
     kind = _kind_binary(tools)
@@ -397,17 +400,62 @@ def provision(
         rewrite_kubeconfig(kubeconfig, name)
     except ClusterError as exc:
         raise ClusterError(
-            f"{exc}; {_undo_after_failed_create(handle, timeout_seconds)}", cluster=name
+            f"{exc}; {_undo_after_created(handle, timeout_seconds)}", cluster=name
         ) from exc
     return handle
 
 
-def _undo_after_failed_create(handle: ClusterHandle, timeout_seconds: int) -> str:
-    """Best-effort ``kind delete`` for a create that did not complete; returns what happened.
+def _proof_of_creation(handle: ClusterHandle) -> bool:
+    """Did OUR ``kind create`` get as far as writing the attempt's kubeconfig for this cluster?
 
-    The name was free before the create (collision check), so whatever carries it now is this
-    attempt's -- deleting it is inside the blast radius. The kubeconfig file goes too.
+    The file at ``<attempt>/kubeconfig`` can only have been written by the kind invocation core
+    just made (the attempt directory is core-created, ``0o700``, and ``provision`` refused to
+    start while the path existed), and kind writes it naming the context ``kind-<name>``. That
+    is the one unforgeable sign that the cluster carrying ``name`` is this attempt's.
     """
+    try:
+        if not stat.S_ISREG(os.lstat(handle.kubeconfig).st_mode):
+            return False
+        doc = yaml.safe_load(handle.kubeconfig.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return False
+    if not isinstance(doc, dict):
+        return False
+    contexts = doc.get("contexts")
+    if not isinstance(contexts, list):
+        return False
+    return any(
+        isinstance(item, dict) and item.get("name") == f"kind-{handle.name}" for item in contexts
+    )
+
+
+def _undo_after_failed_create(handle: ClusterHandle, timeout_seconds: int) -> str:
+    """After a ``kind create`` that did NOT succeed: delete only what core can prove it made.
+
+    Spec ("a failed create never deletes a cluster core cannot prove it made", K0-review F1):
+    the collision check and the create are two separate calls, so a name that appears between
+    them may belong to someone else. With :func:`_proof_of_creation` the delete is inside the
+    blast radius and runs once. Without it nothing is deleted: core re-lists read-only and
+    reports either that a cluster by that name exists which it cannot prove it created (with
+    the exact by-hand command), or -- the name absent -- the create failure alone.
+    """
+    if _proof_of_creation(handle):
+        return _undo_after_created(handle, timeout_seconds)
+    try:
+        listed = _existing_clusters(handle.kind, timeout_seconds=timeout_seconds)
+    except ClusterError as exc:
+        return f"nothing was deleted ({exc})"
+    if handle.name in listed:
+        return (
+            f"a cluster named {handle.name} exists that core cannot prove it created, so it was "
+            f"NOT deleted; if it is yours, {_by_hand(handle.name)}"
+        )
+    return "nothing was created"
+
+
+def _undo_after_created(handle: ClusterHandle, timeout_seconds: int) -> str:
+    """One ``kind delete`` for a cluster core knows is this attempt's (the create succeeded, or
+    kind wrote the attempt's kubeconfig for it); returns what happened for the error text."""
     deleted = _run_kind(_delete_argv(handle), timeout_seconds=timeout_seconds)
     with contextlib.suppress(OSError):
         handle.kubeconfig.unlink(missing_ok=True)

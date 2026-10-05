@@ -71,24 +71,31 @@ FAKE_KIND = textwrap.dedent(
     """\
     #!/bin/sh
     # Fake kind for the offline K0 tests. Records argv; never touches Docker.
+    #   FAKE_KIND_FAIL=create             create exits 1 BEFORE writing the kubeconfig
+    #   FAKE_KIND_FAIL=create-registered  same, but the name then appears in `get clusters`
+    #                                     (a cluster core cannot prove it created)
+    #   FAKE_KIND_FAIL=create-after-write create writes the kubeconfig, then exits 1
+    #                                     (the `--wait` timeout shape)
+    #   FAKE_KIND_FAIL=misname            create exits 0 but the contexts are not kind-<name>
+    #   FAKE_KIND_FAIL=malformed          create exits 0 but `contexts:` holds non-mappings
+    #   FAKE_KIND_FAIL=delete             delete exits 1
+    #   FAKE_KIND_HANG=create             create writes the kubeconfig, then sleeps 30 s
+    #   FAKE_KIND_CLUSTERS="a b"          what `get clusters` lists (plus registered names)
     set -u
     log="${FAKE_KIND_LOG:?FAKE_KIND_LOG must be set}"
     { for arg in "$@"; do printf '%s\\t' "$arg"; done; printf '\\n'; } >> "$log"
-    printf 'KUBECONFIG=%s\\n' "${KUBECONFIG:-<unset>}" >> "$log.env"
+    env | sort > "$log.env.$(wc -l < "$log" | tr -d ' ')"
     case "${1:-} ${2:-}" in
       "get clusters")
         if [ -n "${FAKE_KIND_CLUSTERS:-}" ]; then
           for name in $FAKE_KIND_CLUSTERS; do printf '%s\\n' "$name"; done
-        else
+        fi
+        if [ -f "$log.registered" ]; then cat "$log.registered"; fi
+        if [ -z "${FAKE_KIND_CLUSTERS:-}" ] && [ ! -f "$log.registered" ]; then
           echo "No kind clusters found." >&2
         fi
         exit 0 ;;
       "create cluster")
-        if [ "${FAKE_KIND_HANG:-}" = create ]; then sleep 30; fi
-        if [ "${FAKE_KIND_FAIL:-}" = create ]; then
-          echo "fake kind: create failed on purpose" >&2
-          exit 1
-        fi
         name=""; kubeconfig=""
         while [ $# -gt 0 ]; do
           case "$1" in
@@ -97,27 +104,46 @@ FAKE_KIND = textwrap.dedent(
           esac
           shift
         done
+        if [ "${FAKE_KIND_FAIL:-}" = create ]; then
+          echo "fake kind: create failed on purpose" >&2
+          exit 1
+        fi
+        if [ "${FAKE_KIND_FAIL:-}" = create-registered ]; then
+          printf '%s\\n' "$name" >> "$log.registered"
+          echo "fake kind: create failed on purpose (but the cluster is listed)" >&2
+          exit 1
+        fi
+        context="kind-$name"
+        if [ "${FAKE_KIND_FAIL:-}" = misname ]; then context="kind-somebody-else"; fi
+        contexts="- name: $context
+      context: {cluster: $context, user: $context}
+    - name: learner-prod
+      context: {cluster: learner-prod, user: learner-admin}"
+        if [ "${FAKE_KIND_FAIL:-}" = malformed ]; then contexts="- 1
+    - 2"; fi
         cat > "$kubeconfig" <<EOF
     apiVersion: v1
     kind: Config
     preferences: {}
     clusters:
-    - name: kind-$name
+    - name: $context
       cluster: {server: 'https://127.0.0.1:6443'}
     - name: learner-prod
       cluster: {server: 'https://learner.example:6443'}
     contexts:
-    - name: kind-$name
-      context: {cluster: kind-$name, user: kind-$name}
-    - name: learner-prod
-      context: {cluster: learner-prod, user: learner-admin}
-    current-context: kind-$name
+    $contexts
+    current-context: $context
     users:
-    - name: kind-$name
-      user: {username: kind-$name}
+    - name: $context
+      user: {username: $context}
     - name: learner-admin
       user: {username: learner-admin}
     EOF
+        if [ "${FAKE_KIND_HANG:-}" = create ]; then sleep 30; fi
+        if [ "${FAKE_KIND_FAIL:-}" = create-after-write ]; then
+          echo "fake kind: control plane never became ready (wait timed out)" >&2
+          exit 1
+        fi
         echo "Creating cluster \\"$name\\" ... (fake)"
         exit 0 ;;
       "delete cluster")
@@ -166,10 +192,20 @@ class FakeTools:
             if line
         ]
 
-    def kind_env(self) -> list[str]:
-        """``KUBECONFIG=...`` as the fake kind saw it, one entry per invocation."""
-        env_log = Path(f"{self.log}.env")
-        return env_log.read_text(encoding="utf-8").splitlines() if env_log.exists() else []
+    def kind_env(self) -> list[dict[str, str]]:
+        """The environment the fake kind saw, one mapping per invocation (oldest first)."""
+        dumps = sorted(
+            self.log.parent.glob(f"{self.log.name}.env.*"), key=lambda p: int(p.suffix[1:])
+        )
+        result: list[dict[str, str]] = []
+        for dump in dumps:
+            env: dict[str, str] = {}
+            for line in dump.read_text(encoding="utf-8").splitlines():
+                key, sep, value = line.partition("=")
+                if sep:
+                    env[key] = value
+            result.append(env)
+        return result
 
     @property
     def kind(self) -> Path:
@@ -317,15 +353,16 @@ def test_provision_refuses_a_name_collision_without_creating(
     assert not (attempt.attempt_dir / "kubeconfig").exists()
 
 
-def test_failed_create_names_the_cluster_and_deletes_what_kind_may_have_left(
+def test_failed_create_without_a_kubeconfig_runs_no_delete(
     attempt: Attempt,
     tools: Mapping[str, Path],
     fake_tools: FakeTools,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A non-zero ``kind create`` is a :class:`ClusterError` carrying kind's stderr and the
-    cluster name; because the name was free a moment ago, anything now carrying it is ours,
-    so core issues one ``delete`` for it rather than leave a half-made cluster behind."""
+    """Spec scenario "a failed create never deletes a cluster core cannot prove it made"
+    (K0-review F1): kind failed BEFORE writing the attempt's kubeconfig, so core has no proof
+    it created anything -- it re-lists read-only, finds the name absent, and reports the
+    create failure alone. Zero ``delete`` argv in the log."""
     monkeypatch.setenv("FAKE_KIND_FAIL", "create")
     name = _expected_name(attempt)
 
@@ -334,12 +371,69 @@ def test_failed_create_names_the_cluster_and_deletes_what_kind_may_have_left(
 
     message = str(excinfo.value)
     assert name in message and "create failed on purpose" in message
+    assert excinfo.value.cluster == name
+    assert [call[:2] for call in fake_tools.calls()] == [
+        ["get", "clusters"],
+        ["create", "cluster"],
+        ["get", "clusters"],
+    ], "no delete without proof; the second listing is the read-only re-check"
+    assert "by hand" not in message, "nothing exists, so nothing to delete by hand"
+    assert not (attempt.attempt_dir / "kubeconfig").exists()
+
+
+def test_failed_create_that_left_an_unproven_cluster_reports_it_without_deleting(
+    attempt: Attempt,
+    tools: Mapping[str, Path],
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """K0-review F1, the dangerous half: the create failed without writing our kubeconfig but
+    the name now appears in ``kind get clusters``. Core cannot prove that cluster is ours (the
+    collision check and the create are two calls; something else may own the name), so it
+    deletes NOTHING and tells the learner exactly what exists and how to delete it by hand."""
+    monkeypatch.setenv("FAKE_KIND_FAIL", "create-registered")
+    name = _expected_name(attempt)
+
+    with pytest.raises(ClusterError) as excinfo:
+        cluster.provision(attempt, tools=tools)
+
+    message = str(excinfo.value)
+    assert name in message
+    assert "cannot prove it created" in message
+    assert f"kind delete cluster --name {name}" in message
+    assert [call[:2] for call in fake_tools.calls()] == [
+        ["get", "clusters"],
+        ["create", "cluster"],
+        ["get", "clusters"],
+    ]
+
+
+def test_failed_create_after_kind_wrote_the_kubeconfig_deletes_exactly_once(
+    attempt: Attempt,
+    tools: Mapping[str, Path],
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """K0-review F1, the provable half (the ``--wait`` timeout shape): kind wrote the
+    attempt's own kubeconfig naming ``kind-<name>`` -- only our invocation could have written
+    there -- then exited non-zero. That IS proof, so core issues exactly one delete and, the
+    delete having succeeded, removes the kubeconfig."""
+    monkeypatch.setenv("FAKE_KIND_FAIL", "create-after-write")
+    name = _expected_name(attempt)
+
+    with pytest.raises(ClusterError) as excinfo:
+        cluster.provision(attempt, tools=tools)
+
+    message = str(excinfo.value)
+    assert name in message and "wait timed out" in message
     assert [call[:2] for call in fake_tools.calls()] == [
         ["get", "clusters"],
         ["create", "cluster"],
         ["delete", "cluster"],
     ]
     assert fake_tools.calls()[2][2:4] == ["--name", name]
+    assert "deleted again" in message
+    assert not (attempt.attempt_dir / "kubeconfig").exists()
 
 
 def test_hung_create_is_killed_at_the_timeout_and_reported(
@@ -348,8 +442,9 @@ def test_hung_create_is_killed_at_the_timeout_and_reported(
     fake_tools: FakeTools,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Brief item 1: a hard timeout. The fake sleeps 30 s; ``timeout_seconds=1`` stops it,
-    the error says so and names the cluster, and the follow-up delete still runs."""
+    """Brief item 1: a hard timeout. The fake writes the kubeconfig then sleeps 30 s (real kind
+    writes it before ``--wait`` blocks); ``timeout_seconds=1`` stops it, the error says so and
+    names the cluster, and -- the kubeconfig being proof -- the follow-up delete runs."""
     monkeypatch.setenv("FAKE_KIND_HANG", "create")
     started = time.monotonic()
 
@@ -373,9 +468,8 @@ def test_kind_never_sees_the_learners_kubeconfig_variable(
 
     cluster.provision(attempt, tools=tools)
 
-    assert fake_tools.kind_env() and all(
-        line == "KUBECONFIG=<unset>" for line in fake_tools.kind_env()
-    )
+    seen = fake_tools.kind_env()
+    assert seen and all("KUBECONFIG" not in env for env in seen)
 
 
 # ---------------------------------------------------------------------------
