@@ -289,7 +289,8 @@ lanes:
     - packages/studyloop/tests/test_module_cluster.py
     - packages/studyloop/tests/test_module_drill_cli.py     # one case: a workdir module never calls kind
     - packages/studyloop/tests/fixtures/modules/k8s-offline/**
-    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
     - openspec/changes/module-contract-v1/evidence/K0/**
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
@@ -302,6 +303,7 @@ branches:
   feat/module-runner: R
   feat/module-mentor-delivery: T
   feat/module-web-labs: W
+  feat/module-cluster: K0   # coordinator-granted, K0-review F11
 
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they

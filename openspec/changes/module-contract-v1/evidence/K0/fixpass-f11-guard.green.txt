@@ -1,0 +1,12 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs -s -k lane_stays_in_its_lane or fixture_branch_map or mapped_feat_branch
+# worktree: module-cluster  HEAD: a492b962  2026-10-05T09:37:15Z
+.......[lane-ownership] unmapped (allowed): ['openspec/changes/module-contract-v1/tasks.md']
+.
+8 passed, 33 deselected in 0.39s
+
+# proof the guard polices: one appended comment line in modules/consent.py (R-owned), then reverted:
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -k lane_stays_in_its_lane
+E   AssertionError: branch 'feat/module-cluster' (lane K0) touched file(s) owned by another lane:
+E       packages/studyloop/src/studyloop/modules/consent.py -> owned by ['R']
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_lane_stays_in_its_lane
+1 failed, 40 deselected in 0.36s
