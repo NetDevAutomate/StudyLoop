@@ -307,6 +307,20 @@ lanes:
     - docs/cli-reference.md                                 # range bump only -- coordinator-granted, K0-review F6
     - docs/contributor-modules.md                           # range bump line 36 only -- coordinator-granted, K0-review F6
 
+  U1: # Persona A + Persona B scripted acceptance journeys (feat/module-personas)
+    # Coordinator-granted (briefs/U1-persona-journeys.md, "Owned globs"): design.md §6's two
+    # personas re-expressed at the acceptance tier. Forbidden to U1: everything under src/,
+    # the e2e journey, uat/**, the specs and tasks.md (except its own tick). The first two
+    # files are forward-declared: created by U1's later commits, mapped here first so the
+    # guard polices every one of them.
+    - packages/studyloop/tests/acceptance/test_module_personas.py
+    - packages/studyloop/tests/acceptance/personas/**
+    - packages/studyloop/tests/acceptance/evidence.py       # the four optional bundle members only
+    - openspec/changes/module-contract-v1/evidence/U1/**
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted
+    - docs/acceptance-testing.md                            # one subsection naming the persona journeys only
+
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
 # lane_id_from_branch). A `feat/` branch that is not listed here is not a lane
@@ -318,6 +332,7 @@ branches:
   feat/module-mentor-delivery: T
   feat/module-web-labs: W
   feat/module-cluster: K0   # coordinator-granted, K0-review F11
+  feat/module-personas: U1  # coordinator-granted, briefs/U1-persona-journeys.md
 
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they

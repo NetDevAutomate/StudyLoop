@@ -154,7 +154,9 @@ def test_malformed_lane_branch_is_an_error_not_a_skip(branch: str) -> None:
 
 #: The five module-contract-v1 lanes, as design.md §2 names them, plus the K0 lane the
 #: coordinator added after lane W found the cluster gap (briefs/K0-cluster-provisioning.md;
-#: mapped here per the K0 review, finding 11 -- coordinator-granted, K0-review F11).
+#: mapped here per the K0 review, finding 11 -- coordinator-granted, K0-review F11) and the
+#: U1 lane for design.md §6's two persona journeys (briefs/U1-persona-journeys.md, "Owned
+#: globs" -- coordinator-granted).
 _MODULE_CONTRACT_BRANCHES = {
     "feat/module-schema": "S",
     "feat/module-conformance": "C",
@@ -162,6 +164,7 @@ _MODULE_CONTRACT_BRANCHES = {
     "feat/module-mentor-delivery": "T",
     "feat/module-web-labs": "W",
     "feat/module-cluster": "K0",
+    "feat/module-personas": "U1",
 }
 
 
