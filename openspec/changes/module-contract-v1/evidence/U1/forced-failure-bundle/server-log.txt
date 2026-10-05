@@ -2,7 +2,7 @@ LAN authentication:
   Username: study
   Password: configured; not shown
 Study PWA
-  Local: http://127.0.0.1:55714
-  LAN:   http://<LAN-IP>:55714
-  Listening on http://<LAN-IP>:55714
+  Local: http://127.0.0.1:58078
+  LAN:   http://<LAN-IP>:58078
+  Listening on http://<LAN-IP>:58078
 No sentence-transformers model found with name sentence-transformers/all-mpnet-base-v2. Creating a new one with mean pooling.

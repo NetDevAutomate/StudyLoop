@@ -60,6 +60,8 @@ import pytest
 
 pytest.importorskip("playwright")
 
+from studyloop.session.module_delivery import EnvelopeValidationError
+
 from .evidence import write_evidence_bundle
 from .personas import world as pw
 from .personas.bundle import (
@@ -105,6 +107,8 @@ pytestmark = [
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DOCS = REPO_ROOT / "docs"
+EVIDENCE_U1 = REPO_ROOT / "openspec" / "changes" / "module-contract-v1" / "evidence" / "U1"
+FORCED_FAILURE_BUNDLE = EVIDENCE_U1 / "forced-failure-bundle"
 
 PERSONA_A_BUDGET_S = 6 * 60
 PERSONA_B_BUDGET_S = 8 * 60
@@ -316,7 +320,7 @@ class TestBundleWriter:
             ],
             lockfile_before=None,
             lockfile_after=json.dumps({"modules": [{"id": "echo-drills", "digest": "ab" * 32}]}),
-            attempt_envelope={"labs_drill": {"ref": DRILL_REF}, "path": str(home)},
+            labs_binding={"labs_drill": {"ref": DRILL_REF}, "path": str(home)},
             screenshot_png=b"\x89PNG\r\n\x1a\n",
             page_html=f"<html><body>{home}</body></html>",
             console={"errors": [f"console.error: {home}/x.js"], "api_calls": []},
@@ -331,7 +335,8 @@ class TestBundleWriter:
             "server_log": "server-log.txt",
             "cli_transcript": "cli-transcript.txt",
             "lockfile_diff": "modules.lock.diff",
-            "attempt_envelope": "attempt-envelope.json",
+            "labs_binding": "labs-binding.json",
+            "practice_envelope": None,
         }
         server_log = (bundle.run_dir / "server-log.txt").read_text()
         assert "<REDACTED:lan_password>" in server_log and lan_credential not in server_log
@@ -342,10 +347,10 @@ class TestBundleWriter:
         assert diff.startswith("--- modules.lock.json (before)") and "+{" in diff, diff
         transcript = (bundle.run_dir / "cli-transcript.txt").read_text()
         assert "$ studyloop module add <WORLD>/mod" in transcript and "[exit 0" in transcript
-        envelope = json.loads((bundle.run_dir / "attempt-envelope.json").read_text())
-        assert envelope == {
+        binding = json.loads((bundle.run_dir / "labs-binding.json").read_text())
+        assert binding == {
             "persona": "A",
-            "envelope": {"labs_drill": {"ref": DRILL_REF}, "path": "<WORLD>"},
+            "binding": {"labs_drill": {"ref": DRILL_REF}, "path": "<WORLD>"},
         }
 
     def _bundle_inputs(self, tmp_path: Path, outcome: str) -> dict:
@@ -359,7 +364,7 @@ class TestBundleWriter:
             "cli_records": [],
             "lockfile_before": None,
             "lockfile_after": None,
-            "attempt_envelope": None,
+            "labs_binding": None,
             "screenshot_png": None,
             "page_html": None,
             "console": {"errors": [], "api_calls": []},
@@ -394,12 +399,66 @@ class TestBundleWriter:
         violations = tmp_path / "evidence" / "leak-check" / VIOLATIONS_NAME
         assert violations.is_file() and "/Users/nobody/" in violations.read_text()
 
-    @pytest.mark.parametrize("member", sorted({*EXPECTED_MEMBERS, "manifest.json", "turns.json"}))
+    def test_the_committed_bundle_names_the_labs_binding_for_what_it_is(self) -> None:
+        """U1-review F4: the member that used to be called `attempt-envelope.json` holds the Labs
+        start binding (session, drill, nonce, attempt ids), NOT the production
+        PracticeCheckEnvelope -- it is named `labs-binding.json`, and `practice-envelope.json`
+        exists only when a drill phase actually ran (neither persona runs one)."""
+        bundle_dir = FORCED_FAILURE_BUNDLE
+        manifest = json.loads((bundle_dir / "manifest.json").read_text())
+        artifacts = manifest["artifacts"]
+        assert "attempt_envelope" not in artifacts, artifacts
+        assert artifacts["labs_binding"] == "labs-binding.json", artifacts
+        assert (bundle_dir / "labs-binding.json").is_file()
+        assert not (bundle_dir / "attempt-envelope.json").exists()
+        binding = json.loads((bundle_dir / "labs-binding.json").read_text())
+        assert binding["binding"]["labs_drill"]["ref"] == DRILL_REF, binding
+        assert artifacts["practice_envelope"] is None, "no persona runs a drill phase"
+        assert not (bundle_dir / "practice-envelope.json").exists()
+
+    def test_a_practice_envelope_is_validated_before_it_is_written(self, tmp_path: Path) -> None:
+        """A production envelope member is written only through
+        session.module_delivery.validate_envelope -- an invalid one is refused by field name."""
+        envelope = {
+            "module_id": "echo-drills",
+            "module_digest": "sha256:" + "ab" * 32,
+            "deck_id": "echo-basics",
+            "task_id": "echo-01",
+            "attempt_id": "20261005T110000Z-abcdef01",
+            "phase": "check",
+            "exit_class": "passed",
+            "exit_code": 0,
+            "duration_s": 0.1,
+            "stdout_tail": "ready\n",
+            "stderr_tail": "",
+            "triggered_by": "learner",
+        }
+        with pytest.raises(EnvelopeValidationError, match="exit_class"):
+            write_persona_failure_bundle(
+                tmp_path / "refused",
+                practice_envelope={**envelope, "exit_class": "nope"},
+                **self._bundle_inputs(tmp_path, "forced"),
+            )
+        bundle = write_persona_failure_bundle(
+            tmp_path / "evidence",
+            practice_envelope=envelope,
+            **self._bundle_inputs(tmp_path, "forced"),
+        )
+        written = json.loads((bundle.run_dir / "practice-envelope.json").read_text())
+        assert written["attempt_id"] == envelope["attempt_id"] and written["phase"] == "check"
+        assert written["module_digest"].startswith("sha256:")
+        manifest = json.loads(bundle.manifest_path.read_text())
+        assert manifest["artifacts"]["practice_envelope"] == "practice-envelope.json"
+
+    @pytest.mark.parametrize(
+        "member",
+        sorted({*EXPECTED_MEMBERS, "practice-envelope.json", "manifest.json", "turns.json"}),
+    )
     def test_every_bundle_member_name_survives_the_repositorys_gitignore(self, member: str) -> None:
         """U1-review F1: a member the manifest names must be committable under evidence/U1/ --
         `*.log` is gitignored (.gitignore `# Logs`), so a `server.log` member is written, named
         in the manifest, and silently absent from the tree."""
-        path = f"openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/{member}"
+        path = str((FORCED_FAILURE_BUNDLE / member).relative_to(REPO_ROOT))
         probe = subprocess.run(
             ["git", "check-ignore", "-v", "--no-index", "--", path],
             cwd=REPO_ROOT,
@@ -434,7 +493,7 @@ class TestBundleWriter:
             "auth_mode",
             "harness_version",
         }
-        assert bundle.server_log_path is None and bundle.attempt_envelope_path is None
+        assert bundle.server_log_path is None and bundle.labs_binding_path is None
         assert {p.name for p in bundle.run_dir.iterdir()} == {"manifest.json", "turns.json"}
 
 

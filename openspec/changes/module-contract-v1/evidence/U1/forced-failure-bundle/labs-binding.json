@@ -1,18 +1,19 @@
 {
-  "envelope": {
-    "attempt_records": [],
+  "binding": {
+    "attempt_ids": [],
+    "drill_nonce": "<REDACTED:drill_nonce>",
     "labs_drill": {
       "deck_id": "echo-basics",
       "module_id": "echo-drills",
       "ref": "echo-drills/echo-basics/echo-01",
-      "started_at": "2026-10-05T12:11:18.478783+00:00",
+      "started_at": "2026-10-05T12:29:35.689221+00:00",
       "task_id": "echo-01"
     },
     "started_from_labs": {
-      "at_s": 1.899,
+      "at_s": 1.846,
       "ref": "echo-drills/echo-basics/echo-01"
     },
-    "study_session_id": "b21445c9-b25c-4eec-8036-b48ef1806635"
+    "study_session_id": "d0117f41-47bd-4314-bc7e-76434fe75ea3"
   },
   "persona": "A"
 }

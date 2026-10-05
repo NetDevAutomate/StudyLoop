@@ -214,6 +214,9 @@ class PersonaWorld:
             token = self.state_file().get("practice_check_token")
             if isinstance(token, str) and token:
                 found["practice_check_token"] = token
+        nonce = self.drill_nonce()
+        if nonce:
+            found["drill_nonce"] = nonce
         return found
 
     # -- the learner's CLI -------------------------------------------------------------
@@ -293,27 +296,74 @@ class PersonaWorld:
         record.update(status="passed", elapsed_s=round(time.monotonic() - started, 3))
         self.phases.append(record)
 
-    def attempt_envelope(self) -> dict[str, Any] | None:
-        """What a drill start left behind: the state file's ``labs_drill`` record, the session it
-        was bound to, and every attempt sidecar the CLI recorded (none when Labs only started)."""
+    def attempt_sidecars(self) -> list[tuple[str, dict[str, Any]]]:
+        """``(attempt_id, record)`` for every attempt sidecar the CLI wrote in this world."""
+        found: list[tuple[str, dict[str, Any]]] = []
+        for attempts in self.attempt_dirs():
+            for sidecar in sorted(attempts.rglob("*.json")):
+                with contextlib.suppress(OSError, ValueError):
+                    found.append((sidecar.stem, json.loads(sidecar.read_text(encoding="utf-8"))))
+        return found
+
+    def drill_nonce(self) -> str | None:
+        """The Labs view's handle on the live drill (``sessionStorage``), if the page holds one."""
+        if self.page is None:
+            return None
+        with contextlib.suppress(Exception):
+            raw = self.page.evaluate(
+                "() => window.sessionStorage.getItem('studyloop.labs.activeBinding')"
+            )
+            if raw:
+                nonce = json.loads(raw).get("drill_nonce")
+                return str(nonce) if nonce else None
+        return None
+
+    def labs_binding(self) -> dict[str, Any] | None:
+        """What a Labs start left behind (U1-review F4: a BINDING, not an envelope): the state
+        file's ``labs_drill`` record, the session it was bound to, the view's drill nonce
+        (redacted on write) and the ids of every attempt the CLI opened. ``None`` when no drill
+        was ever started."""
         try:
             state = self.state_file()
         except (OSError, ValueError):
             state = {}
         drill = state.get("labs_drill")
-        sidecars = []
-        for attempts in self.attempt_dirs():
-            for sidecar in sorted(attempts.rglob("*.json")):
-                with contextlib.suppress(OSError, ValueError):
-                    sidecars.append(json.loads(sidecar.read_text(encoding="utf-8")))
-        if drill is None and not sidecars and "drill_started" not in self.facts:
+        attempt_ids = [attempt_id for attempt_id, _record in self.attempt_sidecars()]
+        if drill is None and not attempt_ids and "drill_started" not in self.facts:
             return None
         return {
             "labs_drill": drill,
             "study_session_id": state.get("study_session_id"),
             "started_from_labs": self.facts.get("drill_started"),
-            "attempt_records": sidecars,
+            "drill_nonce": self.drill_nonce(),
+            "attempt_ids": attempt_ids,
         }
+
+    def practice_envelope(self) -> dict[str, Any] | None:
+        """The production ``PracticeCheckEnvelope`` of the LAST phase a drill ran in this world,
+        rebuilt from the attempt sidecar the CLI wrote (``modules/attempt.py:record_phase``) with
+        the field set ``modules/hop.py:check_result_fields`` posts; ``None`` when no phase ran --
+        the case for both personas (proposal §7: the browser never executes; the CLI phases
+        are the kdrill live proof's). Validated by the bundle writer before it is written."""
+        latest: dict[str, Any] | None = None
+        for attempt_id, record in self.attempt_sidecars():
+            drill = record.get("drill") or {}
+            for phase in record.get("phases") or []:
+                latest = {
+                    "module_id": drill.get("module_id"),
+                    "module_digest": drill.get("module_digest"),
+                    "deck_id": drill.get("deck_id"),
+                    "task_id": drill.get("task_id"),
+                    "attempt_id": attempt_id,
+                    "phase": phase.get("phase"),
+                    "exit_class": phase.get("exit_class"),
+                    "exit_code": phase.get("exit_code"),
+                    "duration_s": max(0.0, float(phase.get("duration_seconds") or 0.0)),
+                    "stdout_tail": str(phase.get("stdout") or "")[-4096:],
+                    "stderr_tail": str(phase.get("stderr") or "")[-4096:],
+                    "triggered_by": "learner",
+                }
+        return latest
 
     def write_failure_bundle(self, phase_id: str, reason: str) -> Path | None:
         """Write the failure bundle. A diagnostics error never masks the real failure (``None``);
@@ -337,7 +387,8 @@ class PersonaWorld:
                 cli_records=list(self.cli_records),
                 lockfile_before=self.lockfile_baseline,
                 lockfile_after=self.lockfile_text(),
-                attempt_envelope=self.attempt_envelope(),
+                labs_binding=self.labs_binding(),
+                practice_envelope=self.practice_envelope(),
                 screenshot_png=screenshot,
                 page_html=html,
                 console={

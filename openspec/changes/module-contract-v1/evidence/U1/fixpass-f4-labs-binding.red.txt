@@ -1,0 +1,17 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k "labs_binding or practice_envelope" -q -p no:cacheprovider --tb=short
+sha c39bbfb5  2026-10-05T12:28:00Z  (U1-review F4: the member is still attempt-envelope.json and no practice-envelope path exists)
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ TestBundleWriter.test_the_committed_bundle_names_the_labs_binding_for_what_it_is _
+packages/studyloop/tests/acceptance/test_module_personas.py:409: in test_the_committed_bundle_names_the_labs_binding_for_what_it_is
+    assert "attempt_envelope" not in artifacts, artifacts
+E   AssertionError: {'attempt_envelope': 'attempt-envelope.json', 'cli_transcript': 'cli-transcript.txt', 'lockfile_diff': 'modules.lock.diff', 'server_log': 'server-log.txt'}
+E   assert 'attempt_envelope' not in {'attempt_envelope': 'attempt-envelope.json', 'cli_transcript': 'cli-transcript.txt', 'lockfile_diff': 'modules.lock.diff', 'server_log': 'server-log.txt'}
+_ TestBundleWriter.test_a_practice_envelope_is_validated_before_it_is_written __
+packages/studyloop/tests/acceptance/test_module_personas.py:436: in test_a_practice_envelope_is_validated_before_it_is_written
+    write_persona_failure_bundle(
+E   TypeError: write_persona_failure_bundle() got an unexpected keyword argument 'practice_envelope'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_the_committed_bundle_names_the_labs_binding_for_what_it_is
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_a_practice_envelope_is_validated_before_it_is_written
+2 failed, 37 deselected in 0.35s

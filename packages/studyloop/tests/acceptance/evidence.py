@@ -67,7 +67,8 @@ class EvidenceBundle:
     server_log_path: Path | None = None
     cli_transcript_path: Path | None = None
     lockfile_diff_path: Path | None = None
-    attempt_envelope_path: Path | None = None
+    labs_binding_path: Path | None = None
+    practice_envelope_path: Path | None = None
 
 
 #: File names of the optional members, beside ``manifest.json`` / ``turns.json``. The server
@@ -76,7 +77,11 @@ class EvidenceBundle:
 SERVER_LOG_NAME = "server-log.txt"
 CLI_TRANSCRIPT_NAME = "cli-transcript.txt"
 LOCKFILE_DIFF_NAME = "modules.lock.diff"
-ATTEMPT_ENVELOPE_NAME = "attempt-envelope.json"
+#: What a Labs start left behind (session, drill, nonce, attempt ids) -- a BINDING, named as
+#: such (U1-review F4); the production phase-result envelope is the member below, present only
+#: when a drill phase actually ran.
+LABS_BINDING_NAME = "labs-binding.json"
+PRACTICE_ENVELOPE_NAME = "practice-envelope.json"
 
 
 def write_evidence_bundle(
@@ -93,7 +98,8 @@ def write_evidence_bundle(
     server_log: str | None = None,
     cli_transcript: str | None = None,
     lockfile_diff: str | None = None,
-    attempt_envelope: dict | None = None,
+    labs_binding: dict | None = None,
+    practice_envelope: dict | None = None,
 ) -> EvidenceBundle:
     """Write ``manifest.json`` + ``turns.json`` for one acceptance run.
 
@@ -104,14 +110,18 @@ def write_evidence_bundle(
     present in the manifest so a reader never has to guess whether "not
     recorded" means "empty string" or "key absent".
 
-    ``server_log`` / ``cli_transcript`` / ``lockfile_diff`` / ``attempt_envelope`` are the
-    four members design.md §6 adds for the persona journeys (lane U1): the subprocess
-    server's captured output, the transcript of every ``studyloop`` call the persona made,
-    the before/after diff of ``modules.lock.json`` and the attempt envelope recorded when a
-    drill was started. Each is written as its own file (``server-log.txt``,
-    ``cli-transcript.txt``, ``modules.lock.diff``, ``attempt-envelope.json``) and named in
-    the manifest under ``artifacts`` -- a key that appears ONLY when at least one member was
-    supplied, so a caller that passes none gets the pre-U1 manifest byte for byte.
+    ``server_log`` / ``cli_transcript`` / ``lockfile_diff`` / ``labs_binding`` /
+    ``practice_envelope`` are the members design.md §6 adds for the persona journeys (lane
+    U1): the subprocess server's captured output, the transcript of every ``studyloop`` call
+    the persona made, the before/after diff of ``modules.lock.json``, what a Labs start left
+    behind (the binding: session, drill, nonce, attempt ids) and -- only when a drill phase
+    actually ran -- the production ``PracticeCheckEnvelope`` the CLI posted, as the caller
+    validated it. Each is written as its own file (``server-log.txt``, ``cli-transcript.txt``,
+    ``modules.lock.diff``, ``labs-binding.json``, ``practice-envelope.json``) and named in the
+    manifest under ``artifacts`` -- a key that appears ONLY when at least one member was
+    supplied, so a caller that passes none gets the pre-U1 manifest byte for byte. This
+    writer validates nothing about an envelope's content: that is the caller's job, through
+    ``session.module_delivery.validate_envelope``, before the dict reaches here.
 
     Raises :class:`UnsafeRunIdError` for a ``run_id`` that is empty or could
     escape ``evidence_root`` (a leading ``.``/``/`` or an embedded path
@@ -143,7 +153,8 @@ def write_evidence_bundle(
         "server_log": None,
         "cli_transcript": None,
         "lockfile_diff": None,
-        "attempt_envelope": None,
+        "labs_binding": None,
+        "practice_envelope": None,
     }
     if server_log is not None:
         members["server_log"] = run_dir / SERVER_LOG_NAME
@@ -154,10 +165,15 @@ def write_evidence_bundle(
     if lockfile_diff is not None:
         members["lockfile_diff"] = run_dir / LOCKFILE_DIFF_NAME
         members["lockfile_diff"].write_text(lockfile_diff, encoding="utf-8")
-    if attempt_envelope is not None:
-        members["attempt_envelope"] = run_dir / ATTEMPT_ENVELOPE_NAME
-        members["attempt_envelope"].write_text(
-            json.dumps(attempt_envelope, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    if labs_binding is not None:
+        members["labs_binding"] = run_dir / LABS_BINDING_NAME
+        members["labs_binding"].write_text(
+            json.dumps(labs_binding, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    if practice_envelope is not None:
+        members["practice_envelope"] = run_dir / PRACTICE_ENVELOPE_NAME
+        members["practice_envelope"].write_text(
+            json.dumps(practice_envelope, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
     if any(path is not None for path in members.values()):
         manifest["artifacts"] = {
@@ -177,5 +193,6 @@ def write_evidence_bundle(
         server_log_path=members["server_log"],
         cli_transcript_path=members["cli_transcript"],
         lockfile_diff_path=members["lockfile_diff"],
-        attempt_envelope_path=members["attempt_envelope"],
+        labs_binding_path=members["labs_binding"],
+        practice_envelope_path=members["practice_envelope"],
     )

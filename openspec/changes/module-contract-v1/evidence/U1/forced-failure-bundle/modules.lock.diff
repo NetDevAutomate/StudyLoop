@@ -11,8 +11,8 @@
 +      "snapshot": "<WORLD>/modules/snapshots/b16d67cfc77e…",
 +      "source": "<REPO>/packages/studyloop/tests/fixtures/modules/valid-scaffold",
 +      "git_remote": "git@github.com:NetDevAutomate/StudyLoop.git",
-+      "git_sha": "d00bea54ba0f…",
-+      "installed_at": "2026-10-05T12:11:17+00:00"
++      "git_sha": "c39bbfb50faf…",
++      "installed_at": "2026-10-05T12:29:34+00:00"
 +    }
 +  ]
 +}

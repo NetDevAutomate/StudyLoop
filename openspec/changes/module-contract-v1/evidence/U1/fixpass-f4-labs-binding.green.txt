@@ -1,0 +1,7 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestBundleWriter -q -p no:cacheprovider --tb=short && env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_acceptance_evidence.py -q -p no:cacheprovider
+sha c39bbfb5  2026-10-05T12:30:38Z  (working tree: labs-binding.json + conditional, validated practice-envelope.json; bundle regenerated)
+.................                                                        [100%]
+17 passed, 22 deselected in 0.41s
+9 passed in 0.24s
+
+forced-failure-bundle members: cli-transcript.txt console.json labs-binding.json manifest.json modules.lock.diff page.html screenshot.png server-log.txt turns.json

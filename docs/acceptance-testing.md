@@ -653,10 +653,11 @@ just testacc "" scripted packages/studyloop/tests/acceptance/test_module_persona
 
 Any phase failure writes a bundle under `playwright/artifacts/personas/<run>/` carrying, beside
 the screenshot, HTML and console the browser tiers already write, the server log, the transcript
-of every `studyloop` call the persona made, a before/after diff of `modules.lock.json` and the
-attempt envelope -- redacted (home paths, LAN address, digests, the run's secrets) and then
-verified with the UAT tier's detector (`tests/acceptance/uat/redaction.py`, imported). To see one
-without breaking anything, flip a single phase's precondition:
+of every `studyloop` call the persona made, a before/after diff of `modules.lock.json`, the Labs
+start binding and -- only when a drill phase actually ran -- the validated phase-result envelope,
+all redacted (home paths, LAN address, digests, the run's secrets) and then verified with the UAT
+tier's detector (`tests/acceptance/uat/redaction.py`, imported); a leak fails the run. To see a
+bundle without breaking anything, flip a single phase's precondition:
 
 ```bash
 STUDYLOOP_ACC_FORCE_FAIL=a5 just testacc "" scripted packages/studyloop/tests/acceptance/test_module_personas.py

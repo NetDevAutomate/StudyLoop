@@ -5,48 +5,48 @@
     "flipped": false,
     "started_at_s": 0.0,
     "status": "passed",
-    "elapsed_s": 0.796
+    "elapsed_s": 0.797
   },
   {
     "phase": "a2",
     "title": "module add via the CLI; reload; one Labs entry",
     "flipped": false,
-    "started_at_s": 0.798,
+    "started_at_s": 0.799,
     "status": "passed",
-    "elapsed_s": 0.868
+    "elapsed_s": 0.815
   },
   {
     "phase": "a3",
     "title": "start one drill inside the one claimed session",
     "flipped": false,
-    "started_at_s": 1.668,
+    "started_at_s": 1.617,
     "status": "passed",
-    "elapsed_s": 0.731
+    "elapsed_s": 0.734
   },
   {
     "phase": "a4a",
     "title": "focus lands in the terminal after the start",
     "flipped": false,
-    "started_at_s": 2.401,
+    "started_at_s": 2.353,
     "status": "failed",
-    "error": "AssertionError: focus is on body, not in the terminal\nassert False\n +  where False = <function terminal_has_focus at 0x10c0e7c40>(<Page url='http://127.0.0.1:55714/#study-session'>)\n +    where <function terminal_has_focus at 0x10c0e7c40> = pw.terminal_has_focus",
-    "elapsed_s": 0.714
+    "error": "AssertionError: focus is on body, not in the terminal\nassert False\n +  where False = <function terminal_has_focus at 0x10cb7e480>(<Page url='http://127.0.0.1:58078/#study-session'>)\n +    where <function terminal_has_focus at 0x10cb7e480> = pw.terminal_has_focus",
+    "elapsed_s": 0.715
   },
   {
     "phase": "a4b",
     "title": "keyboard-only traversal: Tab / Shift-Tab, focus visible",
     "flipped": false,
-    "started_at_s": 3.172,
+    "started_at_s": 3.134,
     "status": "passed",
-    "elapsed_s": 0.246
+    "elapsed_s": 0.244
   },
   {
     "phase": "a5",
     "title": "cancel: Escape, the recovery copy, the session untouched",
     "flipped": true,
-    "started_at_s": 3.421,
+    "started_at_s": 3.38,
     "status": "failed",
-    "error": "TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    35 \u00d7 locator resolved to visible <section aria-live=\"polite\" class=\"labs-active\" x-show=\"activeDrill\" data-testid=\"labs-active-drill\">\u2026</section>\n",
-    "elapsed_s": 15.224
+    "error": "TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    34 \u00d7 locator resolved to visible <section aria-live=\"polite\" class=\"labs-active\" x-show=\"activeDrill\" data-testid=\"labs-active-drill\">\u2026</section>\n",
+    "elapsed_s": 15.233
   }
 ]

@@ -1,8 +1,8 @@
 {
-  "run_id": "persona-a-1791202276-0abab415-a5",
+  "run_id": "persona-a-1791203373-e9d8355a-a5",
   "harness": "fake-agent",
   "actor": "scripted",
-  "outcome": "failed at a5: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    35 \u00d7 locator resolved to visible <section aria-live=\"polite\" c",
+  "outcome": "failed at a5: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    34 \u00d7 locator resolved to visible <section aria-live=\"polite\" c",
   "turn_count": 6,
   "platform": null,
   "auth_mode": "presence-only",
@@ -11,6 +11,7 @@
     "server_log": "server-log.txt",
     "cli_transcript": "cli-transcript.txt",
     "lockfile_diff": "modules.lock.diff",
-    "attempt_envelope": "attempt-envelope.json"
+    "labs_binding": "labs-binding.json",
+    "practice_envelope": null
   }
 }

@@ -6,7 +6,11 @@ On any phase failure the bundle under the run's evidence directory must carry, b
 - the subprocess server's log (``server-log.txt`` -- ``*.log`` is gitignored, U1-review F1),
 - the transcript of every ``studyloop`` call the persona made (``cli-transcript.txt``),
 - a before/after unified diff of ``modules.lock.json`` (``modules.lock.diff``),
-- the attempt envelope JSON when a drill was started (``attempt-envelope.json``),
+- what a Labs start left behind -- session, drill, nonce, attempt ids (``labs-binding.json``),
+- the production ``PracticeCheckEnvelope`` the CLI posted, validated through
+  ``session.module_delivery.validate_envelope``, ONLY when a drill phase actually ran
+  (``practice-envelope.json``; U1-review F4 -- neither persona runs a phase, so neither
+  writes it: absent by design, recorded in ``evidence/U1/README.md``),
 
 plus the browser artefacts the e2e world writes on failure (screenshot, HTML, console).
 
@@ -28,6 +32,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from studyloop.session.module_delivery import validate_envelope
+
 from ..evidence import EvidenceBundle, write_evidence_bundle
 from ..uat.redaction import RedactionLeakError, contains_forbidden_content
 
@@ -40,7 +46,8 @@ PAGE_HTML_NAME = "page.html"
 CONSOLE_NAME = "console.json"
 VIOLATIONS_NAME = "redaction-violations.txt"
 
-#: The seven artefacts tasks.md names for a forced failure, by file name.
+#: The members every persona failure bundle carries (tasks.md's seven: the "envelope" there is
+#: the Labs binding; the production envelope member is conditional, see the module docstring).
 EXPECTED_MEMBERS: tuple[str, ...] = (
     SCREENSHOT_NAME,
     PAGE_HTML_NAME,
@@ -48,8 +55,9 @@ EXPECTED_MEMBERS: tuple[str, ...] = (
     "server-log.txt",
     "cli-transcript.txt",
     "modules.lock.diff",
-    "attempt-envelope.json",
+    "labs-binding.json",
 )
+PRACTICE_ENVELOPE_NAME = "practice-envelope.json"
 
 #: sha256 (64 hex) and git (40 hex) digests keep their first 12 characters: still a handle,
 #: no longer a high-entropy string for a secrets scanner to trip on.
@@ -163,22 +171,26 @@ def write_persona_failure_bundle(
     cli_records: Sequence[CliRecord],
     lockfile_before: str | None,
     lockfile_after: str | None,
-    attempt_envelope: dict | None,
+    labs_binding: dict | None,
     screenshot_png: bytes | None,
     page_html: str | None,
     console: Mapping[str, object],
     homes: Sequence[Path],
     secrets: Mapping[str, str],
+    practice_envelope: Mapping[str, object] | None = None,
 ) -> EvidenceBundle:
     """Write one persona's failure bundle, redacted and verified; raise if anything leaked.
 
     ``harness`` is who played the mentor -- the selected RELEASE_HARNESSES name or ``fake-agent``
     (design.md §6, ruled at U1-review). ``outcome`` (the failing phase's own error text) goes
     through the same redaction as every member before it enters the manifest (U1-review F3: a
-    flipped B8 run put the venv interpreter's path there raw). ``attempt_envelope`` is written
-    even when ``None`` (as ``null``) so a reader of a failure before any drill started still
-    finds the file and learns that nothing was recorded, rather than wondering whether the
-    member was forgotten.
+    flipped B8 run put the venv interpreter's path there raw). ``labs_binding`` is written even
+    when ``None`` (as ``null``) so a reader of a failure before any drill started still finds
+    the file and learns that nothing was recorded, rather than wondering whether the member was
+    forgotten. ``practice_envelope`` is the production phase-result payload and is written ONLY
+    when given -- i.e. when a drill phase actually ran -- after
+    :func:`studyloop.session.module_delivery.validate_envelope` accepted it (an invalid one
+    raises ``EnvelopeValidationError`` naming the field, and nothing is written).
 
     Every text member is re-read and scanned (:func:`verify_redacted`); a non-empty verdict is
     written to ``redaction-violations.txt`` beside the members and then raised as
@@ -186,7 +198,11 @@ def write_persona_failure_bundle(
     test fails, and the bundle on disk says why.
     """
     redact = {"homes": homes, "secrets": secrets}
-    envelope = _redact_json(attempt_envelope, **redact) if attempt_envelope is not None else None
+    binding = _redact_json(labs_binding, **redact) if labs_binding is not None else None
+    envelope: dict | None = None
+    if practice_envelope is not None:
+        validated = validate_envelope(practice_envelope)  # raises before anything is written
+        envelope = dict(_redact_json(validated.model_dump(mode="json"), **redact))  # type: ignore[arg-type]
     bundle = write_evidence_bundle(
         evidence_root,
         run_id=run_id,
@@ -200,7 +216,8 @@ def write_persona_failure_bundle(
         server_log=redact_text(server_log, **redact),
         cli_transcript=redact_text(render_cli_transcript(cli_records), **redact),
         lockfile_diff=redact_text(lockfile_diff(lockfile_before, lockfile_after), **redact),
-        attempt_envelope={"persona": persona, "envelope": envelope},
+        labs_binding={"persona": persona, "binding": binding},
+        practice_envelope=envelope,
     )
     run_dir = bundle.run_dir
     if screenshot_png is not None:
@@ -224,6 +241,7 @@ __all__ = [
     "CONSOLE_NAME",
     "EXPECTED_MEMBERS",
     "PAGE_HTML_NAME",
+    "PRACTICE_ENVELOPE_NAME",
     "SCREENSHOT_NAME",
     "VIOLATIONS_NAME",
     "CliRecord",
