@@ -33,7 +33,7 @@ authority for the exact behaviour and commands.
 | The Labs entry | One generic Web UI entry, hidden until a module is installed, listing drills by module; in the MVP every check is triggered explicitly from the CLI |
 | Browser checks | A **Check progress** button is v1.1, not the MVP: it needs an HTTP consent endpoint with same-origin, CSRF, one-use challenge and replay protection |
 | View-only credential | Deferred to v2 **together with** the attempt-scoped grant that would let a check repeat without re-confirming; in v1 the disposable cluster is the boundary and per-phase consent the control |
-| Conformance | The `studyloop module check` command with quotable rule ids (MC001–MC016), run in the module repo's CI and later on every index entry |
+| Conformance | The `studyloop module check` command with quotable rule ids (MC001–MC017), run in the module repo's CI and later on every index entry |
 
 ## The core seams the contract reused, and what each still does not provide
 

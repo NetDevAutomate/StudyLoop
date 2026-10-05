@@ -13,6 +13,7 @@ halves together on one tree (coordinator, module-contract-v1 merge of lane R):
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
@@ -265,7 +266,16 @@ def installed_kubeconfig_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     manifest = source / "module.yaml"
     text = manifest.read_text(encoding="utf-8")
     assert "kind: workdir" in text
-    manifest.write_text(text.replace("kind: workdir", "kind: kubeconfig-context"), encoding="utf-8")
+    text = text.replace("kind: workdir", "kind: kubeconfig-context")
+    # MC017 (K0-review F6): a kubeconfig-context task must carry setupCommand and
+    # cleanupCommand, or `module add`'s conformance check refuses the flipped scaffold.
+    text = text.replace("capabilities: [check]", "capabilities: [setup, check, cleanup]")
+    manifest.write_text(text, encoding="utf-8")
+    deck_path = source / "decks" / "echo-basics.json"
+    deck = json.loads(deck_path.read_text(encoding="utf-8"))
+    deck["tasks"][0]["verification"]["setupCommand"] = "scripts/check.sh"
+    deck["tasks"][0]["verification"]["cleanupCommand"] = "scripts/check.sh"
+    deck_path.write_text(json.dumps(deck), encoding="utf-8")
     root = tmp_path / "modules"
     monkeypatch.setattr(store, "default_store_root", lambda: root)
     monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")

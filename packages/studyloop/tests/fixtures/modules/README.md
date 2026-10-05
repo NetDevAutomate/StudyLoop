@@ -1,4 +1,4 @@
-# Module conformance fixtures (proposal §6, MC001–MC016)
+# Module conformance fixtures (proposal §6, MC001–MC017)
 
 `valid-scaffold/` is a complete, minimal, offline module: one `echo`-based drill whose
 check is `scripts/check.sh` (exit 0), a `workdir` target, no prerequisites, the four
@@ -31,6 +31,7 @@ Each `mcNNN/` holds two full modules so that neither is nested inside the other
 | mc014 | task `id` missing | `id: echo-01` |
 | mc015 | `command: scripts/check.sh && echo ok` (shell operator) | `scripts/check.sh` |
 | mc016 | `capabilities: [check, cleanup]`, no deck uses `cleanupCommand` | `[check]` |
+| mc017 | `target.kind: kubeconfig-context`, task has `setupCommand` but no `cleanupCommand` | `cleanupCommand: scripts/cleanup.sh` (+ `cleanup` capability, `scripts/cleanup.sh`) |
 
 ## What these fixtures pin for the engine (C2)
 
@@ -49,6 +50,11 @@ reports one rule id and nothing else. The choices imply:
   mapping in the engine.
 - **MC006 vs MC016** — a phase field without its capability is MC006; a capability with no
   deck using it is MC016. `terminal` is never used by a deck field; the fixtures avoid it.
+- **MC017 vs MC008/MC016** — a `kubeconfig-context` task must carry `setupCommand` and
+  `cleanupCommand` (the disposable cluster is created by `setup` and deleted after `cleanup`,
+  K0-review F6), so every kubeconfig-context fixture -- mc008's twins included -- declares and
+  uses all three phases; mc017/broken omits only `cleanupCommand` and its capability together,
+  so MC016 stays quiet and MC017 is the one finding.
 - **MC007 vs MC013 vs MC015** — commands are tokenised (mc008 and mc015 require it); a
   referenced script that does not exist is MC007 only; an existing path of the wrong kind
   (symlink here) is MC013 only; an operator token is MC015 only. No fixture uses an

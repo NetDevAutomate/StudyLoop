@@ -1,7 +1,7 @@
 # Module contract (v1)
 
 A module is a directory of data -- a manifest, practice decks and the scripts they name --
-that StudyLoop validates against sixteen rules (`MC001`-`MC016`), installs as an immutable
+that StudyLoop validates against seventeen rules (`MC001`-`MC017`), installs as an immutable
 snapshot, lists under the Web UI's **Labs** entry and runs one drill phase at a time through
 `studyloop drill`, with your consent typed before anything executes. Core never imports or
 executes module code as a library. This page is the shipped contract; the design history is in

@@ -1,0 +1,14 @@
+id: echo-drills
+contract: 1
+version: 0.1.0
+title: Echo drills (offline fixture)
+topic: shell
+license: MIT
+maintainers:
+  - name: StudyLoop fixture author
+    github: studyloop-fixtures
+prerequisites:
+  - { id: kubectl }
+capabilities: [setup, check, cleanup]
+target:
+  kind: kubeconfig-context

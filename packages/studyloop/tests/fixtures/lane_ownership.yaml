@@ -294,6 +294,18 @@ lanes:
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
     - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
     - openspec/changes/module-contract-v1/evidence/K0/**
+    # K0-review F6 (MC017) -- coordinator-granted, K0-review F6: one rule + registration + the
+    # MC001-MC017 range, the mc017 fixture pair (and mc008's twins, which MC017 now binds), the
+    # rule-id/fixture cases, and the range bump in the four named places.
+    - packages/studyloop/src/studyloop/modules/check.py      # check_cluster_lifecycle + registration + range -- coordinator-granted, K0-review F6
+    - packages/studyloop/src/studyloop/cli/_module.py       # MC001-MC017 range only -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/mc017/**   # coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/mc008/**   # setup/cleanup commands so MC017 holds -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/README.md  # MC017 row -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/test_module_check.py        # rule-id / fixture-pair cases only -- coordinator-granted, K0-review F6
+    - docs/module-contract.md                               # range bump line 4 only -- coordinator-granted, K0-review F6
+    - docs/cli-reference.md                                 # range bump only -- coordinator-granted, K0-review F6
+    - docs/contributor-modules.md                           # range bump line 36 only -- coordinator-granted, K0-review F6
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
