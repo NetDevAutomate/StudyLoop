@@ -78,3 +78,23 @@ SHALL run inside the learner's one claimed session.
 - **GIVEN** the module `studyloop module new` produces, installed with `module add`
 - **WHEN** `drill setup`, `drill check` and `drill cleanup` run with consent
 - **THEN** each exits `0` without Docker, kind or network
+
+### Requirement: A kubeconfig-context attempt runs against a core-created disposable cluster
+For a module whose `target.kind` is `kubeconfig-context`, core SHALL create a disposable kind
+cluster named from the attempt id (prefix `studyloop-`) before the `setup` phase, write a
+kubeconfig containing exactly that one context into the attempt directory (mode `0600`), and
+export it as `KUBECONFIG` to every phase; the cluster SHALL be deleted after `cleanup` and on
+every failure path after it was created. Core SHALL never use, list-and-delete, or modify a
+cluster it did not create for that attempt. A name collision SHALL be refused, never reused. A
+teardown failure SHALL be reported as an error naming the cluster, never hidden.
+
+#### Scenario: the drill's cluster is disposable and the learner's clusters survive
+- **GIVEN** a learner with an existing kind cluster and a kubeconfig-context module
+- **WHEN** `setup`, `check` and `cleanup` run for one attempt
+- **THEN** a `studyloop-*` cluster existed only between `setup` and `cleanup`, every phase saw
+  `KUBECONFIG` naming only that cluster, and the learner's cluster is untouched
+
+#### Scenario: a missing kubeconfig is refused before spawn
+- **GIVEN** a kubeconfig-context attempt whose kubeconfig was not written by core
+- **WHEN** a phase is about to spawn
+- **THEN** the runner refuses with an error and nothing runs
