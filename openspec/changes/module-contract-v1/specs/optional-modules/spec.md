@@ -28,7 +28,16 @@ or a failure.
 `capabilities` SHALL be drawn from `terminal`, `setup`, `check`, `cleanup`; a deck phase whose
 capability is not declared SHALL fail conformance (MC006), and a declared `setup`, `check` or
 `cleanup` that no deck uses SHALL fail MC016. `terminal` names the learner's session itself and is
-always in use: declaring it never fails MC016.
+always in use: declaring it never fails MC016. A module whose `target.kind` is `kubeconfig-context`
+SHALL carry `setupCommand` and `cleanupCommand` on every task (MC017): the disposable cluster is
+created by `setup` and deleted after `cleanup`, so a task missing either could never run or would
+leak a cluster.
+
+#### Scenario: a kubeconfig-context task without a cleanup command is refused
+- **GIVEN** a manifest whose `target.kind` is `kubeconfig-context` and a deck task with a
+  `setupCommand` but no `cleanupCommand`
+- **WHEN** `module check` runs
+- **THEN** it fails (rule MC017) naming the task and the missing phase command
 
 #### Scenario: a prerequisite outside the enum is refused
 - **GIVEN** a manifest whose `prerequisites` name an id core's enum lacks (e.g. `duckdb`)
@@ -45,7 +54,7 @@ always in use: declaring it never fails MC016.
 - **WHEN** `studyloop doctor` runs
 - **THEN** no module prerequisite probe runs and no cluster or context is created or switched
 
-### Requirement: `studyloop module check` applies conformance rules MC001–MC016 with stable ids
+### Requirement: `studyloop module check` applies conformance rules MC001–MC017 with stable ids
 `module check <path>` SHALL evaluate every rule in `proposal.md` §6, report each failure with its
 rule id, file and line (line `None` when the fault is file-level), support `--json`, and exit
 non-zero on any failure. When one fault could satisfy several rules the most specific wins: a bad

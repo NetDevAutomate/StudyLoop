@@ -301,6 +301,7 @@ Rule ids follow the provider-lint habit so a failure is quotable in a PR.
 | MC014 | Deck and task `id`s present, slug-valid and unique within their scope |
 | MC015 | Each phase command is one `scripts/...` executable plus literal arguments — no shell operators, substitutions or interpreters (the static half of `shell=False`) |
 | MC016 | No capability declared in `module.yaml` that no deck uses |
+| MC017 | A module whose `target.kind` is `kubeconfig-context` has `setupCommand` and `cleanupCommand` on every task — the disposable cluster is created by `setup` and deleted after `cleanup`, so a task missing either could never be run, or would leak a cluster (K0-review F6) |
 
 The same command runs in the module repo's CI and, later, in the index repository's CI on
 every entry.
@@ -343,7 +344,7 @@ The MVP is done when all seven hold:
    `mentorNotes`, `cleanupCommand`) are in core with tests. **Ships first, on its own** — it
    is the only thing gating a module author's decks from validating.
 2. `studyloop module check` passes on scaffold output and fails on a fixture set covering
-   every rule MC001–MC016.
+   every rule MC001–MC017.
 3. The §5.5 runner exists — argv without a shell, clean environment, digest-bound per-phase
    consent, streamed caps, per-phase timeouts, **transient-only recording** — and
    `studyloop module new` output runs end to end through `studyloop drill` with no Docker
