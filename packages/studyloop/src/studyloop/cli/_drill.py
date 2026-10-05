@@ -27,7 +27,8 @@ invocation runs exactly one phase of one drill through the §5.5 runner:
    attempt when the phase was ``cleanup`` (whatever its exit) or a failed ``setup``. The
    disposable cluster is deleted whenever the attempt closes **and** on every failure path
    after it was created -- declined consent, a refusal after consent, a failed ``setup``, a
-   ``check`` timeout, Ctrl-C or any other exception -- and a failed delete is printed as
+   ``check`` in the error class (exit 2 or above, timeout, output cap; exit 1 keeps it),
+   Ctrl-C or any other exception -- and a failed delete is printed as
    ``ERROR`` naming the cluster and makes the exit status 2 (spec: never hidden).
 
 Exit status: 0 passed, 1 failed (task not complete) or a refusal/usage problem reported by
@@ -423,9 +424,11 @@ def _consent_and_run(
         closes = phase is Phase.CLEANUP or (
             phase is Phase.SETUP and result.exit_class is not ExitClass.PASSED
         )
-        # K0 brief item 3: a check that timed out is a failure path for the cluster too (a
-        # check that merely exits 1 -- task not complete -- keeps it for the next try).
-        if disposable is not None and phase is Phase.CHECK and result.timed_out:
+        # Spec ("every failure path", K0-review F5): any check result in the ERROR class --
+        # exit 2 or above, a timeout, an output cap -- is a failure path for the cluster too.
+        # Only a check that FAILED (exit 1, task not complete) keeps it for the next try. The
+        # class is the runner's, never re-derived here from the raw exit code.
+        if disposable is not None and phase is Phase.CHECK and result.exit_class is ExitClass.ERROR:
             closes = True
         if closes:
             if disposable is not None:

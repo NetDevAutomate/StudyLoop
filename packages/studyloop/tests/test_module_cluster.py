@@ -903,6 +903,56 @@ def test_check_timeout_tears_down_the_cluster_and_closes_the_attempt(
     assert _events(sessions_db)[-1]["timed_out"] == 1
 
 
+@pytest.mark.parametrize(
+    ("script", "needle"),
+    [
+        pytest.param(
+            "#!/bin/sh\necho 'cluster unreachable' >&2\nexit 2\n",
+            "check could not run (exit 2; error)",
+            id="exit-2",
+        ),
+        pytest.param(
+            "#!/bin/sh\necho 'kubectl: command not found' >&2\nexit 127\n",
+            "check could not run (exit 127; error)",
+            id="exit-127",
+        ),
+        pytest.param(
+            "#!/bin/sh\nhead -c 200000 /dev/zero | tr '\\0' 'x'\n",
+            "exceeded the stdout cap",
+            id="output-cap",
+        ),
+    ],
+)
+def test_every_check_error_class_tears_down_the_cluster(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    tmp_path: Path,
+    script: str,
+    needle: str,
+) -> None:
+    """Spec scenario "a check that errors tears the cluster down" (K0-review F5): every check
+    result in the error class -- exit 2 or above, an output cap (and the timeout above) --
+    deletes the cluster and closes the attempt with the reason recorded; not only a timeout."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+    attempt = _store().current(installed_k8s)
+    assert attempt is not None
+    _set_phase_script(tmp_path, "check.sh", script)
+
+    result = _invoke("check", K8S_DRILL)
+
+    assert result.exit_code == 2, result.output
+    assert needle in result.output
+    assert _kinds(fake_tools)[-1] == ["delete", "cluster"], "an erroring check keeps no cluster"
+    assert _store().current(installed_k8s) is None
+    record = json.loads(
+        next((tmp_path / "module-attempts").rglob(f"{attempt.attempt_id}.json")).read_text()
+    )
+    assert record["closed_at"] is not None
+    assert needle.split(" (")[0] in record["close_reason"]
+    assert _events(sessions_db)[-1]["exit_class"] == "error"
+
+
 def test_check_exit_1_keeps_the_cluster_for_another_try(
     installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
 ) -> None:
