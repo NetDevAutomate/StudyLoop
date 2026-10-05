@@ -151,7 +151,9 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `acceptance/test_module_kdrill_live.py` gated `STUDYLOOP_ACC=1 STUDYLOOP_LIVE=1` with a
       sentinel-cluster assertion; UAT rubric for Personas A and B under `acceptance/uat/`;
       verify `just docs` strict and the acceptance test skips cleanly without the env vars. G.
-- [ ] W-review One independent seat reviews W2–W5 before W merges; verify the catch-rate row.
+- [x] W-review One independent seat reviews W2–W5 before W merges; verify the catch-rate row.
+      gpt-5.6-sol 3fb086ee (do not merge, 10 raised); all ten fixed red-first in b8f0d7b5;
+      gate `evidence/W/merge-gate.txt` (7935 passed, 0 failed); merged to local main 989b1867.
 
 ## 4. Wave 3 — representative user testing, live proof, release proof
 
