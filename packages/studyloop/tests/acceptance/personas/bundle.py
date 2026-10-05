@@ -50,7 +50,9 @@ EXPECTED_MEMBERS: tuple[str, ...] = (
     "attempt-envelope.json",
 )
 
-_SHA256_HEX = re.compile(r"\b([0-9a-f]{12})[0-9a-f]{52}\b")
+#: sha256 (64 hex) and git (40 hex) digests keep their first 12 characters: still a handle,
+#: no longer a high-entropy string for a secrets scanner to trip on.
+_HEX_DIGEST = re.compile(r"\b([0-9a-f]{12})(?:[0-9a-f]{52}|[0-9a-f]{28})\b")
 _LAN_IPV4 = re.compile(r"\b(?!127\.0\.0\.1\b)(?:\d{1,3}\.){3}\d{1,3}\b")
 
 
@@ -103,15 +105,19 @@ def lockfile_diff(before: str | None, after: str | None) -> str:
 
 
 def redact_text(text: str, *, homes: Sequence[Path], secrets: Mapping[str, str]) -> str:
-    """Known secrets first (longest first), then home paths, LAN addresses and digests."""
+    """Known secrets first (longest first), then roots, LAN addresses and digests.
+
+    ``homes[0]`` is the persona's world root (``<WORLD>``); every later entry is a real home
+    directory (``<HOME>``). Longest match first, so a world under a home is named as the world.
+    """
     for name, value in sorted(secrets.items(), key=lambda item: -len(item[1])):
         if value:
             text = text.replace(value, f"<REDACTED:{name}>")
-    for home in sorted({str(h) for h in homes}, key=len, reverse=True):
-        if home:
-            text = text.replace(home, "<HOME>")
+    labelled = [(str(h), "<WORLD>" if i == 0 else "<HOME>") for i, h in enumerate(homes) if str(h)]
+    for root, label in sorted(labelled, key=lambda item: -len(item[0])):
+        text = text.replace(root, label)
     text = _LAN_IPV4.sub("<LAN-IP>", text)
-    return _SHA256_HEX.sub(lambda m: m.group(1) + "…", text)
+    return _HEX_DIGEST.sub(lambda m: m.group(1) + "…", text)
 
 
 def _redact_json(value: object, *, homes: Sequence[Path], secrets: Mapping[str, str]) -> object:

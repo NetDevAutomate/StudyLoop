@@ -1,0 +1,21 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=a8 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -q -p no:cacheprovider --tb=short
+sha aab790e9  2026-10-05T11:17:55Z  (working tree: Persona A tests for commit 3; phase a8 FLIPPED so its own assertion fails)
+...x....F
+=================================== FAILURES ===================================
+_________ TestPersonaA.test_a8_module_remove_then_labs_gone[chromium] __________
+packages/studyloop/tests/acceptance/test_module_personas.py:617: in test_a8_module_remove_then_labs_gone
+    step_remove_takes_labs_away(
+packages/studyloop/tests/acceptance/test_module_personas.py:252: in step_remove_takes_labs_away
+    assert pw.api(page, "/api/modules/labs")["labs"] == [], "the Labs listing is not empty"
+E   AssertionError: the Labs listing is not empty
+E   assert [{'decks': [{...'shell', ...}] == []
+E
+E     Left contains one more item: {'decks': [{'id': 'echo-basics', 'tasks': [{'commands': ['studyloop drill check echo-drills/echo-basics/echo-01'], 'id... 'title': 'Echo basics'}], 'module_id': 'echo-drills', 'title': 'Echo drills (offline fixture)', 'topic': 'shell', ...}
+E     Use -v to get more diff
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199076-f9586547-a8
+----------------------------- Captured stdout call -----------------------------
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199076-f9586547-a8
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 7 passed, 13 deselected, 1 xfailed in 6.79s

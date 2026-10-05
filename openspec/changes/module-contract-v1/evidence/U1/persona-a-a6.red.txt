@@ -1,0 +1,18 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=a6 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -q -p no:cacheprovider --tb=short
+sha aab790e9  2026-10-05T11:21:40Z  (working tree: Persona A tests for commit 3; phase a6 FLIPPED so its own assertion fails)
+...x..F
+=================================== FAILURES ===================================
+___ TestPersonaA.test_a6_reload_reattaches_with_no_second_session[chromium] ____
+packages/studyloop/tests/acceptance/test_module_personas.py:507: in test_a6_reload_reattaches_with_no_second_session
+    assert after.get("study_session_id") == before["study_session_id"], (
+E   AssertionError: the session changed across the reload: {'topics': [], 'parking': [], 'last_release': {'study_session_id': '60327103-b5b1-4170-9b37-ad8c2496a0bb', 'reason': 'ended-by-user', 'topic': 'Lab: echo-drills/echo-basics/echo-01', 'agent': 'codex', 'at': 1791199305.691154}}
+E   assert None == '60327103-b5b1-4170-9b37-ad8c2496a0bb'
+E    +  where None = <built-in method get of dict object at 0x10de27fc0>('study_session_id')
+E    +    where <built-in method get of dict object at 0x10de27fc0> = {'last_release': {'agent': 'codex', 'at': 1791199305.691154, 'reason': 'ended-by-user', 'study_session_id': '60327103-b5b1-4170-9b37-ad8c2496a0bb', ...}, 'parking': [], 'topics': []}.get
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199301-1401f4d3-a6
+----------------------------- Captured stdout call -----------------------------
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199301-1401f4d3-a6
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 5 passed, 13 deselected, 1 xfailed in 5.65s

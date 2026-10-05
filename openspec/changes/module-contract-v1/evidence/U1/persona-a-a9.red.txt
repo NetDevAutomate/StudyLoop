@@ -1,0 +1,19 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=a9 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -q -p no:cacheprovider --tb=short
+sha aab790e9  2026-10-05T11:18:02Z  (working tree: Persona A tests for commit 3; phase a9 FLIPPED so its own assertion fails)
+...x.....F
+=================================== FAILURES ===================================
+_ TestPersonaA.test_a9_the_whole_persona_finished_under_six_minutes[chromium] __
+packages/studyloop/tests/acceptance/test_module_personas.py:625: in test_a9_the_whole_persona_finished_under_six_minutes
+    step_under_budget(persona_a, page_a, flipped=persona_a.flipped("a9"))
+packages/studyloop/tests/acceptance/test_module_personas.py:275: in step_under_budget
+    assert elapsed < limit, f"Persona {world.persona} took {elapsed:.1f}s; budget {limit:.0f}s"
+E   AssertionError: Persona A took 5.9s; budget 0s
+E   assert 5.916178666986525 < 0.001
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199083-21eb1f7c-a9
+----------------------------- Captured stdout call -----------------------------
+[persona A] wall-clock 5.9s of the 0s budget
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791199083-21eb1f7c-a9
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 8 passed, 13 deselected, 1 xfailed in 7.23s
