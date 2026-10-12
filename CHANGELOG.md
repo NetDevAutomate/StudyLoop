@@ -135,6 +135,26 @@ experience may change before `1.0.0`.
   tail, and `POST /api/session/start` turns it into a structured 500 (`error`,
   `agent`, `stderr_tail`, `repair`) and aborts the study-session record —
   previously the exception escaped unhandled and the record stayed open.
+- The live-Kiro dogfood test (`test_web_acp_dogfood_kiro.py`, opt-in via
+  `-m live_kiro`) could not run to a verdict. Its server launch inherited the
+  pytest process's scope-less test config and was refused 409
+  `context_scope_unavailable` before any agent ran; it now classifies its
+  child explicitly. Past that it hung without end: the module carries the
+  `live_kiro` marker, not `e2e`, so the conftest hook that grants e2e modules
+  300 s never applied and pyproject's unit default of 60 s (SIGALRM) fired
+  inside the test's own 180 s wait — landing in Playwright's dispatcher
+  greenlet and killing it, after which every sync Playwright call
+  (`page.close()`, `context.close()`) spun forever against the dead greenlet.
+  The module now carries `pytest.mark.timeout(720)`, above its own deadlines.
+  Its permission auto-allow had also never fired (it read a
+  `pendingPermission._request_id` field the console does not set) and ran
+  only during the persona turn, while Kiro asks permission for tool calls
+  during the answer turn too; both phases now answer prompts through the
+  console's own `_selectPermissionOption`. The answer budget is 300 s, since
+  the real agent runs its session-start protocol (several tool calls, each a
+  permission round-trip) before answering, and a timeout now reports the
+  console's state instead of a bare "120000ms exceeded". First green run:
+  48 s.
 - The `voice-tts` OpenSpec specification described the architecture that was
   deleted, not the one that shipped: it required browser-side Kokoro via
   `transformers.js` and forbade any server-side synthesis for the web path,

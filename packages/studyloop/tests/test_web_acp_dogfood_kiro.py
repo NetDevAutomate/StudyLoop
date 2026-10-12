@@ -52,7 +52,19 @@ if TYPE_CHECKING:
 
     from playwright.sync_api import Browser, BrowserContext, Page
 
-pytestmark = [pytest.mark.live_kiro]
+# 720 s: above this test's own deadlines (persona turn <= 180 s, answer
+# <= 300 s, server start and teardown ~40 s), so those exception-based waits
+# fire first and pytest-timeout is only a backstop. Without this mark the
+# module fell under pyproject's unit default of 60 s -- the conftest hook that
+# grants e2e modules 300 s keys on the ``e2e`` marker, which this module does
+# not carry. The 60 s SIGALRM landed inside Playwright's dispatcher greenlet
+# (the one running its asyncio loop while the test waits), killing it; every
+# later sync Playwright call -- page.close() in this test's finally,
+# context.close() in fixture teardown -- then spun forever in
+# _sync_base._sync (``while not task.done(): dispatcher.switch()`` against a
+# dead greenlet). Observed 2026-10-11/12: /api/session/end at ~60 s, then a
+# run that never returned (faulthandler dump at page.close()).
+pytestmark = [pytest.mark.live_kiro, pytest.mark.timeout(720)]
 
 WEB_PORT = 18577
 DOGFOOD_QUESTION = "When should I use a SUM function in a SQL statement?"
@@ -139,6 +151,15 @@ def _start_web_server_real_kiro() -> subprocess.Popen:
     """
     env = {**os.environ}
     env.pop("STUDYLOOP_TEST_ACP_CMD", None)  # belt-and-braces
+    # The pytest process carries conftest's STUDYLOOP_CONFIG (a test config
+    # with no memory.default_scope), and the context system never infers a
+    # scope from a harness: without one, session/start is refused 409
+    # context_scope_unavailable before any agent is spawned. Classify the
+    # child explicitly, as _playwright_helpers._isolated_child_env does.
+    # The real HOME is kept on purpose: this test exists to run the
+    # developer's real, authenticated kiro-cli and StudyLoop's installed
+    # `studyloop` agent -- that is what makes it dogfood.
+    env.setdefault("SESSION_CONTEXT_SCOPE", "unclassified")
 
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
     proc = subprocess.Popen(
@@ -298,6 +319,62 @@ def _start_acp_session_via_api(page: Page) -> dict:
     return body["body"]
 
 
+_CONSOLE_STATE_JS = """() => {
+  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+  if (!root) return null;
+  try {
+    const d = window.Alpine.$data(root);
+    const perm = d.pendingPermission;
+    return {
+      connected: d.connected,
+      sending: d.acpSending,
+      pendingOptions: perm && Array.isArray(perm.options)
+        ? perm.options.map(o => ({optionId: o.optionId, kind: o.kind}))
+        : null,
+      hasFinalAnswer: d.acpMessages.some(
+        m => m.role === 'assistant' && m.status === 'final'
+      ),
+      messages: d.acpMessages.map(m => ({
+        role: m.role, status: m.status,
+        chars: ((m.text || m.content || '') + '').length,
+      })),
+      toolCalls: (d.toolCallsById && d.toolCallsById.size) || 0,
+    };
+  } catch (e) { return {error: 'console state unreadable: ' + e}; }
+}"""
+
+
+def _console_state(page: Page) -> dict | None:
+    """Snapshot of the live console's Alpine state, or None before it mounts."""
+    return page.evaluate(_CONSOLE_STATE_JS)
+
+
+def _auto_allow_pending_permission(page: Page, state: dict) -> bool:
+    """Answer a pending permission prompt as a trusting learner would.
+
+    Kiro asks permission for tool calls (reading session state, an MCP tool)
+    during BOTH the persona turn and the answer turn; the console surfaces the
+    prompt and blocks the turn until it is answered, exactly as it should. In
+    this dogfood run nobody is at the keyboard, so pick ``allow_once`` (else
+    the first option) through the console's own click handler,
+    ``_selectPermissionOption`` -- which sends the correlated
+    ``permission_response`` and releases ``acpSending`` -- rather than
+    hand-rolling the WS frame. Returns True when a prompt was answered.
+    """
+    opts = state.get("pendingOptions") or []
+    if not opts:
+        return False
+    chosen = next((o for o in opts if o.get("kind") == "allow_once"), opts[0])
+    page.evaluate(
+        """(optionId) => {
+          const root = document.querySelector('[x-data="liveAgentConsole()"]');
+          window.Alpine.$data(root)._selectPermissionOption(optionId);
+        }""",
+        chosen["optionId"],
+    )
+    return True
+
+
 # ---------------------------------------------------------------------------
 # THE test
 # ---------------------------------------------------------------------------
@@ -341,62 +418,21 @@ class TestLiveKiroDogfood:
             # The flag clears on the persona's turn_end. After that we can
             # send the dogfood question.
             #
-            # If Kiro emits a request_permission during the persona turn
-            # (it might want to read session-state.json), the turn will
-            # block here. Auto-resolve any permission prompt by calling
-            # the page's allow handler — same UX a user-trusted dogfood
-            # session would have. We poll for either acpSending=false OR
-            # a pendingPermission, and dispatch the allow if present.
+            # The console auto-allows permission prompts raised during the
+            # persona turn itself (_suppressStreamingBubble); a prompt that
+            # lands after that flag clears but before acpSending does is
+            # surfaced, and the loop below answers it the way a learner's
+            # click would.
             persona_settled = False
             for _ in range(60):  # up to 3 minutes total (3s per loop)
-                state = page.evaluate(
-                    """() => {
-                      const root = document.querySelector('[x-data="liveAgentConsole()"]');
-                      if (!root) return null;
-                      try {
-                        const d = window.Alpine.$data(root);
-                        return {
-                          sending: d.acpSending,
-                          pending: d.pendingPermission && d.pendingPermission.options
-                            ? d.pendingPermission.options.map(o => ({
-                                optionId: o.optionId, kind: o.kind,
-                              }))
-                            : null,
-                          requestId: d.pendingPermission
-                            ? d.pendingPermission._request_id
-                            : null,
-                        };
-                      } catch { return null; }
-                    }"""
-                )
+                state = _console_state(page)
                 if state is None:
                     time.sleep(0.5)
                     continue
                 if state["sending"] is False:
                     persona_settled = True
                     break
-                if state["pending"]:
-                    # Auto-allow the first allow_once option (or first opt
-                    # if none has that kind).
-                    opts = state["pending"]
-                    chosen = next(
-                        (o for o in opts if o.get("kind") == "allow_once"),
-                        opts[0] if opts else None,
-                    )
-                    if chosen and state["requestId"] is not None:
-                        page.evaluate(
-                            """({rid, optId}) => {
-                              const root = document.querySelector('[x-data="liveAgentConsole()"]');
-                              const d = window.Alpine.$data(root);
-                              d._ws.send(JSON.stringify({
-                                type: 'permission_response',
-                                requestId: rid,
-                                outcome: {outcome: 'selected', optionId: optId},
-                              }));
-                              d.pendingPermission = null;
-                            }""",
-                            {"rid": state["requestId"], "optId": chosen["optionId"]},
-                        )
+                _auto_allow_pending_permission(page, state)
                 time.sleep(3)
             assert persona_settled, "Persona-injection turn did not complete within 3 minutes"
 
@@ -435,20 +471,29 @@ class TestLiveKiroDogfood:
             )
 
             # Wait for the assistant bubble to be finalised — generous timeout
-            # because real Kiro responses can be 5-30s.
-            page.wait_for_function(
-                """() => {
-                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
-                  if (!root) return false;
-                  try {
-                    const d = window.Alpine.$data(root);
-                    return d.acpMessages.some(
-                      m => m.role === 'assistant' && m.status === 'final'
-                    );
-                  } catch { return false; }
-                }""",
-                timeout=120_000,
-            )
+            # because the real agent runs its session protocol (several tool
+            # calls, each a permission round-trip) before answering: 161 chars
+            # and three tool calls at 120 s on 2026-10-12. Polled rather than a
+            # single wait_for_function: Kiro asks permission for tool calls
+            # during the answer turn too (2026-10-12: the first attributable
+            # run of this test sat on an unanswered allow_once prompt with one
+            # tool call open until the 120 s wait expired), and a bare
+            # "120000ms exceeded" cannot tell that from a slow answer, so a
+            # timeout here reports the console's state.
+            answer_deadline = time.monotonic() + 300
+            state = None
+            while time.monotonic() < answer_deadline:
+                state = _console_state(page)
+                if state and state.get("hasFinalAnswer"):
+                    break
+                if state:
+                    _auto_allow_pending_permission(page, state)
+                time.sleep(1)
+            else:
+                pytest.fail(
+                    "No finalised assistant answer within 300 s. Console state at "
+                    f"timeout: {state!r}"
+                )
 
             # ------------------------------------------------------------
             # Assertion: rendering (B2/B3 fix verification)
