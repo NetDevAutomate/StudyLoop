@@ -142,8 +142,15 @@ def default_server(
 
 # Mounts the PTY terminal by flipping the Alpine session state and firing the
 # same event the real start-session flow fires. No PTY child is spawned; the
-# WebSocket 403s harmlessly, which is fine — these tests assert rendering,
-# resize, theme and font behaviour, not PTY plumbing.
+# WebSocket closes 1008 harmlessly, which is fine — these tests assert
+# rendering, resize, theme and font behaviour, not PTY plumbing. The server
+# must still REPORT the session as live, though: since 2026-10-12 the console
+# answers an unexplained socket close by asking /api/session/state and, when
+# nothing live is named, announces the session ended and the Study view
+# leaves its live layout — hiding .xterm-mount under the next click. So
+# _mount_terminal first writes the matching session-state.json (the same
+# precedent as _write_active_session_state), which the dev_page fixture clears.
+_MOUNT_SESSION_ID = "ghostty-e2e-1"
 _MOUNT_TERMINAL_JS = """
 () => {
   const root = document.querySelector('[x-data="sessionTimer()"]');
@@ -238,6 +245,26 @@ def _wait_for_engine(page) -> None:
 def _mount_terminal(page) -> None:
     """Mount the terminal and wait until the real ghostty Terminal exists."""
     _wait_for_engine(page)
+    # The server reports what the mount pretends: a live session with the id
+    # the start event names, so the console's socket-close check (see the
+    # comment above _MOUNT_TERMINAL_JS) finds it live and leaves the view alone.
+    # No tmux_session, as in _write_active_session_state: the zombie check would
+    # clear a state whose tmux session is dead.
+    session_dir: Path = page._studyloop_session_dir
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / "session-state.json").write_text(
+        json.dumps(
+            {
+                "study_session_id": _MOUNT_SESSION_ID,
+                "topic": "ghostty-e2e",
+                "energy": 5,
+                "mode": "study",
+                "start_time": "2026-08-03T10:00:00",
+                "started_at": "2026-08-03T10:00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
     page.evaluate(_MOUNT_TERMINAL_JS)
     page.wait_for_selector(".xterm-mount", state="visible", timeout=MOUNT_TIMEOUT_MS)
     page.wait_for_function(
@@ -344,6 +371,7 @@ class TestGhosttyEngineLoads:
         ctx_args: dict = {"viewport": {"width": 1400, "height": 900}}
         context = browser.new_context(**ctx_args)
         page = context.new_page()
+        page._studyloop_session_dir = dev_server.world.session_dir  # type: ignore[attr-defined]
         errors: list[str] = []
         page.on("pageerror", lambda err: errors.append(str(err)))
         try:
@@ -356,6 +384,7 @@ class TestGhosttyEngineLoads:
             assert not fatal, f"unexpected JS errors: {fatal}"
         finally:
             context.close()
+            _clear_ipc(dev_server.world.session_dir)
 
 
 # ---------------------------------------------------------------------------

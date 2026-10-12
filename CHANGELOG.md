@@ -217,6 +217,22 @@ experience may change before `1.0.0`.
     exactly those five (plus virtualenv's `python-discovery`), holding
     sentence-transformers below 6; both audit commands are clean and the full
     unit suite is unchanged on the new lock.
+  - `e2e`, Labs journey phase 7: the fake harness agent treated the delivered
+    `practice_check` block as the learner's answer to its one generic-bank
+    question, graded it correct, printed `DONE` and exited -- ending the session
+    whose live state file the phase's replay check reads next (reproduced
+    locally in 6 s: `last_release.reason = "session ended"`). The fake agent now
+    acknowledges a line carrying the `<<<studyloop:practice_check` sentinel
+    (`FAKE-AGENT NOTED: practice_check result received`) and never grades it;
+    a unit test pins the spelled-out sentinel to the product's constant.
+  - `e2e`, three dev-terminal keyboard tests: `_mount_terminal` pretends a
+    session exists (no PTY child, the socket closes 1008) and nothing told the
+    server, so this release's server-side-ended detection asked
+    `/api/session/state`, was told no session was live, and the Study view
+    honestly left its live layout -- hiding `.xterm-mount` under the click
+    (`element is not visible`; deterministic locally in isolation). The helper
+    now writes the matching `session-state.json` first, as the reload test
+    already does, so the server reports the session the mount pretends to have.
 - The `voice-tts` OpenSpec specification described the architecture that was
   deleted, not the one that shipped: it required browser-side Kokoro via
   `transformers.js` and forbade any server-side synthesis for the web path,

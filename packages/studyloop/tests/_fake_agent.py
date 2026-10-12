@@ -23,6 +23,11 @@ that pin this down):
 - ``FAKE-AGENT ASKS: <question>`` — one per bank question, in order.
 - ``FAKE-AGENT VERDICT: correct`` / ``FAKE-AGENT VERDICT: not-yet`` — grades
   the learner's most recent line against the current question.
+- ``FAKE-AGENT NOTED: practice_check result received`` — a line carrying
+  StudyLoop's own ``practice_check`` delivery (the ``<<<studyloop:practice_check``
+  sentinel, ``session/module_delivery.py``) is a result the product posted
+  into the session, not the learner's answer: it is acknowledged and never
+  graded, so the question stays open and the session stays alive.
 - ``FAKE-AGENT HINT: <hint>`` — follow-up on a ``not-yet`` verdict; the
   question is NOT re-asked and the answer is NOT revealed, so the learner
   gets another attempt at the same question.
@@ -42,6 +47,22 @@ from _socratic_bank import TopicBank, bank_for_topic, topic_from_persona
 
 BANNER = "FAKE-AGENT READY"
 REPLY_PREFIX = "FAKE-AGENT SAYS:"
+# studyloop.session.module_delivery.BEGIN_SENTINEL, spelled out so this script
+# keeps importing nothing from the product (test_fake_agent.py pins the two
+# equal). A delivered block travels as one printable line in the M0 Q3 fallback,
+# so the sentinel is looked for anywhere in the line, not at its start.
+PRACTICE_CHECK_SENTINEL = "<<<studyloop:practice_check"
+NOTED = "FAKE-AGENT NOTED: practice_check result received"
+
+
+def _is_practice_check(text: str) -> bool:
+    """A delivered practice_check result -- data to acknowledge, not an answer to grade.
+
+    Found 2026-10-12 by the Labs journey: the one-question generic bank graded the
+    block's words as a correct answer, printed DONE and exited, and the session the
+    journey still needed (its replay check reads the live state file) was gone.
+    """
+    return PRACTICE_CHECK_SENTINEL in text
 
 
 def _write(line: str) -> None:
@@ -87,6 +108,9 @@ def _run_echo_session() -> None:
                 continue
             if text.lower() in {"exit", "quit"}:
                 break
+            if _is_practice_check(text):
+                _write(NOTED)
+                continue
             _write(f"{REPLY_PREFIX} I hear you on {text!r} — tell me more.")
     except (KeyboardInterrupt, BrokenPipeError):
         pass
@@ -115,6 +139,9 @@ def _run_socratic_session(bank: TopicBank) -> None:
                 continue
             if text.lower() in {"exit", "quit"}:
                 return
+            if _is_practice_check(text):
+                _write(NOTED)
+                continue
 
             if question.grade(text):
                 _write("FAKE-AGENT VERDICT: correct")
