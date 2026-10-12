@@ -1730,6 +1730,11 @@
                view is declared BEFORE the Study view in the document, so an
                unscoped picker selector resolves here first. -->
           <section class="bd-card bd-start-picker" x-show="!sessionActive && !starting">
+            <!-- Why the picker is back when the learner did not press End: the
+                 console reported the session ended (agent exit, server restart).
+                 Not .picker-hint — three tests enumerate that class. -->
+            <p id="bd-session-ended" class="bd-notice" role="status"
+               x-show="endedNotice" x-text="endedNotice"></p>
             <label class="bd-field">What are you working on?
               <input id="bd-activity-input" type="text" x-model="activity"
                      @input="onActivityEdited()"
@@ -2451,6 +2456,12 @@
         <!-- ── Start Session Picker (no active session) ── -->
         <div x-show="!sessionActive && !starting" class="session-start-picker study-start-picker" x-transition>
           <h2>Start a Study Session</h2>
+          <!-- Why the picker is back when the learner did not press End: the
+               console reported the session ended (agent exit, server restart).
+               Its own class on purpose — .picker-hint and .picker-error are both
+               counted by tests. -->
+          <p id="study-session-ended" class="bd-notice session-ended-notice" role="status"
+             x-show="endedNotice" x-text="endedNotice" x-cloak></p>
 
           <!-- Session Type dropdown removed: Body Double is its own view now, not
                a mode of the Study picker. Offering it here made one surface

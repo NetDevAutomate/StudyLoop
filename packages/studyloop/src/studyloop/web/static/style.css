@@ -5016,6 +5016,7 @@ body[data-palette="everforest"] {
 .bd-start-picker > .bd-field,
 .bd-start-picker > .bd-primary-btn,
 .bd-start-picker > .bd-requirement,
+.bd-start-picker > .bd-notice,
 .bd-start-picker > .picker-hint,
 .bd-start-picker > .session-conflict-recovery {
   align-self: stretch;
@@ -5126,6 +5127,27 @@ body[data-palette="everforest"] {
   color: var(--text-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+/* A status, not an error and not field guidance: the last session ended
+   without the learner pressing End (agent exit, server restart), and this is
+   why the picker is back. Yellow is the palette's "attention" colour, and the
+   sentence carries the reason, so there is nothing for the learner to decode. */
+.bd-notice {
+  margin: 0;
+  padding: 8px 11px;
+  background: color-mix(in srgb, var(--yellow) 12%, var(--bg-card));
+  border-left: 3px solid var(--yellow);
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* The Study picker's copy sits in normal block flow under its heading rather
+   than in a flex column with a gap, so it carries its own spacing. */
+.session-start-picker > .session-ended-notice {
+  margin: 0 0 14px;
 }
 
 /* --- Live session strip ------------------------------------------------- */

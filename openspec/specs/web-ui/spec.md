@@ -233,6 +233,42 @@ session. (ADR-0002)
   dispatched while a Body Double session is live
 - **THEN** the Body Double console does not tear down its terminal or socket
 
+### Requirement: A view whose session ended server-side returns to its picker
+The live console SHALL dispatch a `study-session-ended` window event, carrying
+its `origin`, when the session it shows ends without the learner pressing End:
+on the server's `stopped` frame (with the frame's reason and return code), and
+on a socket close the server did not explain once `GET /api/session/state` no
+longer names that session as live (a restarted `studyloop web`; the probe
+retries while the server is unreachable and stays silent while the session is
+still live in its grace window). On the `stopped` frame the console SHALL also
+close its socket, so the server releases the slot at once. The view owning
+that origin SHALL leave its live layout, keep the typed activity or topic so
+the next Start is one click, and show the reason in its picker; the other view
+SHALL ignore the event. Neither view SHALL show the notice after the learner's
+own End.
+
+#### Scenario: The agent exits under a live Body Double tab
+- **WHEN** the agent process exits while the Body Double view shows its session
+- **THEN** the Body Double picker is visible again with the activity and agent
+  still selected, `#bd-session-ended` reads "Your session ended (exit, rc=0)…",
+  the live strip and End dialog are gone, and the next Start is not refused
+
+#### Scenario: `studyloop web` is restarted under a live Body Double tab
+- **WHEN** the server process is stopped and started again while the tab shows
+  a live session
+- **THEN** within the probe's retry window the picker is visible again and
+  `#bd-session-ended` names the lost connection ("was studyloop web restarted?")
+
+#### Scenario: The learner's own End shows no notice
+- **WHEN** the learner ends the session with the view's End button
+- **THEN** the picker returns with an empty `endedNotice` and `#bd-session-ended`
+  is not visible
+
+#### Scenario: The Study view is the twin
+- **WHEN** the agent exits under a live Study Session view
+- **THEN** the Study picker is visible again and `#study-session-ended` carries
+  the same sentence
+
 ### Requirement: The Study Session picker has no session-type selector
 The study-session picker SHALL NOT render a session-type control, and the
 frontend SHALL NOT carry a `sessionType` state field or a `sessionType` key in

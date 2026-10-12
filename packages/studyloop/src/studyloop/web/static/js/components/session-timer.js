@@ -135,6 +135,10 @@ export function sessionTimer() {
       conflictSession: null,
       conflictOwnerLabel: '',
       conflictIsOwn: false,
+      /* Why the last session ended WITHOUT the learner pressing End (agent exit,
+         server restart), as the console reported it. Shown in the picker; cleared
+         by the next Start. The Body Double view carries the same field. */
+      endedNotice: '',
       /* Monotonic, mirroring reviewApp's _liveSessionEpoch: bumped whenever the
          user acts on the conflict, so an /api/session/state response that was
          already in flight cannot overwrite the newer state. */
@@ -186,6 +190,29 @@ export function sessionTimer() {
         // today-resume above, for the same reason.
         window.addEventListener('plan-architect-request', (e) => {
           this.startPlanning((e && e.detail) || {});
+        });
+
+        // The console's word that OUR session ended without an End press — the
+        // agent exited, or `studyloop web` was restarted under this tab. Without
+        // this the view kept its live layout for good (End button, timer, dead
+        // console, picker hidden); the Body Double view had the same gap and
+        // carries the same listener. Leave the live layout, keep the topic so
+        // the next Start is one click, and say why in the picker.
+        window.addEventListener('study-session-ended', (e) => {
+          const detail = (e && e.detail) || {};
+          if ((detail.origin || 'study') !== OWN_ORIGIN) return;
+          if (!this.sessionActive) return;
+          this._conflictEpoch += 1;
+          this.sessionActive = false;
+          this.purpose = 'focus';
+          clearInterval(this.interval);
+          this.topic = 'Session ended';
+          this.confirmingEnd = false;
+          this.endError = '';
+          this.conflictSession = null;
+          this.startError = '';
+          this.endedNotice = detail.message
+            || 'Your session ended. Start a new one when you are ready.';
         });
       },
 
@@ -377,6 +404,7 @@ export function sessionTimer() {
 
         this.starting = true;
         this.startError = '';
+        this.endedNotice = '';
         let startedSession = null;
         try {
           const res = await fetch('/api/session/start', {
@@ -654,6 +682,7 @@ export function sessionTimer() {
         this.startTime = session.start_time ? new Date(session.start_time) : new Date();
         this.sessionActive = true;
         this.starting = false;
+        this.endedNotice = '';
         /* Council review 8 (grok, astra): the adopted session is not the one the
            Today hand-off described — a pending picker move would otherwise sit
            beneath its status bar for the whole session. Nothing is reconstructed. */

@@ -135,6 +135,18 @@ experience may change before `1.0.0`.
   tail, and `POST /api/session/start` turns it into a structured 500 (`error`,
   `agent`, `stderr_tail`, `repair`) and aborts the study-session record —
   previously the exception escaped unhandled and the record stayed open.
+- A Body Double or Study Session tab that was mid-session when the agent
+  exited or `studyloop web` was restarted no longer stays stuck in its live
+  layout — a Pomodoro timer, an End button and a dead console, with no way to
+  start a session short of reloading the page. The console now tells the view
+  that owns it when the session has ended under it (the server's stopped frame,
+  or a lost connection that `/api/session/state` confirms is a lost session),
+  and the view returns to its picker with the activity still typed in and a
+  one-line reason above it ("Your session ended: the connection to the server
+  was lost (was studyloop web restarted?)"). On an agent exit the console also
+  hangs up at once, so the server frees the slot immediately and the next
+  Start is not refused for a session that has already finished. Covered by ten
+  console unit tests and five browser journeys against the real server.
 - Web voice plays again. From 2 September the page's security policy
   (`default-src 'self'`, no `media-src`) refused the `blob:` URL every
   server-voice utterance plays through, so the badge said **Kokoro (server)**,

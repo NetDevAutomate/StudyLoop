@@ -3168,6 +3168,11 @@ function bodyDoubleSession() {
     sessionActive: false, liveActivity: '', confirmingEnd: false,
     endError: '', // R-70: set when /api/session/end fails; keeps the dialog open
     starting: false, startError: '',
+    /* Why the last session ended WITHOUT the learner pressing End (the agent
+       exited, the server was restarted) — shown in the picker so the view
+       explains itself instead of silently swapping a live strip for the
+       picker. Cleared by the next Start. */
+    endedNotice: '',
     /* ---- origin-aware session recovery --------------------------------
      * There is ONE session slot. When the Study Session view holds it, this
      * view will not adopt the session (ADR-0002's origin guard exists so two
@@ -3225,6 +3230,32 @@ function bodyDoubleSession() {
           this.conflictSession = null;
           this.startError = '';
         }
+      });
+      /* The console's word that OUR session ended without an End press — the
+         agent exited, or `studyloop web` was restarted under this tab. Until
+         this listener existed the view kept its live layout for good: strip,
+         timer and End button over a dead console, picker hidden (reported
+         2026-10-11: "the option to start a session has disappeared, only a
+         pomodoro timer"). Leave the live layout; keep the activity so the next
+         Start is one click; say why. The Pomodoro is deliberately NOT stopped:
+         the learner did not ask to end anything, and their focus block is
+         about their work, not the agent's (ADR-0003). */
+      window.addEventListener('study-session-ended', (event) => {
+        const detail = (event && event.detail) || {};
+        if ((detail.origin || 'study') !== 'body-double') return;
+        if (!this.sessionActive) return;
+        /* A report about some other session is stale news, not ours. */
+        if (detail.studySessionId && this.studySessionId
+            && detail.studySessionId !== this.studySessionId) return;
+        this._conflictEpoch += 1;
+        this.sessionActive = false;
+        this.studySessionId = null;
+        this.confirmingEnd = false;
+        this.endError = '';
+        this.conflictSession = null;
+        this.startError = '';
+        this.endedNotice = detail.message
+          || 'Your session ended. Start a new one when you are ready.';
       });
       /* Today-card handoff for a body-double proposal (council review 7, F7):
          the engine named a plan to sit with; open on it rather than blank.
@@ -3423,6 +3454,7 @@ function bodyDoubleSession() {
     async startSession() {
       this.starting = true;
       this.startError = '';
+      this.endedNotice = '';
       /* Trimmed once, used everywhere: the POST payload, the live label and
          the dispatch detail must all carry the same topic string (§3.2). */
       const topic = this.activity.trim();
@@ -3637,6 +3669,7 @@ function bodyDoubleSession() {
       }
       this.conflictSession = null;
       this.startError = '';
+      this.endedNotice = '';
       this.starting = false;
       /* Council review 8 (grok, astra): the adopted session is not the one the
          Today hand-off described — a pending picker move would otherwise sit

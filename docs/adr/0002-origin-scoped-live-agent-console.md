@@ -93,6 +93,14 @@ on later as a resource optimisation; it is not load-bearing for correctness.
 - Every dispatcher of `study-session-start` / `study-session-stop` must set
   `origin`. Today that is `sessionTimer().startSession()` /
   `confirmEndSession()` plus the new `bodyDoubleSession()`.
+- The bus carries one event in the other direction, and it is addressed the
+  same way: the console dispatches `study-session-ended` (2026-10-11) when the
+  session it shows has ended without the learner pressing End — the server's
+  `stopped` frame, or a socket close that `/api/session/state` then confirms
+  was the session going away (a restarted `studyloop web`). The view whose
+  origin matches leaves its live layout and shows the reason in its picker;
+  the other view ignores it. Before this event existed the owning view kept
+  its strip, timer and End button over a dead console with the picker hidden.
 - Two live xterm-capable components exist in the page, but at most one is ever
   mounted to a WebSocket, because the backend permits one active session
   (ADR-0001) and the non-addressed console ignores the event entirely.

@@ -10,6 +10,13 @@
  * the Body Double console and vice versa. See docs/adr/0002 and the
  * _ALLOWED_ORIGINS comment in web/routes/session/_start.py.
  *
+ * EVENTS. study-session-start and study-session-stop flow from the owning view
+ * into this console. study-session-ended flows the other way: this console
+ * dispatches it (origin-tagged, see _announceEnded) when the session it shows
+ * has ended without the learner pressing End — the agent exited, the server
+ * was restarted, the slot was released — so the owning view can leave its live
+ * layout. Both views listen for it, filtered by origin like the other two.
+ *
  * The default value is load-bearing. The study console's markup calls
  * `liveAgentConsole()` with NO argument, and dozens of assertions across three
  * suites address that exact attribute string. Do not "tidy" the markup to
@@ -354,6 +361,10 @@ export function liveAgentConsole(origin = 'study') {
         const ws = new WebSocket(wsUrl);
         ws.binaryType = 'arraybuffer';
         this._ws = ws;
+        /* Set by the 'stopped' frame, read by the close handler: a session that
+           ended with a reason is announced once, from the frame that carries
+           the reason, and its socket closing afterwards is not a second ending. */
+        let sessionEnded = false;
 
         ws.addEventListener('open', () => {
           this.connected = true;
@@ -414,6 +425,19 @@ export function liveAgentConsole(origin = 'study') {
             if (this._term) {
               this._term.writeln(`\r\n\x1b[2m[session ended: ${frame.reason}]\x1b[0m`);
             }
+            /* The server releases the session on this frame, so the view that
+               owns it must leave its live layout too — until it hears this it
+               keeps the strip, the End button and a dead console on screen and
+               hides its picker (reported 2026-10-11: "the option to start a
+               session has disappeared, only a pomodoro timer"). */
+            sessionEnded = true;
+            this._announceEnded(detail, frame.reason, frame.returncode);
+            /* Stopped is terminal, so hang up. The server releases the slot in
+               its socket teardown; left open, this socket kept a finished
+               session holding the slot for seconds after the frame, long
+               enough for the learner's next Start — one click away now — to
+               be refused with a 409 about an agent that had already exited. */
+            try { ws.close(); } catch { /* ignore */ }
           } else if (frame.type === 'transport_error') {
             this.statusDot = 'error';
             this.status = `Error: ${frame.message}`;
@@ -483,6 +507,14 @@ export function liveAgentConsole(origin = 'study') {
           this.connected = false;
           if (this.statusDot !== 'error') this.statusDot = 'idle';
           if (!/ended/i.test(this.status)) this.status = 'Disconnected';
+          /* Not an ending: a 'stopped' frame already announced this one, or the
+             owner tore this socket down itself (stop() nulls _ws before the
+             close event lands, and a newer start() has replaced it by then). */
+          if (sessionEnded || this._ws !== ws) return;
+          /* A close the server did not explain: the server went away (a
+             restarted `studyloop web`), or the socket alone dropped while the
+             session lives on inside its grace window. Ask, rather than guess. */
+          this._reportIfSessionGone(detail, ws);
         });
         ws.addEventListener('error', () => {
           this.statusDot = 'error';
@@ -506,6 +538,74 @@ export function liveAgentConsole(origin = 'study') {
             if (ws.readyState !== WebSocket.OPEN) return;
             ws.send(JSON.stringify({ type: 'resize', cols, rows }));
           });
+        }
+      },
+
+      /* ------------------------------------------------------------
+       * Server-side endings — the console → owning-view direction.
+       *
+       * study-session-start / -stop flow from the view that owns this console
+       * INTO it. This is the one event that flows back OUT: the session this
+       * console was showing has ended without the learner pressing End — the
+       * agent exited, the server was restarted, the slot was released — and
+       * the owning view must leave its live layout, or it keeps a strip, an
+       * End button and a dead console on screen with its picker hidden.
+       * `message` is the sentence the view shows; one wording for both views.
+       * ------------------------------------------------------------ */
+      _announceEnded(detail, reason, returncode) {
+        const why = reason || 'unknown';
+        const rc = returncode === null || returncode === undefined ? '' : `, rc=${returncode}`;
+        const message = why === 'connection_lost'
+          ? 'Your session ended: the connection to the server was lost '
+            + '(was studyloop web restarted?). Start a new one when you are ready.'
+          : `Your session ended (${why}${rc}). Start a new one when you are ready.`;
+        window.dispatchEvent(new CustomEvent('study-session-ended', {
+          detail: {
+            origin,
+            studySessionId: (detail && detail.studySessionId) || null,
+            reason: why,
+            returncode: returncode === undefined ? null : returncode,
+            message,
+          },
+        }));
+      },
+
+      /* The socket closed with no 'stopped' frame. Two very different things
+         look identical from here: the server is gone (a restarted `studyloop
+         web` — the PTY/ACP session lived inside it, so the session is gone
+         too), or only the socket dropped and the server is holding the session
+         for its grace window, reattachable. Only /api/session/state can tell
+         them apart, and a server mid-restart answers neither, so ask a few
+         times with backoff before giving up on an answer. Announces an ending
+         only when the state no longer names this session as live; a session
+         still live in its grace window is left alone (the owning view's
+         recovery block is the reattach path). Abandoned the moment a newer
+         start/stop has replaced this socket — that is fresher information. */
+      async _reportIfSessionGone(detail, ws) {
+        const mine = (detail && detail.studySessionId) || null;
+        /* ~31 s in total: a restarted `studyloop web` answers again within a
+           few seconds, a cold start with a schema migration can take longer.
+           The first answer ends the loop, so a quick restart pays only for the
+           attempts it needed. */
+        const delays = [0, 1000, 2000, 4000, 8000, 16000];
+        for (const delay of delays) {
+          if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+          if (this._ws !== ws) return;
+          let state;
+          try {
+            const res = await fetch('/api/session/state', { cache: 'no-store' });
+            if (!res.ok) continue;
+            state = await res.json();
+          } catch { continue; }                 /* unreachable: try again */
+          if (this._ws !== ws) return;
+          const liveId = state && state.mode !== 'ended' ? state.study_session_id : null;
+          if (liveId && (!mine || liveId === mine)) return;   /* still ours; grace window */
+          const release = state && state.last_release;
+          const reason = release && release.reason && (!mine || release.study_session_id === mine)
+            ? release.reason : 'connection_lost';
+          this.status = `Session ended (${reason})`;
+          this._announceEnded(detail, reason, null);
+          return;
         }
       },
 
