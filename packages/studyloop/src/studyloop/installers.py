@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -36,21 +37,43 @@ class LinkSpec:
     and harnesses that already read ``~/.agents/skills`` (Codex, OpenCode, pi)
     would get redundant paths. With a hub, those three are served directly and
     only Kiro/Claude need native-directory links.
+
+    ``copy=True`` installs a COPY of ``source`` at ``target`` instead of a link.
+    For a file the harness itself rewrites that is the only safe shape: kiro-cli
+    migrates an agent file it loads (the legacy ``hooks`` object to the array
+    form, ``toolsSettings`` denylist regexes to ``permissions.rules`` globs) and
+    writes the result back to the path it read -- through a link, into the
+    repository. On 2026-10-12 that left ``agents/kiro/studyloop.json`` and
+    ``study-plan-architect.json`` rewritten in one second, seven manifest tests
+    red, and a bare ``*`` (every shell command denied) in the migrated denylist
+    where ``curl .* \\| bash`` had been. A copy keeps the rewrite where it
+    belongs, on the learner's machine; re-running the installer refreshes it.
     """
 
     source: str
     target: str
+    copy: bool = False
 
 
 _HOME = Path.home()
 
 _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
     "kiro": (
-        LinkSpec("agents/kiro/study-mentor.json", str(_HOME / ".kiro/agents/study-mentor.json")),
+        # The three agent FILES are copies (LinkSpec.copy): kiro-cli rewrites the
+        # agent file it loads, and through a link that rewrite reached the
+        # repository (2026-10-12). The directories beside them stay links --
+        # kiro-cli reads those, it does not write them.
+        LinkSpec(
+            "agents/kiro/study-mentor.json",
+            str(_HOME / ".kiro/agents/study-mentor.json"),
+            copy=True,
+        ),
         # StudyLoop's own persona-neutral agent, named on every Kiro ACP launch
         # (`kiro-cli acp --agent studyloop`) so the learner's default agent never
         # configures a StudyLoop session (owner steer, 2026-09-26).
-        LinkSpec("agents/kiro/studyloop.json", str(_HOME / ".kiro/agents/studyloop.json")),
+        LinkSpec(
+            "agents/kiro/studyloop.json", str(_HOME / ".kiro/agents/studyloop.json"), copy=True
+        ),
         # study-plan-architect.json declares `file://shared/*.md` resources, which
         # Kiro resolves relative to the agent file's directory; this link is what
         # makes them exist there (council phase 2, L7 reviewer).
@@ -59,6 +82,7 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
         LinkSpec(
             "agents/kiro/study-plan-architect.json",
             str(_HOME / ".kiro/agents/study-plan-architect.json"),
+            copy=True,
         ),
         LinkSpec(
             "agents/kiro/study-plan-architect",
@@ -1384,11 +1408,59 @@ def _points_to(target: Path, source: Path) -> bool:
     return current.resolve() == source.resolve()
 
 
+def _agent_name(path: Path) -> str | None:
+    """The ``name`` of the agent definition at *path*, or None if it is not one."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    name = data.get("name") if isinstance(data, dict) else None
+    return name if isinstance(name, str) else None
+
+
+def _copy_path(source: Path, target: Path, *, uninstall: bool) -> int:
+    """Install ``source`` at ``target`` as a copy (``LinkSpec.copy``); 1 if anything changed.
+
+    The file is StudyLoop's by NAME: a target whose agent ``name`` matches the
+    source's is ours whatever its content now says -- a copy kiro-cli has since
+    migrated is refreshed in place with no backup, since the migration is the
+    reason the file is a copy at all (see :class:`LinkSpec`). A legacy link from
+    an earlier install is replaced. Anything else at the path belongs to the
+    learner: on install it is moved to ``<name>.bak`` first, on uninstall it is
+    left alone.
+    """
+    ours = target.is_symlink() and _points_to(target, source)
+    if not target.is_symlink() and target.is_file():
+        ours = _agent_name(target) == _agent_name(source)
+    if uninstall:
+        if ours:
+            target.unlink()
+            return 1
+        return 0
+    if target.is_symlink():
+        target.unlink()  # legacy layout, or a stale link: the copy replaces it either way
+    elif target.is_file():
+        if target.read_bytes() == source.read_bytes():
+            return 0
+        if not ours:
+            shutil.move(str(target), str(target.with_name(f"{target.name}.bak")))
+    elif target.exists():
+        shutil.move(str(target), str(target.with_name(f"{target.name}.bak")))
+    shutil.copyfile(source, target)
+    return 1
+
+
 def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool) -> int:
     changed = 0
     for spec in specs:
         source = _render_source(spec.source, repo_root)
         target = _render_target(spec.target, repo_root)
+        if spec.copy:
+            if not uninstall and not source.exists():
+                raise InstallError(f"Missing install asset: {source}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            changed += _copy_path(source, target, uninstall=uninstall)
+            continue
         # In-repo targets use relative links so they survive repo moves and
         # syncing between machines with different absolute paths.
         in_repo = "{repo_root}" in spec.target

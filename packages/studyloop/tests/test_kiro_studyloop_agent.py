@@ -98,7 +98,11 @@ class TestCreatedAtInstallTime:
         monkeypatch.setattr(
             installers,
             "_TOOL_LINKS",
-            {"kiro": tuple(installers.LinkSpec(spec.source, str(target)) for spec in specs)},
+            {
+                "kiro": tuple(
+                    installers.LinkSpec(spec.source, str(target), copy=spec.copy) for spec in specs
+                )
+            },
         )
         monkeypatch.setattr(installers, "_SHARED_LINKS", ())
         monkeypatch.setattr(installers, "XTILES_SKILL_LINKS", {})
@@ -109,8 +113,8 @@ class TestCreatedAtInstallTime:
 
         installers.install_agent_definitions(REPO_ROOT, tools=["kiro"])
 
-        assert target.is_symlink()
-        assert target.resolve() == DEFINITION.resolve()
+        assert target.is_file() and not target.is_symlink(), "installed as a copy, not a link"
+        assert target.read_bytes() == DEFINITION.read_bytes()
         assert json.loads(target.read_text(encoding="utf-8"))["name"] == "studyloop"
 
     def test_the_manifest_tracks_it(self) -> None:
@@ -123,6 +127,139 @@ class TestCreatedAtInstallTime:
     def test_the_nightly_install_job_checks_it_landed(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/nightly-install.yml").read_text(encoding="utf-8")
         assert 'test -e "$HOME/.kiro/agents/studyloop.json"' in workflow
+
+
+_KIRO_AGENT_SOURCES = (
+    "agents/kiro/study-mentor.json",
+    "agents/kiro/studyloop.json",
+    "agents/kiro/study-plan-architect.json",
+)
+
+
+class TestKiroAgentFilesAreCopiesNotLinks:
+    """kiro-cli rewrites an agent file it loads: the legacy ``hooks`` object becomes
+    the array form, ``toolsSettings`` denylist regexes become ``permissions.rules``
+    globs. Linked into the repository, that rewrite landed in ``agents/kiro/`` on
+    2026-10-12 -- both files in one second, seven manifest tests red, and the
+    migrated denylist carried a bare ``*`` (every shell command denied) where
+    ``curl .* \\| bash`` had been. The installed agent file is therefore a COPY
+    the repository never sees again; the directories beside it (``shared/``,
+    ``study-plan-architect/``, skills) stay links, kiro-cli does not write those.
+    """
+
+    @staticmethod
+    def _install(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, uninstall: bool = False):
+        specs = [
+            spec for spec in installers._TOOL_LINKS["kiro"] if spec.source in _KIRO_AGENT_SOURCES
+        ]
+        assert len(specs) == 3, "all three Kiro agent files are in the install table"
+        home = tmp_path / "home"
+        rebased = tuple(
+            installers.LinkSpec(
+                spec.source,
+                spec.target.replace(str(installers._HOME), str(home), 1),
+                copy=spec.copy,
+            )
+            for spec in specs
+        )
+        monkeypatch.setattr(installers, "_TOOL_LINKS", {"kiro": rebased})
+        monkeypatch.setattr(installers, "_SHARED_LINKS", ())
+        monkeypatch.setattr(installers, "XTILES_SKILL_LINKS", {})
+        monkeypatch.setattr(installers, "SESSION_MEMORY_SKILL_LINKS", {})
+        monkeypatch.setattr(installers, "install_session_db_mandate", lambda *_a, **_k: {})
+        monkeypatch.setattr(installers, "register_mcp_servers", lambda *_a, **_k: {})
+        installers.install_agent_definitions(REPO_ROOT, tools=["kiro"], uninstall=uninstall)
+        return home / ".kiro/agents"
+
+    @staticmethod
+    def _kiro_cli_migration(path: Path) -> None:
+        """What kiro-cli 2.29 wrote through the link on 2026-10-12, in shape."""
+        data = json.loads(path.read_text(encoding="utf-8"))
+        hook = data["hooks"]["stop"][0]["command"]
+        data["hooks"] = [
+            {
+                "name": "stop-0",
+                "trigger": "stop",
+                "action": {"type": "command", "command": hook},
+                "timeout": 10,
+            }
+        ]
+        data["permissions"] = {
+            "rules": [
+                {"capability": "shell", "match": ["chmod 777*", "*", "dd if=*"], "effect": "deny"}
+            ]
+        }
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    def test_every_kiro_agent_file_is_a_copy(self, tmp_path: Path, monkeypatch) -> None:
+        agents = self._install(tmp_path, monkeypatch)
+        for source in _KIRO_AGENT_SOURCES:
+            installed = agents / Path(source).name
+            assert installed.is_file() and not installed.is_symlink(), source
+            assert installed.read_bytes() == (REPO_ROOT / source).read_bytes(), source
+
+    def test_a_kiro_cli_rewrite_of_the_copy_leaves_the_repository_untouched(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        before = {s: (REPO_ROOT / s).read_bytes() for s in _KIRO_AGENT_SOURCES}
+        agents = self._install(tmp_path, monkeypatch)
+        for source in _KIRO_AGENT_SOURCES:
+            self._kiro_cli_migration(agents / Path(source).name)
+        after = {s: (REPO_ROOT / s).read_bytes() for s in _KIRO_AGENT_SOURCES}
+        assert after == before, "a rewrite of the installed file reached agents/kiro/"
+        migrated = json.loads((agents / "studyloop.json").read_text(encoding="utf-8"))
+        assert isinstance(migrated["hooks"], list), "the rewrite itself landed on the copy"
+
+    def test_reinstall_refreshes_a_rewritten_copy(self, tmp_path: Path, monkeypatch) -> None:
+        agents = self._install(tmp_path, monkeypatch)
+        self._kiro_cli_migration(agents / "studyloop.json")
+        self._install(tmp_path, monkeypatch)
+        refreshed = agents / "studyloop.json"
+        assert refreshed.read_bytes() == DEFINITION.read_bytes()
+        assert not (agents / "studyloop.json.bak").exists(), "our own file is not backed up"
+
+    def test_reinstall_is_a_no_op_on_an_identical_copy(self, tmp_path: Path, monkeypatch) -> None:
+        agents = self._install(tmp_path, monkeypatch)
+        stamp = (agents / "studyloop.json").stat().st_mtime_ns
+        self._install(tmp_path, monkeypatch)
+        assert (agents / "studyloop.json").stat().st_mtime_ns == stamp
+
+    def test_install_replaces_the_legacy_link_with_a_copy(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        agents = tmp_path / "home/.kiro/agents"
+        agents.mkdir(parents=True)
+        (agents / "studyloop.json").symlink_to(DEFINITION)
+        self._install(tmp_path, monkeypatch)
+        installed = agents / "studyloop.json"
+        assert installed.is_file() and not installed.is_symlink()
+        assert installed.read_bytes() == DEFINITION.read_bytes()
+
+    def test_install_backs_up_a_foreign_file_at_our_name(self, tmp_path: Path, monkeypatch) -> None:
+        agents = tmp_path / "home/.kiro/agents"
+        agents.mkdir(parents=True)
+        foreign = json.dumps({"name": "my-own-agent", "prompt": "mine"})
+        (agents / "studyloop.json").write_text(foreign, encoding="utf-8")
+        self._install(tmp_path, monkeypatch)
+        assert (agents / "studyloop.json").read_bytes() == DEFINITION.read_bytes()
+        assert (agents / "studyloop.json.bak").read_text(encoding="utf-8") == foreign
+
+    def test_uninstall_removes_our_copy_even_after_a_rewrite(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        agents = self._install(tmp_path, monkeypatch)
+        self._kiro_cli_migration(agents / "studyloop.json")
+        self._install(tmp_path, monkeypatch, uninstall=True)
+        for source in _KIRO_AGENT_SOURCES:
+            assert not (agents / Path(source).name).exists(), source
+
+    def test_uninstall_leaves_a_foreign_file_alone(self, tmp_path: Path, monkeypatch) -> None:
+        agents = tmp_path / "home/.kiro/agents"
+        agents.mkdir(parents=True)
+        foreign = json.dumps({"name": "my-own-agent"})
+        (agents / "studyloop.json").write_text(foreign, encoding="utf-8")
+        self._install(tmp_path, monkeypatch, uninstall=True)
+        assert (agents / "studyloop.json").read_text(encoding="utf-8") == foreign
 
 
 class TestTheAcpLaunchNamesIt:

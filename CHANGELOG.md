@@ -233,6 +233,21 @@ experience may change before `1.0.0`.
     (`element is not visible`; deterministic locally in isolation). The helper
     now writes the matching `session-state.json` first, as the reload test
     already does, so the server reports the session the mount pretends to have.
+- The three Kiro agent files are installed as copies, not links. kiro-cli
+  rewrites an agent file it loads -- the legacy `hooks` object becomes the
+  array form, the `toolsSettings` denylist regexes become `permissions.rules`
+  globs -- and through the installer's links that rewrite landed in the
+  repository's `agents/kiro/studyloop.json` and `study-plan-architect.json`
+  on 2026-10-12, both in one second: seven manifest tests red, and the migrated
+  denylist carried a bare `*` (every shell command denied) where
+  `curl .* \| bash` had been. The copy keeps that rewrite on the learner's
+  machine; a re-run of `studyloop install agents` refreshes a migrated copy from
+  the shipped definition (no `.bak`, it is StudyLoop's own file by name), still
+  backs up a foreign file at the same path, and `--uninstall` removes only
+  ours. The directories beside the files (`shared/`, `study-mentor/`,
+  `study-plan-architect/`, skills) stay links, so every `file://` resource
+  resolves as before. Run `studyloop install agents --tool kiro` once to replace
+  an existing link.
 - The `voice-tts` OpenSpec specification described the architecture that was
   deleted, not the one that shipped: it required browser-side Kokoro via
   `transformers.js` and forbade any server-side synthesis for the web path,

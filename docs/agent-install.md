@@ -48,7 +48,7 @@ Then check the result:
 studyloop doctor --category agents
 ```
 
-The installer links StudyLoop-managed definitions while preserving an existing file as a `.bak` backup when necessary. Use `studyloop install agents --uninstall` to remove links created by StudyLoop.
+The installer links StudyLoop-managed definitions (copying the three Kiro agent files, see below) while preserving an existing file as a `.bak` backup when necessary. Use `studyloop install agents --uninstall` to remove what StudyLoop installed.
 
 ## Start a study session
 
@@ -86,6 +86,15 @@ StudyLoop session. It carries no persona (the session sends one), reaches only
 StudyLoop's `studyloop` and `session-db` MCP servers, and pre-approves no
 tools, the same grants ACP sessions had before it existed. You never start it
 yourself; `studyloop doctor` checks that kiro-cli validates and lists it.
+
+The three Kiro agent files (`study-mentor.json`, `studyloop.json`,
+`study-plan-architect.json`) are installed as **copies** under `~/.kiro/agents/`,
+not links: kiro-cli rewrites an agent file it loads (its hook and permission
+schema migrate in place), and a link would carry that rewrite back into
+StudyLoop's own sources. If kiro-cli has migrated your copy, that is expected;
+`studyloop install agents --tool kiro` refreshes it from the shipped definition.
+The directories beside them (`shared/`, `study-mentor/`, `study-plan-architect/`,
+the skills) remain links, so their `file://` resources resolve exactly as before.
 
 Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/skills/`, as a symlink to the shared copy described below. It stays silent unless your second-brain provider is `xtiles` and an `xtiles` MCP server is connected.
 

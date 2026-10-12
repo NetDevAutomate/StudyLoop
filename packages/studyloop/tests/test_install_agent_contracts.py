@@ -355,7 +355,8 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
         "_TOOL_LINKS",
         {
             tool: tuple(
-                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path), copy=spec.copy)
+                for spec in specs
             )
             for tool, specs in installers._TOOL_LINKS.items()
         },
@@ -654,7 +655,8 @@ def test_installed_kiro_architect_resolves_its_prompt_and_servers(
         "_TOOL_LINKS",
         {
             tool: tuple(
-                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path), copy=spec.copy)
+                for spec in specs
             )
             for tool, specs in installers._TOOL_LINKS.items()
         },
@@ -707,7 +709,14 @@ def test_installed_kiro_architect_resolves_its_prompt_and_servers(
 
     assert claude_path.is_symlink(), "claude study-plan-architect.md was not linked"
     assert opencode_path.is_symlink(), "opencode study-plan-architect.md was not linked"
-    assert kiro_json.is_symlink(), "kiro study-plan-architect.json was not linked"
+    # A copy, not a link (2026-10-12): kiro-cli rewrites the agent file it loads,
+    # and through a link that rewrite reached agents/kiro/ in the repository.
+    assert kiro_json.is_file() and not kiro_json.is_symlink(), (
+        "kiro study-plan-architect.json was not installed as a copy"
+    )
+    assert (
+        kiro_json.read_bytes() == (repo_root / "agents/kiro/study-plan-architect.json").read_bytes()
+    )
     assert kiro_dir.is_symlink(), "kiro study-plan-architect/ directory was not linked"
     assert (kiro_dir / "persona.md").is_file()
 
@@ -732,7 +741,8 @@ def _install_kiro_into_fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         "_TOOL_LINKS",
         {
             tool: tuple(
-                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path), copy=spec.copy)
+                for spec in specs
             )
             for tool, specs in installers._TOOL_LINKS.items()
         },
