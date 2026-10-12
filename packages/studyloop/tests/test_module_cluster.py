@@ -1042,11 +1042,20 @@ def test_teardown_failure_on_cleanup_is_an_error_naming_the_cluster(
 
 
 def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(
-    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Brief item 6 / M1 Q2: ``kind``, ``kubectl`` and ``docker`` are CORE's prerequisites for
     this target kind, resolved up front whatever the module declares; an unresolvable one is
-    an error naming the tool, before any consent and before kind is called."""
+    an error naming the tool, before any consent and before kind is called.
+
+    PATH is narrowed to the fake bin dir alone: the fixture's ``/usr/bin:/bin`` tail is for
+    the fake scripts' own needs, and nothing may run here anyway -- but on GitHub's
+    ``ubuntu-latest`` a real Docker lives at ``/usr/bin/docker``, which resolved the deleted
+    tool and carried the drill through consent to exit 0 (CI, 2026-10-12)."""
     manifest = tmp_path / "snapshot" / "module.yaml"
     manifest.write_text(
         manifest.read_text(encoding="utf-8").replace(
@@ -1057,6 +1066,7 @@ def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(
     )
     assert "id: docker" not in manifest.read_text(encoding="utf-8")
     (fake_tools.bin_dir / "docker").unlink()
+    monkeypatch.setenv("PATH", str(fake_tools.bin_dir))
 
     result = _invoke("setup", K8S_DRILL)
 

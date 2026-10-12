@@ -191,6 +191,32 @@ experience may change before `1.0.0`.
   as every other spawned server already gets from `_isolated_child_env`.
   Found by the conftest's R-49d real-home guard on the first run after the
   fixes above (nine `acp-sql-*` directories had accumulated).
+- The first CI run on `main` after the module-contract and contributor-guide
+  work (`2844b16b`) went red in three places, none of them the shipped code:
+  - `test (3.13)`: 68 failures and 15 errors, all `No module named pytest` /
+    `No module named 'studyloop'` from subprocesses. The contributor-guide drift
+    test executes four fenced `uv run studyloop …` commands in a fresh
+    environment that dropped the `UV_PYTHON` `setup-uv` exports, so `uv run`
+    resolved its interpreter from `.python-version` (3.12), found the job's
+    3.13 `.venv` disagreeing, and did what it does: `Removed virtual environment
+    at: .venv` -- the venv the suite was running from -- then failed the
+    recreation offline. Every later test that shelled out to `.venv/bin/python`
+    or the `studyloop` console script failed. The test now pins `UV_PYTHON` to
+    the interpreter the suite runs on, so the venv is never recreated under it.
+  - `test (3.12)` and `(3.13)`: `test_missing_core_tool_refuses_before_consent…`
+    deletes the fake `docker` to model an unresolvable core tool, but the fake
+    tools' scratch PATH keeps `/usr/bin:/bin` and `ubuntu-latest` ships a real
+    Docker at `/usr/bin/docker`, which resolved instead and carried the drill
+    through consent to exit 0. That test now narrows PATH to the fake bin dir
+    alone (nothing may run in it anyway). Reproduced locally with a second PATH
+    dir holding a `docker`: old test fails with CI's exact assertion, fixed test
+    passes.
+  - `audit` and `audit-full`: pip-audit advisories published since the 28 Sep
+    lock -- pyjwt 2.13.0 (15), urllib3 2.7.0 (3), virtualenv 21.1.0 (4),
+    sentence-transformers 5.2.3 (1) and fsspec 2026.2.0 (1). `uv.lock` moves
+    exactly those five (plus virtualenv's `python-discovery`), holding
+    sentence-transformers below 6; both audit commands are clean and the full
+    unit suite is unchanged on the new lock.
 - The `voice-tts` OpenSpec specification described the architecture that was
   deleted, not the one that shipped: it required browser-side Kokoro via
   `transformers.js` and forbade any server-side synthesis for the web path,

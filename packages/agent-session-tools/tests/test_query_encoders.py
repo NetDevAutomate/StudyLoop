@@ -630,6 +630,7 @@ class TestOnnxTorchParityAcceptance:
                 "this parity check for real"
             )
 
+        import numpy as np
         from sentence_transformers import SentenceTransformer
 
         from agent_session_tools import embeddings as embeddings_mod
@@ -640,11 +641,30 @@ class TestOnnxTorchParityAcceptance:
             "ranking rows per group is exactly what window functions are for",
         ]
         query = "how do I rank rows within each group using a window function"
-        torch_model = SentenceTransformer(
-            hf_name, revision=revision, local_files_only=True
+        try:
+            torch_model = SentenceTransformer(
+                hf_name, revision=revision, local_files_only=True
+            )
+        except OSError as exc:
+            # The guard above proves the ONNX half is cached; the torch weights
+            # are a separate download and can be absent on their own (seen
+            # 2026-10-12: onnx/model.onnx and tokenizer.json cached, no
+            # config.json or model.safetensors). Same contract as that guard:
+            # skip with the reason, never fetch from a test.
+            pytest.skip(
+                f"pinned torch weights for {hf_name}@{revision} are not in the local "
+                f"Hugging Face cache; fetch them once to run this parity check for "
+                f"real ({type(exc).__name__})"
+            )
+        # encode() returns an ndarray for these arguments (convert_to_numpy is
+        # the default); from sentence-transformers 5.7 its annotation is the
+        # full union, so narrow for the type checker -- a no-op on an ndarray.
+        torch_vectors = np.asarray(
+            torch_model.encode(fixture, normalize_embeddings=True)
         )
-        torch_vectors = torch_model.encode(fixture, normalize_embeddings=True)
-        torch_query_vector = torch_model.encode([query], normalize_embeddings=True)[0]
+        torch_query_vector = np.asarray(
+            torch_model.encode([query], normalize_embeddings=True)
+        )[0]
 
         onnx = OnnxEncoder(ONNX_MODEL, local_files_only=True)
         onnx_vectors = onnx.encode(fixture)

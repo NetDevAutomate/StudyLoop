@@ -44,6 +44,7 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 import tomllib
 import unicodedata
 from itertools import pairwise
@@ -297,10 +298,22 @@ def _harness_names_in(text: str) -> set[str]:
 
 
 def _run(argv: list[str], home: Path) -> subprocess.CompletedProcess[str]:
-    """Run one allowlisted command with HOME/TMPDIR in *home*; uv offline, cache passed through."""
+    """Run one allowlisted command with HOME/TMPDIR in *home*; uv offline, cache passed through.
+
+    ``UV_PYTHON`` is pinned to the interpreter this suite runs on. ``uv run`` resolves its
+    interpreter from ``.python-version`` (3.12) when the environment names none, and when
+    that disagrees with the project ``.venv`` it REMOVES and recreates the venv -- which is
+    the venv this very test process is running from. CI's 3.13 job did exactly that on
+    2026-10-12 (``Removed virtual environment at: .venv``, then an offline download
+    failure), and every later test that shelled out to ``.venv/bin/python`` or the
+    ``studyloop`` console script failed with ``No module named ...``: 68 failures and 15
+    errors from four fenced commands. The fresh env below strips the ``UV_PYTHON`` that
+    ``setup-uv`` exports, so the pin has to be explicit.
+    """
     cache = os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache" / "uv"))
     env = {"PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(home), "NO_COLOR": "1"}
     env |= {"UV_OFFLINE": "1", "UV_CACHE_DIR": cache}
+    env["UV_PYTHON"] = f"{sys.version_info[0]}.{sys.version_info[1]}"
     return subprocess.run(
         argv, cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=180, check=False
     )
