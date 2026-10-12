@@ -405,7 +405,7 @@ class TestKiroAdapter:
         fake_kiro = tmp_path / ".kiro" / "agents"
         fake_kiro.mkdir(parents=True)
         target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        target.write_text('{"prompt": "modified"}')
+        target.write_text('{"prompt": "file:///tmp/studyloop-kiro-persona-x.md"}')
         backup = target.with_suffix(target.suffix + ".studyloop-backup")
         backup.write_text('{"prompt": "original"}')
         monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
@@ -453,7 +453,7 @@ class TestKiroAdapter:
 
         # Simulate crash: backup exists but target was overwritten by studyloop
         target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        target.write_text('{"prompt": "studyloop-modified"}')
+        target.write_text('{"prompt": "file:///tmp/studyloop-kiro-persona-x.md"}')
         backup = target.with_suffix(target.suffix + ".studyloop-backup")
         backup.write_text('{"prompt": "user-original"}')
 

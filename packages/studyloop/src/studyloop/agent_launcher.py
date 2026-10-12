@@ -25,7 +25,7 @@ from studyloop.adapters._strategies import cli_flag_setup as _claude_setup
 from studyloop.adapters.claude import _claude_launch
 from studyloop.adapters.codex import _codex_launch, _codex_setup
 from studyloop.adapters.grok import _grok_launch, _grok_setup
-from studyloop.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME
+from studyloop.adapters.kiro import KIRO_AGENT_NAME
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
 from studyloop.adapters.registry import (
     get_all_adapters,
@@ -124,55 +124,18 @@ def _opencode_mcp(session_dir: Path) -> None:
 
 
 def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:  # type: ignore[misc]
-    """Write persona temp file and update Kiro agent JSON atomically."""
+    """Write persona temp file and update Kiro agent JSON atomically.
+
+    Thin wrapper: the one implementation lives in ``studyloop.adapters.kiro``;
+    this passes the agents dir tests patch on *this* module. It used to be a
+    second copy of the swap logic, which is how a fix landed in one and not
+    the other.
+    """
     import studyloop.agent_launcher as _self
 
-    kiro_agents_dir = _self.KIRO_AGENTS_DIR
-
-    fd, persona_path = tempfile.mkstemp(
-        prefix="studyloop-kiro-persona-",
-        suffix=".md",
-        dir=tempfile.gettempdir(),
+    return _kiro_module._kiro_setup(
+        canonical_content, _session_dir, agents_dir=_self.KIRO_AGENTS_DIR
     )
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(canonical_content)
-
-    kiro_template = _kiro_module._KIRO_TEMPLATE
-    if kiro_template.exists():
-        agent_def = json.loads(kiro_template.read_text())
-    else:
-        agent_def = {
-            "name": KIRO_AGENT_NAME,
-            "description": "Socratic study mentor",
-        }
-
-    agent_def["prompt"] = f"file://{persona_path}"
-
-    kiro_agents_dir.mkdir(parents=True, exist_ok=True)
-    target = kiro_agents_dir / f"{KIRO_AGENT_NAME}.json"
-    backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
-
-    if backup.exists():
-        logger.warning(
-            "Stale Kiro backup detected (previous session crashed?) — restoring %s",
-            backup,
-        )
-        os.replace(backup, target)
-
-    if target.exists():
-        shutil.copy2(target, backup)
-
-    fd2, tmp_json = tempfile.mkstemp(
-        prefix=f"{KIRO_AGENT_NAME}-",
-        suffix=".json",
-        dir=str(kiro_agents_dir),
-    )
-    with os.fdopen(fd2, "w") as f:
-        json.dump(agent_def, f, indent=2)
-    os.replace(tmp_json, target)
-
-    return Path(persona_path)
 
 
 def _kiro_launch(_persona_path: Path, resume: bool) -> str:  # type: ignore[misc]
@@ -184,14 +147,10 @@ def _kiro_launch(_persona_path: Path, resume: bool) -> str:  # type: ignore[misc
 
 
 def _kiro_teardown(_session_dir: Path) -> None:  # type: ignore[misc]
-    """Restore the backed-up Kiro agent JSON."""
+    """Restore the backed-up Kiro agent JSON (thin wrapper, see ``_kiro_setup``)."""
     import studyloop.agent_launcher as _self
 
-    kiro_agents_dir = _self.KIRO_AGENTS_DIR
-    target = kiro_agents_dir / f"{KIRO_AGENT_NAME}.json"
-    backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
-    if backup.exists():
-        os.replace(backup, target)
+    _kiro_module._kiro_teardown(_session_dir, agents_dir=_self.KIRO_AGENTS_DIR)
 
 
 # ---------------------------------------------------------------------------

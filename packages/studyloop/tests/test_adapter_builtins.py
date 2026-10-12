@@ -419,6 +419,100 @@ class TestKiroAdapter:
         restored = json.loads(target.read_text())
         assert restored["prompt"] == "user-original"
 
+    def test_kiro_teardown_leaves_a_target_it_did_not_swap_alone(self, monkeypatch, tmp_path):
+        """A backup only has meaning while StudyLoop's own file sits on the target.
+
+        Teardown runs for every Kiro session end, including ACP sessions that
+        never ran this adapter's setup (they launch the separate ``studyloop``
+        agent). With a stale backup left by a crashed session weeks earlier,
+        the old code restored it over whatever the learner had since installed
+        (2026-10-12: a 17 Sep backup over an 11 Oct installer symlink). The
+        backup is discarded instead and the target is not touched.
+        """
+        kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
+        self._patch_no_template(monkeypatch)
+
+        from studyloop.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME, _kiro_teardown
+
+        kiro_agents.mkdir(parents=True, exist_ok=True)
+        target = kiro_agents / f"{KIRO_AGENT_NAME}.json"
+        backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
+        installed = tmp_path / "repo" / "agents" / "kiro" / f"{KIRO_AGENT_NAME}.json"
+        installed.parent.mkdir(parents=True)
+        installed.write_text(json.dumps({"name": KIRO_AGENT_NAME, "prompt": "current"}))
+        target.symlink_to(installed)
+        backup.write_text(json.dumps({"name": KIRO_AGENT_NAME, "prompt": "weeks-old"}))
+
+        _kiro_teardown(tmp_path / "session")
+
+        assert target.is_symlink() and target.resolve() == installed.resolve()
+        assert json.loads(target.read_text())["prompt"] == "current"
+        assert not backup.exists(), "an obsolete backup must not linger to be restored later"
+
+    def test_kiro_setup_and_teardown_preserve_the_installers_symlink(self, monkeypatch, tmp_path):
+        """``studyloop install agents`` places study-mentor.json as a symlink into
+        the repo. A session swaps a generated file in and must hand the
+        *symlink* back, not a regular-file copy of what it pointed at."""
+        kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
+        self._patch_no_template(monkeypatch)
+
+        from studyloop.adapters.kiro import KIRO_AGENT_NAME, _kiro_setup, _kiro_teardown
+
+        kiro_agents.mkdir(parents=True, exist_ok=True)
+        target = kiro_agents / f"{KIRO_AGENT_NAME}.json"
+        installed = tmp_path / "repo" / "agents" / "kiro" / f"{KIRO_AGENT_NAME}.json"
+        installed.parent.mkdir(parents=True)
+        installed.write_text(json.dumps({"name": KIRO_AGENT_NAME, "prompt": "installed"}))
+        target.symlink_to(installed)
+
+        persona = _kiro_setup("persona", tmp_path / "session")
+        try:
+            assert not target.is_symlink(), "the session's generated agent is a regular file"
+            assert json.loads(target.read_text())["prompt"] == f"file://{persona}"
+            _kiro_teardown(tmp_path / "session")
+        finally:
+            persona.unlink(missing_ok=True)
+
+        assert target.is_symlink() and target.resolve() == installed.resolve()
+        assert json.loads(target.read_text())["prompt"] == "installed"
+
+    def test_kiro_setup_discards_a_stale_backup_when_the_target_was_reinstalled(
+        self, monkeypatch, tmp_path
+    ):
+        """Crash recovery restores a stale backup only over StudyLoop's own
+        leftover file (or an empty slot). A target the learner has since
+        reinstalled is kept, and the obsolete backup is dropped."""
+        kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
+        self._patch_no_template(monkeypatch)
+
+        from studyloop.adapters.kiro import (
+            _KIRO_BACKUP_SUFFIX,
+            KIRO_AGENT_NAME,
+            _kiro_setup,
+            _kiro_teardown,
+        )
+
+        kiro_agents.mkdir(parents=True, exist_ok=True)
+        target = kiro_agents / f"{KIRO_AGENT_NAME}.json"
+        backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
+        installed = tmp_path / "repo" / "agents" / "kiro" / f"{KIRO_AGENT_NAME}.json"
+        installed.parent.mkdir(parents=True)
+        installed.write_text(json.dumps({"name": KIRO_AGENT_NAME, "prompt": "reinstalled"}))
+        target.symlink_to(installed)
+        backup.write_text(json.dumps({"name": KIRO_AGENT_NAME, "prompt": "weeks-old"}))
+
+        persona = _kiro_setup("persona", tmp_path / "session")
+        try:
+            # The new backup is the reinstalled symlink, not the weeks-old file.
+            assert backup.is_symlink() and backup.resolve() == installed.resolve()
+            _kiro_teardown(tmp_path / "session")
+        finally:
+            persona.unlink(missing_ok=True)
+
+        assert target.is_symlink() and target.resolve() == installed.resolve()
+        assert json.loads(target.read_text())["prompt"] == "reinstalled"
+        assert not backup.exists()
+
     def test_kiro_teardown_idempotent_no_backup(self, monkeypatch, tmp_path):
         """teardown() is safe when no backup exists — no error raised."""
         kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
@@ -533,7 +627,7 @@ class TestKiroAdapter:
         target = kiro_agents / f"{KIRO_AGENT_NAME}.json"
         backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
         backup.write_text(json.dumps({"prompt": "restored"}))
-        target.write_text(json.dumps({"prompt": "studyloop-managed"}))
+        target.write_text(json.dumps({"prompt": "file:///tmp/studyloop-kiro-persona-managed.md"}))
 
         assert ADAPTER.teardown is not None
         ADAPTER.teardown(tmp_path / "session")

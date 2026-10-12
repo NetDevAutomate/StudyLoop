@@ -119,6 +119,22 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Ending any Kiro session could overwrite the learner's `study-mentor.json`
+  with a stale copy. The Kiro adapter swaps a generated agent file onto
+  `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what
+  was there, and its teardown restored that backup unconditionally — but
+  teardown also runs after ACP sessions, which launch the separate
+  `studyloop` agent and never swapped anything, so a backup left by a
+  crashed session weeks earlier was restored over whatever the learner had
+  since installed (a 17 Sep backup against an 11 Oct installer symlink on one
+  machine). Setup's crash recovery had the same flaw. A backup is now
+  restored only over StudyLoop's own swapped-in file (a regular file whose
+  `prompt` is `file://…/studyloop-…`) or an empty slot; anything else is left
+  alone and the obsolete backup is discarded with a warning. The backup also
+  preserves a symlink as a symlink, so `studyloop install agents`' link into
+  the repo survives a session instead of coming back as a regular-file copy.
+  `agent_launcher` carried a second copy of the swap logic for its tests; it
+  now delegates to the adapter.
 - Every web session start, Kiro ACP sessions included, edited the learner's
   `~/.claude/settings.json`: `setup_session_dir` pre-trusts the session
   directory in Claude Code's user settings so a *Claude* session is not
