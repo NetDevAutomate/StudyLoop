@@ -629,7 +629,9 @@ async def _start_pty_session(
 
         from studyloop.session.orchestrator import setup_session_dir
 
-        setup_session_dir(session_dir, topic)
+        # Name the harness: the Claude Code trust pre-write inside is for a
+        # Claude session only, and an unnamed caller keeps it unconditional.
+        setup_session_dir(session_dir, topic, agent=agent)
 
         from studyloop.history.sessions import update_persona_hash
 
@@ -901,7 +903,9 @@ async def _start_acp_session(
 
         from studyloop.session.orchestrator import setup_session_dir
 
-        setup_session_dir(session_dir, topic)
+        # Name the harness: the Claude Code trust pre-write inside is for a
+        # Claude session only, and an unnamed caller keeps it unconditional.
+        setup_session_dir(session_dir, topic, agent=agent)
 
         from studyloop.history.sessions import update_persona_hash
 

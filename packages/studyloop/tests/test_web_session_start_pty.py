@@ -170,6 +170,68 @@ class TestPtyStartHappyPath:
         assert resp.status_code == 201, resp.text
         assert resp.json()["agent"] == "codex"
 
+    def test_pty_start_for_non_claude_agent_leaves_claude_trust_list_alone(
+        self,
+        client: TestClient,
+        _stub_db,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A non-Claude PTY session start must not edit Claude Code's settings.
+
+        Same defect as the ACP route: ``setup_session_dir`` only skips the
+        Claude trust pre-write when told which harness is starting, and the
+        PTY route never said. Codex here, via the source-test hatch, so no
+        vendor binary is needed.
+        """
+        from studyloop.session import orchestrator as _orchestrator
+
+        claude_settings = _orchestrator._claude_settings_path()  # hermetic (conftest)
+        claude_settings.parent.mkdir(parents=True, exist_ok=True)
+        claude_settings.write_text('{"theme": "dark"}\n')
+
+        def _fake_hatch(name: str) -> str | None:
+            return "test-agent {persona_file}" if name == "STUDYLOOP_TEST_AGENT_CMD" else None
+
+        monkeypatch.setattr("studyloop.test_hatch_env", _fake_hatch)
+        monkeypatch.setattr("shutil.which", lambda _name: None)
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "codex", "transport": "pty"},
+            )
+
+        assert resp.status_code == 201, resp.text
+        assert claude_settings.read_text() == '{"theme": "dark"}\n'
+
+    def test_pty_start_for_claude_still_pre_trusts_the_session_dir(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+    ) -> None:
+        """Positive control for the test above: a Claude session keeps the
+        pre-trust, which is what stops Claude Code's workspace-trust prompt
+        from blocking a non-interactive session."""
+        import json
+
+        from studyloop.session import orchestrator as _orchestrator
+
+        claude_settings = _orchestrator._claude_settings_path()  # hermetic (conftest)
+        claude_settings.parent.mkdir(parents=True, exist_ok=True)
+        claude_settings.write_text("{}\n")
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 201, resp.text
+        projects = json.loads(claude_settings.read_text()).get("projects", {})
+        assert projects, "a Claude session must still pre-trust its session directory"
+        assert all(entry.get("hasTrustDialogAccepted") for entry in projects.values())
+
     def test_pty_start_returns_ws_url_and_no_tmux(
         self,
         client: TestClient,

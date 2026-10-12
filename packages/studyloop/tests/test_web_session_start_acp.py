@@ -182,6 +182,38 @@ class TestAcpStartHappyPath:
         # active.acquire should have run against the ACP factory.
         assert run_async(active.current()) is not None
 
+    def test_acp_start_for_kiro_leaves_claude_trust_list_alone(
+        self,
+        client: TestClient,
+        _stub_acp_factory,
+        _mock_kiro_available,
+        _stub_db,
+    ) -> None:
+        """A Kiro ACP session start must not edit Claude Code's user settings.
+
+        ``setup_session_dir`` pre-trusts the session directory in
+        ``~/.claude/settings.json`` so a *Claude* session is not blocked by the
+        workspace-trust prompt; it skips that for any other named harness, but
+        only when the caller names one. The ACP route did not, so every Kiro
+        session added its directory to the learner's Claude trust list (2,810
+        ``projects`` entries, 546 KB, on the developer's machine by
+        2026-10-12; caught by the dogfood test's real-home guard).
+        """
+        from studyloop.session import orchestrator as _orchestrator
+
+        claude_settings = _orchestrator._claude_settings_path()  # hermetic (conftest)
+        claude_settings.parent.mkdir(parents=True, exist_ok=True)
+        claude_settings.write_text('{"theme": "dark"}\n')
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "kiro", "transport": "acp"},
+            )
+
+        assert resp.status_code == 201, resp.text
+        assert claude_settings.read_text() == '{"theme": "dark"}\n'
+
 
 # ---------------------------------------------------------------------------
 # ACP branch — 409 when a session is already active

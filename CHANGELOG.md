@@ -119,6 +119,17 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Every web session start, Kiro ACP sessions included, edited the learner's
+  `~/.claude/settings.json`: `setup_session_dir` pre-trusts the session
+  directory in Claude Code's user settings so a *Claude* session is not
+  blocked by the workspace-trust prompt, and skips that for any other named
+  harness — but both web start routes called it without naming one, which
+  keeps the historical unconditional pre-trust. Every session directory is a
+  new path, so the "already trusted" short-circuit never applied and the file
+  was rewritten on each start (2,810 `projects` entries, 546 KB, on one
+  developer machine). Both routes now name the starting harness; a Claude PTY
+  session still pre-trusts its directory. Found by the dogfood test's
+  real-home write guard once that test could reach its teardown.
 - Every web Kiro ACP session start failed with a bare `Could not start (500)`
   on kiro-cli 2.29.0, the server log ending in `_RpcError: subprocess exited
   before responding`. The child had not exited: kiro-cli emits
