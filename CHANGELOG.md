@@ -181,7 +181,16 @@ experience may change before `1.0.0`.
   the real agent runs its session-start protocol (several tool calls, each a
   permission round-trip) before answering, and a timeout now reports the
   console's state instead of a bare "120000ms exceeded". First green run:
-  48 s.
+  48 s. The server it spawns also wrote each session's directory (`CLAUDE.md`,
+  the `studyloop` wrapper, IPC files) into the developer's real
+  `~/.config/studyloop/sessions/`: the test keeps the real `HOME` on purpose
+  (Kiro's auth and the installed `studyloop` agent live there), but the
+  module-scoped server fixture starts before the conftest's per-test
+  `STUDYLOOP_SESSION_DIR` isolation applies, so the server inherited no
+  override. The launcher now gives the server its own throwaway session dir,
+  as every other spawned server already gets from `_isolated_child_env`.
+  Found by the conftest's R-49d real-home guard on the first run after the
+  fixes above (nine `acp-sql-*` directories had accumulated).
 - The `voice-tts` OpenSpec specification described the architecture that was
   deleted, not the one that shipped: it required browser-side Kokoro via
   `transformers.js` and forbade any server-side synthesis for the web path,

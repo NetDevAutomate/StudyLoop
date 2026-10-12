@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -160,6 +161,18 @@ def _start_web_server_real_kiro() -> subprocess.Popen:
     # developer's real, authenticated kiro-cli and StudyLoop's installed
     # `studyloop` agent -- that is what makes it dogfood.
     env.setdefault("SESSION_CONTEXT_SCOPE", "unclassified")
+    # The session DIRECTORY is not part of that: it is where the server
+    # writes CLAUDE.md, the `studyloop` wrapper and the IPC files for each
+    # session, and session_state.SESSION_DIR defaults to the REAL
+    # ~/.config/studyloop unless STUDYLOOP_SESSION_DIR says otherwise. The
+    # conftest autouse fixture sets that variable per TEST, but this server
+    # starts from a module-scoped fixture, before any test's fixtures run,
+    # so `{**os.environ}` carried no override and every dogfood run left an
+    # `acp-sql-<id>` directory in the developer's real sessions folder
+    # (R-49d banner, 2026-10-12). Every other spawned server gets this from
+    # _playwright_helpers._isolated_child_env; this launcher bypasses that
+    # helper only to keep HOME, so it sets the one variable itself.
+    env["STUDYLOOP_SESSION_DIR"] = tempfile.mkdtemp(prefix="studyloop-dogfood-session-dir-")
 
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
     proc = subprocess.Popen(
