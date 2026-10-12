@@ -26,7 +26,7 @@ from studyloop.session.transport import (
     Stopped,
     TransportError,
 )
-from studyloop.session.transports.acp import ACPTransport
+from studyloop.session.transports.acp import ACPHandshakeError, ACPTransport
 
 STUB_SCRIPT = Path(__file__).parent / "_stub_acp_agent.py"
 
@@ -195,7 +195,8 @@ class TestStderrCapture:
         """A fake ACP agent that writes to stderr and exits 1 before
         answering `initialize` produces a logged reason containing that
         text -- not just a generic '_RpcError: subprocess exited before
-        responding'."""
+        responding'. The same text rides on the typed exception, which is
+        what the route turns into a response body."""
         script = (
             "import sys\n"
             "sys.stderr.write('fatal: missing MCP config\\n')\n"
@@ -207,11 +208,16 @@ class TestStderrCapture:
             build_argv=lambda _cfg: [sys.executable, "-c", script],
         )
 
-        with pytest.raises(Exception):  # noqa: B017 - _RpcError, internal to the module
+        with pytest.raises(ACPHandshakeError) as excinfo:
             await transport.start(_make_config(tmp_path))
 
         assert "fatal: missing MCP config" in caplog.text
         assert "ACP handshake failed" in caplog.text
+        assert excinfo.value.stderr_tail == "fatal: missing MCP config"
+        # Names the stage and says the child exited -- the message a learner
+        # or a log reader can act on, not an internal "subprocess exited".
+        assert str(excinfo.value).startswith("initialize failed: ")
+        assert "exited with code 1" in str(excinfo.value)
 
     @pytest.mark.asyncio
     async def test_no_log_line_when_stderr_is_empty(self, tmp_path, caplog):
@@ -243,6 +249,102 @@ class TestStderrCapture:
             await transport.start(_make_config(tmp_path))
 
         assert len(transport._stderr_tail) <= _STDERR_TAIL_BYTES
+
+
+# ---------------------------------------------------------------------------
+# Large frames. asyncio's StreamReader defaults to a 64 KiB readline limit and
+# raises ValueError past it, discarding the buffered bytes. kiro-cli 2.29.0
+# sends ~74 KB `_kiro.dev/commands/available` notifications BETWEEN the
+# session/new request and its result (and the result itself is ~45 KB), so
+# under the default limit the reader loop mistook the ValueError for EOF,
+# failed the pending session/new with "subprocess exited before responding",
+# and every web Kiro ACP start was a 500 (2026-10-11).
+# ---------------------------------------------------------------------------
+
+
+def _kiro_style_big_notification(size: int) -> dict:
+    """A `_kiro.dev/commands/available`-shaped notification at least ``size`` bytes long."""
+    return {
+        "jsonrpc": "2.0",
+        "method": "_kiro.dev/commands/available",
+        "params": {
+            "sessionId": "stub-session-1",
+            "commands": [{"name": "/agent", "description": "x" * size}],
+        },
+    }
+
+
+class TestLargeFrames:
+    @pytest.mark.asyncio
+    async def test_session_new_survives_a_notification_longer_than_64kib(
+        self, tmp_path, monkeypatch, _reset_env
+    ):
+        """The exact kiro-cli ordering: a >64 KiB notification arrives after
+        session/new was sent and before its result. start() must complete
+        and cache the sessionId; the reader must still be alive afterwards."""
+        monkeypatch.setenv(
+            "STUB_ACP_PRE_NEW_SESSION_NOTIFS",
+            json.dumps([_kiro_style_big_notification(100_000)]),
+        )
+        monkeypatch.setenv("STUB_ACP_NEW_SESSION_RESULT", json.dumps({"sessionId": "sess-big"}))
+        # A normal update AFTER the big frame proves the reader kept going.
+        monkeypatch.setenv(
+            "STUB_ACP_POST_NEW_SESSION_UPDATES",
+            json.dumps(
+                [
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": "sess-big",
+                            "update": {
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": {"type": "text", "text": "still here"},
+                            },
+                        },
+                    }
+                ]
+            ),
+        )
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        await transport.start(_make_config(tmp_path))
+        assert transport._session_id == "sess-big"
+
+        events = transport.events()
+        first = await asyncio.wait_for(events.__anext__(), timeout=2.0)
+        assert isinstance(first, Started)
+        second = await asyncio.wait_for(events.__anext__(), timeout=2.0)
+        assert isinstance(second, AgentMessage)
+        assert second.kind == "agent_chunk"
+        assert second.payload["content"]["text"] == "still here"
+        await transport.end()
+
+    @pytest.mark.asyncio
+    async def test_a_frame_over_the_limit_is_dropped_not_fatal(
+        self, tmp_path, monkeypatch, _reset_env, caplog
+    ):
+        """Past _STDOUT_LINE_LIMIT the frame is lost, but the child is not
+        declared dead: the stream resyncs at the next newline, the handshake
+        completes, and the drop is logged with the limit."""
+        import studyloop.session.transports.acp as acp_mod
+
+        monkeypatch.setattr(acp_mod, "_STDOUT_LINE_LIMIT", 8 * 1024)
+        monkeypatch.setenv(
+            "STUB_ACP_PRE_NEW_SESSION_NOTIFS",
+            json.dumps([_kiro_style_big_notification(20_000)]),
+        )
+        monkeypatch.setenv("STUB_ACP_NEW_SESSION_RESULT", json.dumps({"sessionId": "sess-resync"}))
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        await transport.start(_make_config(tmp_path))
+        assert transport._session_id == "sess-resync"
+        assert "dropped a stdout frame longer than 8192 bytes" in caplog.text
+        await transport.end()
 
 
 # ---------------------------------------------------------------------------

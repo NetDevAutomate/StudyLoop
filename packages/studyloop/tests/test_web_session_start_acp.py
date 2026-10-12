@@ -373,6 +373,66 @@ class TestAcpStartAcquireFailureRollback:
         assert mock_abort.call_args.args[0] == "study-acp-failed"
         assert run_async(active.current()) is None
 
+    def test_acp_start_reports_a_handshake_failure_and_aborts_the_record(
+        self,
+        _mock_kiro_available,
+        monkeypatch,
+    ) -> None:
+        """The child spawned but initialize/session/new never completed.
+
+        Regression for 2026-10-11: kiro-cli's ~74 KB bootstrap notifications
+        made the transport raise out of ``start()``; the route had no branch
+        for it, so the learner got a bare "Could not start (500)" and the
+        study-session row was never aborted. The body must carry the reason,
+        the agent's own stderr and a repair, and the record must be aborted.
+        """
+        from studyloop.session.transport import SessionConfig
+        from studyloop.session.transports.acp import ACPHandshakeError
+
+        class HandshakeFailingTransport(StubTransport):
+            async def start(self, config: SessionConfig) -> None:
+                await super().start(config)
+                raise ACPHandshakeError(
+                    "session/new failed: agent exited with code 2 before responding",
+                    stderr_tail="error: agent 'studyloop' not found",
+                )
+
+        monkeypatch.setattr(
+            "studyloop.web.routes.session._build_acp_transport",
+            lambda config: lambda: HandshakeFailingTransport(),
+            raising=False,
+        )
+        # raise_server_exceptions=False: an UNHANDLED exception would surface
+        # here as a bare 500 with no JSON body -- the exact pre-fix symptom.
+        client = TestClient(create_app(study_dirs=[]), raise_server_exceptions=False)
+
+        with (
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch("studyloop.history.start_study_session", return_value="study-acp-handshake"),
+            patch("studyloop.history.sessions.update_persona_hash", return_value=None),
+            patch("studyloop.history.abort_study_session") as mock_abort,
+            patch(
+                "studyloop.web.routes.session._start.write_session_state",
+                side_effect=AssertionError("must not write full IPC state after failed acquire"),
+            ),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "kiro", "transport": "acp"},
+            )
+
+        assert resp.status_code == 500
+        body = resp.json()
+        assert "did not complete the ACP handshake" in body["error"]
+        assert "session/new failed" in body["error"]
+        assert body["agent"] == "kiro"
+        assert body["stderr_tail"] == "error: agent 'studyloop' not found"
+        assert body["repair"]
+        mock_abort.assert_called_once()
+        assert mock_abort.call_args.args[0] == "study-acp-handshake"
+        assert run_async(active.current()) is None
+        _assert_no_runtime_session_state()
+
     def test_acp_start_releases_active_session_when_ipc_state_write_fails(
         self,
         _stub_acp_factory,

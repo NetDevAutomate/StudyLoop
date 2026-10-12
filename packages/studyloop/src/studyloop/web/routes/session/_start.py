@@ -917,6 +917,7 @@ async def _start_acp_session(
             cols=80,
             rows=24,
         )
+        from studyloop.session.transports.acp import ACPHandshakeError
         from studyloop.web.routes import session as session_pkg
 
         factory = session_pkg._build_acp_transport(config)
@@ -939,6 +940,31 @@ async def _start_acp_session(
             return JSONResponse(
                 {"error": f"Agent binary not found: {exc}"},
                 status_code=503,
+            )
+        except ACPHandshakeError as exc:
+            # The child spawned but never completed initialize + session/new.
+            # Before this branch the error escaped as a bare 500 ("Exception
+            # in ASGI application"): the learner saw "Could not start (500)"
+            # with no reason, and the study-session row stayed open because
+            # nothing aborted it. The agent's own stderr is the one place its
+            # reason survives, so it travels in the body.
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, f"Startup failed: ACP handshake failed: {exc}")
+            logger.exception("ACP start failed: handshake")
+            return JSONResponse(
+                {
+                    "error": f"The {agent} agent did not complete the ACP handshake: {exc}",
+                    "agent": agent,
+                    "stderr_tail": exc.stderr_tail,
+                    "repair": (
+                        "Run `studyloop doctor`, then run the agent's own ACP command "
+                        "by hand to see its error (the server log has the full "
+                        "traceback). Nothing is left running; try again once it "
+                        "starts cleanly."
+                    ),
+                },
+                status_code=500,
             )
         except OSError:
             from studyloop.history import abort_study_session

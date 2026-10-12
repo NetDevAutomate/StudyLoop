@@ -6,7 +6,9 @@ method names confirmed by the Phase 1.5 capture spike in
 ``private-docs/2026-05-10-acp-event-shapes.md``).
 
 Wire format:
-- NDJSON over stdio (one JSON object per line).
+- NDJSON over stdio (one JSON object per line). Lines are unbounded by the
+  protocol and large in practice; the stdout reader buffers up to
+  ``_STDOUT_LINE_LIMIT`` per line and drops (never dies on) a longer one.
 - Requests carry an ``id``; responses echo it. Notifications have no
   ``id`` and are dispatched through the event queue.
 - Inbound ``session/update`` notifications are translated by the
@@ -63,10 +65,42 @@ _INITIALIZE_TIMEOUT_S = 15.0
 # Kiro's MCP-server bootstrap takes around 13 seconds. Generous margin.
 _SESSION_NEW_TIMEOUT_S = 60.0
 _EVENT_QUEUE_MAX = 256
+# Longest NDJSON line the stdout reader will buffer before giving up on it.
+#
+# asyncio's StreamReader default is 64 KiB, and ``readline()`` does not return
+# a long line in pieces: past the limit it raises ``ValueError`` and DISCARDS
+# the buffered bytes. ACP frames have no size bound, and real ones are large:
+# kiro-cli 2.29.0 answers ``session/new`` with a 45 KB result and, on a machine
+# with many agents installed, precedes it with ``_kiro.dev/commands/available``
+# notifications of ~74 KB each (measured 2026-10-11). Under the default limit
+# the reader loop took that ``ValueError`` as end-of-stream, failed every
+# pending request with "subprocess exited before responding" while the child
+# was still alive, and every web Kiro ACP start was a 500. 16 MiB leaves room
+# for a tool-call result that embeds a whole file; it is a cap on one line's
+# buffering, not a preallocation.
+_STDOUT_LINE_LIMIT = 16 * 1024 * 1024
 # Bytes of child stderr kept for a handshake-failure/non-zero-exit
 # diagnostic (R-07). A tail, not the whole stream -- this is a debugging
 # aid, not a log sink.
 _STDERR_TAIL_BYTES = 4096
+
+
+class ACPHandshakeError(RuntimeError):
+    """``start()`` could not complete ``initialize`` + ``session/new``.
+
+    Raised for every handshake failure after the child was spawned -- an RPC
+    error, the child exiting first, a handshake timeout, a malformed
+    ``session/new`` result -- so the route has ONE exception to turn into a
+    structured response instead of a bare 500. ``stderr_tail`` is whatever the
+    child wrote to stderr before it failed (possibly empty): the only place
+    the agent's own reason survives, since the child is torn down before the
+    exception propagates. ``__cause__`` carries the underlying failure.
+    """
+
+    def __init__(self, message: str, *, stderr_tail: str = "") -> None:
+        super().__init__(message)
+        self.stderr_tail = stderr_tail
+
 
 # --- Block delivery (ADR-0012; council M0 Q2/Q5) ------------------------------
 #
@@ -280,6 +314,9 @@ class ACPTransport:
             stderr=asyncio.subprocess.PIPE,
             cwd=config.cwd,
             env=build_child_env(),
+            # Sizes the stdout StreamReader's readline() buffer. Without it the
+            # 64 KiB default turns one long frame into a fake end-of-stream.
+            limit=_STDOUT_LINE_LIMIT,
         )
         self._stderr_task = asyncio.create_task(
             self._drain_stderr(proc),
@@ -293,8 +330,10 @@ class ACPTransport:
         )
         self._state = _Running(proc=proc, reader_task=reader_task, queue=queue)
 
-        # Handshake. If either RPC fails the state is torn down and the
-        # exception propagates — caller sees a clean failure.
+        # Handshake. If either RPC fails the state is torn down and ONE typed
+        # exception propagates (ACPHandshakeError) naming the stage that failed
+        # — caller sees a clean failure it can report, not an internal type.
+        stage, bound = "initialize", _INITIALIZE_TIMEOUT_S
         try:
             init_result = await asyncio.wait_for(
                 self._rpc(
@@ -307,11 +346,12 @@ class ACPTransport:
                         },
                     },
                 ),
-                timeout=_INITIALIZE_TIMEOUT_S,
+                timeout=bound,
             )
             agent_info = init_result.get("agentInfo") or {}
             self._agent_name = agent_info.get("name") or config.agent
 
+            stage, bound = "session/new", _SESSION_NEW_TIMEOUT_S
             new_result = await asyncio.wait_for(
                 self._rpc(
                     "session/new",
@@ -320,17 +360,25 @@ class ACPTransport:
                         "mcpServers": [],
                     },
                 ),
-                timeout=_SESSION_NEW_TIMEOUT_S,
+                timeout=bound,
             )
             session_id = new_result.get("sessionId")
             if not isinstance(session_id, str):
                 raise RuntimeError(f"session/new did not return a sessionId: {new_result!r}")
             self._session_id = session_id
-        except Exception:
+        except Exception as exc:
             # Tear down the subprocess so we don't leak on handshake failure.
             await self._tear_down()
             self._log_stderr_tail(f"ACP handshake failed for agent={config.agent!r}")
-            raise
+            detail = (
+                f"no response within {bound:g}s"
+                if isinstance(exc, TimeoutError)
+                else (str(exc) or type(exc).__name__)
+            )
+            raise ACPHandshakeError(
+                f"{stage} failed: {detail}",
+                stderr_tail=self._stderr_tail.decode("utf-8", errors="replace").strip(),
+            ) from exc
 
         # Mark handshake complete. Started is synthesised by events() as the
         # first yield — keeping it out of the queue eliminates the race between
@@ -714,7 +762,23 @@ class ACPTransport:
                     line = await stdout.readline()
                 except asyncio.CancelledError:
                     raise
+                except ValueError as exc:
+                    # One frame longer than _STDOUT_LINE_LIMIT. readline() has
+                    # already discarded what it buffered and the rest of that
+                    # line still arrives, so the next read returns its tail,
+                    # fails json.loads below, and the stream is back in sync
+                    # at the following newline. One frame lost; the child is
+                    # alive and so are its pending requests -- never treat
+                    # this as end-of-stream (that is exactly the bug the
+                    # limit exists to prevent).
+                    logger.warning(
+                        "ACP: dropped a stdout frame longer than %d bytes (%s)",
+                        _STDOUT_LINE_LIMIT,
+                        exc,
+                    )
+                    continue
                 except Exception:
+                    logger.exception("ACP: stdout read failed; treating as end-of-stream")
                     break
                 if not line:
                     break  # EOF → child exited
@@ -737,10 +801,16 @@ class ACPTransport:
             if returncode not in (0, None) and not self._cancel_requested:
                 self._log_stderr_tail(f"ACP child exited with code {returncode}")
 
-            # Wake every pending future so awaiters don't hang.
+            # Wake every pending future so awaiters don't hang. Say what is
+            # known: a returncode means the child really exited; None means
+            # its stdout is gone (or unreadable) while the process lingers.
+            if returncode is None:
+                failure = "agent stdout closed before it responded (process still running)"
+            else:
+                failure = f"agent exited with code {returncode} before responding"
             for fut in self._pending.values():
                 if not fut.done():
-                    fut.set_exception(_RpcError("subprocess exited before responding"))
+                    fut.set_exception(_RpcError(failure))
             self._pending.clear()
 
             # Drain in-flight prompt tasks before posting the sentinel.

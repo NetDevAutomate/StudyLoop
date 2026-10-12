@@ -15,6 +15,12 @@ through env vars:
   ``result`` field. Defaults to a minimal ``agentInfo`` + capabilities.
 - ``STUB_ACP_NEW_SESSION_RESULT`` — JSON object for ``session/new``
   response. Defaults to ``{"sessionId": "stub-session-1"}``.
+- ``STUB_ACP_PRE_NEW_SESSION_NOTIFS`` — JSON array of notification frames
+  to emit after *receiving* ``session/new`` and before answering it. Models
+  kiro-cli's MCP bootstrap chatter (``_kiro.dev/mcp/server_initialized``,
+  ``_kiro.dev/commands/available`` -- the latter ~74 KB per line on a
+  machine with many agents), which is where the ``session/new`` result used
+  to get lost behind asyncio's 64 KiB readline limit.
 - ``STUB_ACP_POST_NEW_SESSION_UPDATES`` — JSON array of ``session/update``
   notifications to emit immediately after answering ``session/new``.
 - ``STUB_ACP_PROMPT_UPDATES`` — JSON array of notifications to emit
@@ -214,6 +220,9 @@ def main() -> int:
                 return 17
 
         elif method == "session/new":
+            # Kiro-style bootstrap chatter BEFORE the result (see module doc).
+            for notif in _env_json("STUB_ACP_PRE_NEW_SESSION_NOTIFS", []):
+                _emit(notif)
             result = _env_json(
                 "STUB_ACP_NEW_SESSION_RESULT",
                 {

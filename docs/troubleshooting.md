@@ -176,6 +176,37 @@ kiro-cli agent set-default default-plus
 
 If another tool manages that file, check that it will not recreate it first.
 
+## A Kiro ACP Session Says "Could Not Start"
+
+Yes, Kiro supports ACP: a web session started with the `acp` transport runs
+`kiro-cli acp --agent studyloop` and talks JSON-RPC to it over stdio. A start
+that fails there now returns a structured error — *The kiro agent did not
+complete the ACP handshake: `<stage>` failed: `<reason>`* — with the agent's
+own stderr (`stderr_tail`) and a `repair` hint in the body, and the
+study-session record is aborted so nothing is left half-started.
+
+Before 0.6, one cause produced a bare `Could not start (500)` with only a
+server-side traceback ending in `subprocess exited before responding`:
+kiro-cli 2.29.0 emits `_kiro.dev/commands/available` notifications of ~74 KB
+per line during `session/new` (more agents installed, longer lines), and the
+transport read stdout with asyncio's default 64 KiB line limit, which turned
+one long frame into a false end-of-stream while the child was still running.
+The reader now buffers up to 16 MiB per line and treats a longer frame as a
+dropped frame, not a dead agent.
+
+If the structured error names a real agent failure, run the agent's own
+command by hand from a session directory to see what it says:
+
+```bash
+kiro-cli acp --agent studyloop   # then paste one line and press Enter:
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{"fs":{"readTextFile":true,"writeTextFile":true},"terminal":false}}}
+```
+
+A JSON response on stdout means the agent is healthy and the fault is between
+it and StudyLoop (check the server log); an error or exit means kiro-cli or
+the `studyloop` agent definition (`studyloop doctor`, `studyloop install
+agents --tool kiro`).
+
 ## The Terminal Is Empty After A Page Refresh
 
 The panel should reattach on its own. What holds today:

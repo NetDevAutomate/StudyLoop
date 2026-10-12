@@ -119,6 +119,22 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Every web Kiro ACP session start failed with a bare `Could not start (500)`
+  on kiro-cli 2.29.0, the server log ending in `_RpcError: subprocess exited
+  before responding`. The child had not exited: kiro-cli emits
+  `_kiro.dev/commands/available` notifications of ~74 KB per line during
+  `session/new` (the more agents installed, the longer), and `ACPTransport`
+  read stdout with asyncio's default 64 KiB `readline()` limit, whose
+  `ValueError` the reader loop took for end-of-stream, failing the pending
+  `session/new`. The subprocess pipes now carry a 16 MiB line limit, an
+  over-long frame is logged and dropped (the stream resyncs at the next
+  newline) instead of ending the session, and the pending-request failure
+  message says what is actually known (`agent exited with code N` vs `agent
+  stdout closed … process still running`). A handshake failure now raises a
+  typed `ACPHandshakeError` naming the stage and carrying the agent's stderr
+  tail, and `POST /api/session/start` turns it into a structured 500 (`error`,
+  `agent`, `stderr_tail`, `repair`) and aborts the study-session record —
+  previously the exception escaped unhandled and the record stayed open.
 - Web voice plays again. From 2 September the page's security policy
   (`default-src 'self'`, no `media-src`) refused the `blob:` URL every
   server-voice utterance plays through, so the badge said **Kokoro (server)**,
