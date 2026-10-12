@@ -135,6 +135,17 @@ experience may change before `1.0.0`.
   tail, and `POST /api/session/start` turns it into a structured 500 (`error`,
   `agent`, `stderr_tail`, `repair`) and aborts the study-session record —
   previously the exception escaped unhandled and the record stayed open.
+- The `voice-tts` OpenSpec specification described the architecture that was
+  deleted, not the one that shipped: it required browser-side Kokoro via
+  `transformers.js` and forbade any server-side synthesis for the web path,
+  the exact inverse of the `/api/tts/*` server tier. The web-path requirement
+  now specifies the server tier (host synthesis, the `server-openvox →
+  web-speech → silent` ladder, 503-on-unreachable, the `openvox_*`-only key
+  split, English-only voices, the `Kokoro (server)` badge label) and states
+  that `tts.backend` governs the terminal/CLI/MCP surfaces alone. Alongside
+  it, `docs/voice-output.md` had the key split backwards ("`tts.backend` is
+  not CLI-only") and named raw tier ids the badge deliberately no longer
+  shows; it now describes the server tier's key split and the badge labels.
 - A Body Double or Study Session tab that was mid-session when the agent
   exited or `studyloop web` was restarted no longer stays stuck in its live
   layout — a Pomodoro timer, an End button and a dead console, with no way to

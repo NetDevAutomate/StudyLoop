@@ -5,7 +5,7 @@ StudyLoop has two neural-TTS surfaces for AuDHD learners who benefit from audito
 - **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via `kokoro-onnx` on the local filesystem, a Kokoro server, Qwen3/ltts, or macOS `say`.
 - **Web app voice** ([jump to section](#web-app-voice-server-side-kokoro)) — the browser posts text to StudyLoop's own server, which proxies it to a Kokoro server you run. The device only plays the audio it gets back.
 
-Both surfaces read the same `tts:` block in `~/.config/studyloop/config.yaml`. `tts.backend` is **not** CLI-only: the web app's server-side path uses the same `openvox_*` connection settings.
+Both surfaces read the same `tts:` block in `~/.config/studyloop/config.yaml`, but they read different keys from it. `tts.backend` is CLI-only: it picks what speaks in a terminal or agent session (`kokoro`, `openvox`, `qwen3`, `macos`). The web app never reads it — its server-side path always behaves like `openvox` and uses only the `openvox_*` connection settings (`openvox_base_url`, `openvox_model`, `openvox_voice`, …), so one configured Kokoro server serves both surfaces whatever `backend` says.
 
 Voice is **off by default** on both surfaces. You turn it on deliberately — a toggle in the web header, a command in an agent session.
 
@@ -310,7 +310,7 @@ An iPad (both Brave and Chrome) and an Android tablet all speak through the serv
 - **Voice selector dropdown** — choose a voice offered by your Kokoro server (e.g. `bf_emma`, `am_michael`, `af_heart`). Appears in the header; selection persists across sessions. On the `web-speech` tier it lists the OS voices instead.
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once. This works whether or not the header voice toggle is on.
 - **Voice toggle** — the header speaker button. It enables the app's own spoken announcements (Pomodoro transitions and confirmations such as "voice enabled") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **Click-only — no key is bound to it, and it does not read cards to you automatically.**
-- **Engine badge** — names the tier actually speaking (`server-openvox`, `web-speech`, `silent`), shown whenever voice is on rather than only on failure. A badge that appears only when something breaks teaches nobody what working looks like.
+- **Engine badge** — names the tier actually speaking: `Kokoro (server)`, `System voices` or `No audio` (the internal ids are `server-openvox`, `web-speech`, `silent`; the first is deliberately not shown, because the server behind it may be VoiceMode or a container rather than OpenVox). Shown whenever voice is on rather than only on failure. A badge that appears only when something breaks teaches nobody what working looks like.
 - **Playback notice** — if the server sends audio but the browser will not play it, a notice says so (for example, that the browser blocks sound until you click the page) instead of staying silent. The badge names the tier, not whether this device could play a particular utterance.
 - **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. It halts server-audio playback, not just Web Speech API output.
 
