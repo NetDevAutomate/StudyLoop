@@ -932,21 +932,24 @@ def _set_warm_status(status: EncoderWarmStatus) -> None:
 
 
 def _pinned_db_model() -> str | None:
-    """The model pinned in the configured database's ``message_embeddings``.
+    """The model pinned in the live database's ``message_embeddings``.
 
     A warm must heat the encoder searches will use: ``_semantic_ranking``
     reads its pin from the database, not from config, and the config's model
     (a schema default on a fresh machine) may name an encoder no search ever
     encodes with -- warming that one is pure cost and the first real search
-    still pays the cold load. Read-only, and any failure means "no pin": the
-    warm then falls back to the configured model exactly as before.
+    still pays the cold load. The database is the one ``get_db_path`` resolves
+    (``session_db``, then ``database.path``, then ``STUDYLOOP_DB``): reading
+    ``database.path`` raw skipped both overrides, so the warm pinned itself to
+    the default-path database -- the learner's real one from inside a test
+    run, and never the one searches use under either override. Read-only, and
+    any failure means "no pin": the warm then falls back to the configured
+    model exactly as before.
     """
     try:
-        from pathlib import Path
+        from agent_session_tools.config_loader import get_db_path
 
-        from agent_session_tools.config_loader import load_config
-
-        db_path = Path(load_config()["database"]["path"])
+        db_path = get_db_path()
         if not db_path.exists():
             return None
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)

@@ -149,6 +149,15 @@ experience may change before `1.0.0`.
   e.content_sha256` instead of embedding. They now bring the schema current on
   open, as `session-export` already does, and a migration that refuses to run
   is one `❌` line and exit 1 rather than a traceback.
+- The MCP/web query-encoder warm read its model pin from the wrong database
+  under `session_db` or `STUDYLOOP_DB`: `_pinned_db_model` took
+  `database.path` straight out of `load_config()` instead of going through
+  `get_db_path`, so both overrides were skipped and the warm pinned itself
+  to the default-path `sessions.db` — the learner's real one from inside a
+  unit test (one machine's is pinned to `all-mpnet-base-v2`, which is how
+  `test_load_indicator`'s warm test failed there), and never the one
+  searches use under either override. It now resolves the database the way
+  every other reader does.
 - Ending any Kiro session could overwrite the learner's `study-mentor.json`
   with a stale copy. The Kiro adapter swaps a generated agent file onto
   `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what

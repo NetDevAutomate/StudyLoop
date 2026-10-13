@@ -631,3 +631,27 @@ class TestWarmModelResolution:
         )
         assert warmed == "explicit-model"
         assert constructed == ["explicit-model"]
+
+    def test_the_pin_comes_from_the_database_get_db_path_resolves(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``STUDYLOOP_DB`` names the live database when the config leaves the path default.
+
+        Reading ``database.path`` straight out of ``load_config()`` skipped
+        ``get_db_path``'s ``session_db`` / ``STUDYLOOP_DB`` overrides, so the
+        warm pinned itself to the default-path database: the learner's real
+        one during a test run (the repo-root conftest sets ``STUDYLOOP_DB``
+        for exactly this), and never the one searches use under either
+        override. Found on a machine whose real database is pinned to a model
+        no test config names.
+        """
+        pinned = self._db(tmp_path, pin="env-pinned-model")
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "semantic_search:\n  hybrid: true\n  model: config-model\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_DB", str(pinned))
+
+        assert retrieval._pinned_db_model() == "env-pinned-model"
