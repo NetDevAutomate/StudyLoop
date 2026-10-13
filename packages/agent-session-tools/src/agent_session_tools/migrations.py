@@ -1391,9 +1391,12 @@ def migrate_v31(conn: sqlite3.Connection) -> None:
 def migrate_v32(conn: sqlite3.Connection) -> None:
     import hashlib
 
-    conn.execute(
-        "ALTER TABLE context_session_projects ADD COLUMN assignment_kind TEXT NOT NULL DEFAULT 'explicit' CHECK(assignment_kind IN ('explicit','root_policy','sync'))"
-    )
+    # Guarded: init_db's legacy reconciliation may have added this column to a
+    # v31 database before the migrations ran (see learner_schema.install).
+    if "assignment_kind" not in _table_columns(conn, "context_session_projects"):
+        conn.execute(
+            "ALTER TABLE context_session_projects ADD COLUMN assignment_kind TEXT NOT NULL DEFAULT 'explicit' CHECK(assignment_kind IN ('explicit','root_policy','sync'))"
+        )
     conn.execute(
         "CREATE TABLE context_policy_state(id INTEGER PRIMARY KEY CHECK(id=1),digest TEXT NOT NULL,applied_at TEXT)"
     )

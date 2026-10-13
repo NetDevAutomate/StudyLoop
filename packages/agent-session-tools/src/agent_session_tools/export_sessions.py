@@ -84,9 +84,17 @@ def _reconcile_legacy_base_tables(conn: sqlite3.Connection) -> None:
     columns — nullable, with the schema's default when it is a constant
     (SQLite cannot add a column with a non-constant default, nor
     retroactively enforce NOT NULL/PRIMARY KEY on a populated table).
-    Migrations themselves are column-guarded, so replaying them over the
-    reconciled shape is safe; tables the bootstrap will create from scratch
-    are skipped. Existing rows are never touched.
+    Tables the bootstrap will create from scratch are skipped. Existing rows
+    are never touched.
+
+    This runs BEFORE ``migrate()``, and its ALTERs auto-commit, so a pending
+    migration meets a table that already carries the column it is about to
+    add. Every migration that ``ALTER TABLE ... ADD COLUMN`` on a table an
+    earlier version created must therefore check the column is absent first;
+    ``test_init_db_legacy`` replays a database stopped at every version to
+    enforce it. An unguarded one fails with ``duplicate column name``, the
+    sequence rolls back, these ALTERs survive the rollback, and the database
+    is stuck below the current version until the migration is guarded.
     """
     pristine = sqlite3.connect(":memory:")
     try:

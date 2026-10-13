@@ -22,8 +22,18 @@ NOTES_DDL = """CREATE TABLE IF NOT EXISTS study_notes (
 
 def install(conn: sqlite3.Connection) -> None:
     conn.execute(NOTES_DDL)
-    conn.execute("ALTER TABLE practice_attempts ADD COLUMN topic TEXT")
-    conn.execute("ALTER TABLE practice_attempts ADD COLUMN concept TEXT")
+    # Guarded: init_db's legacy reconciliation adds every final-shape column
+    # to a table that already exists BEFORE the migrations run, so a database
+    # stopped anywhere between v24 (practice_attempts created) and v36 reaches
+    # this migration with both columns already present. Unguarded, the ALTER
+    # failed with "duplicate column name: topic", the whole sequence rolled
+    # back, and the database could never leave its old version.
+    practice_columns = {
+        r[1] for r in conn.execute("PRAGMA table_info(practice_attempts)")
+    }
+    for name in ("topic", "concept"):
+        if name not in practice_columns:
+            conn.execute(f"ALTER TABLE practice_attempts ADD COLUMN {name} TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_study_notes_status ON study_notes(status,created_at DESC)"
     )

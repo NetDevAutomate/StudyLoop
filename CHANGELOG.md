@@ -119,6 +119,23 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- A sessions database last written by an older release could never reach the
+  current schema. `init_db`'s legacy reconciliation adds every final-shape
+  column to the tables that already exist *before* the migrations run, and
+  three migrations then `ALTER TABLE ... ADD COLUMN` the same column
+  unguarded: v37 (`practice_attempts.topic`/`concept`, so any database at
+  v24–v36), v32 (`context_session_projects.assignment_kind`, v31) and v44
+  (`context_capture_runs.withdrawn`, v34–v43). The ALTER failed with
+  `duplicate column name`, the whole sequence rolled back, and because the
+  reconciliation's own ALTERs had already auto-committed, every later
+  `migrate()` — `session-maint embed`, `session-export`, any `studyloop`
+  command — failed the same way with `user_version` stuck (a v30 database
+  reported "Migrating database from version 30 to 48 … duplicate column
+  name: topic"). All three now check for the column first; databases already
+  left in that state migrate on the next run. A test replays a database
+  stopped at every schema version through `init_db`, and the same database
+  after the old reconciliation touched it through `migrate()`, so an
+  unguarded ALTER cannot ship again.
 - A database stopped at exactly v5 in rollback-journal mode failed to migrate
   with `cannot change into wal mode from within a transaction`: the
   pragma-only v6 migration was executed inside `migrate()`'s `BEGIN

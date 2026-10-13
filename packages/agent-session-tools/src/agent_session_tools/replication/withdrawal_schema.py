@@ -2,9 +2,15 @@
 
 
 def install(conn):
-    conn.execute(
-        "ALTER TABLE context_capture_runs ADD COLUMN withdrawn INTEGER NOT NULL DEFAULT 0"
-    )
+    # Guarded: init_db's legacy reconciliation may have added this column to a
+    # v34..v43 database before the migrations ran (see learner_schema.install).
+    capture_columns = {
+        r[1] for r in conn.execute("PRAGMA table_info(context_capture_runs)")
+    }
+    if "withdrawn" not in capture_columns:
+        conn.execute(
+            "ALTER TABLE context_capture_runs ADD COLUMN withdrawn INTEGER NOT NULL DEFAULT 0"
+        )
     conn.execute("""CREATE TABLE context_replica_permissions (
         peer TEXT NOT NULL REFERENCES context_replica_peers(peer),
         direction TEXT NOT NULL CHECK(direction IN ('in','out')),
