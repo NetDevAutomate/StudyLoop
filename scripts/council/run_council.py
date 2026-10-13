@@ -13,8 +13,9 @@ Run from the repo root:
         --seat  openai.gpt-6-astra --seat grok-4.6 --seat kimi-k2-thinking
 
 The gateway key is read from ``LITELLM_API_KEY`` or, failing that, from the
-installed litellm-proxy-docker ``.env`` (``LITELLM_MASTER_KEY``). It is never
-written to any receipt.
+installed litellm-proxy-docker ``.env``: ``LITELLM_MASTER_KEY`` as a literal, or
+``LITELLM_MASTER_KEY_REF`` as a 1Password reference resolved with ``op read``.
+It is never written to any receipt.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -35,16 +37,53 @@ from pathlib import Path
 DEFAULT_BASE_URL = "http://127.0.0.1:4000"
 DOCKER_ENV = Path.home() / ".config/litellm-proxy-docker/.env"
 ENV_KEY = "LITELLM_API_KEY"  # pragma: allowlist secret - a variable NAME, not a key
+# The proxy install keeps either a literal key or, since its secrets moved to
+# 1Password, a reference the ``op`` CLI resolves. Both are variable NAMES.
+FILE_KEY = "LITELLM_MASTER_KEY"  # pragma: allowlist secret
+FILE_KEY_REF = "LITELLM_MASTER_KEY_REF"  # pragma: allowlist secret
+
+
+def _env_file_values() -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not DOCKER_ENV.exists():
+        return values
+    for line in DOCKER_ENV.read_text().splitlines():
+        if "=" not in line or line.lstrip().startswith("#"):
+            continue
+        name, _, value = line.partition("=")
+        values[name.strip()] = value.strip().strip("'\"")
+    return values
 
 
 def _api_key() -> str:
+    """The gateway key: ``LITELLM_API_KEY``, else the proxy's ``.env``.
+
+    The ``.env`` carries either the literal key or a 1Password reference
+    (``op://...``) that ``op read`` resolves without a prompt when the CLI is
+    signed in -- the file moved to references, which is why a runner that knew
+    only the literal exited "no gateway key" beside a live gateway. The value
+    is returned, never printed: an error names the reference and the CLI's
+    reason, not the secret.
+    """
     key = os.environ.get(ENV_KEY, "").strip()
     if key:
         return key
-    if DOCKER_ENV.exists():
-        for line in DOCKER_ENV.read_text().splitlines():
-            if line.startswith("LITELLM_MASTER_KEY="):
-                return line.split("=", 1)[1].strip().strip("'\"")
+    values = _env_file_values()
+    if values.get(FILE_KEY):
+        return values[FILE_KEY]
+    reference = values.get(FILE_KEY_REF, "")
+    if reference:
+        result = subprocess.run(
+            ["op", "read", reference], capture_output=True, text=True, check=False
+        )
+        resolved = result.stdout.strip()
+        if result.returncode == 0 and resolved:
+            return resolved
+        reason = (result.stderr or result.stdout).strip() or f"exit {result.returncode}"
+        raise SystemExit(
+            f"gateway key: `op read {reference}` failed ({reason}); "
+            f"sign in with `op signin` or set {ENV_KEY}"
+        )
     raise SystemExit(f"no gateway key: set {ENV_KEY} or install litellm-proxy-docker")
 
 
