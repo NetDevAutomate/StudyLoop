@@ -71,6 +71,9 @@ RUNTIME_MODULES: dict[str, tuple[str, ...]] = {
 }
 
 _SEMANTIC_EXTRA = "agent-session-tools[semantic]"
+#: The tool venvs ``./scripts/install.sh`` / ``studyloop install tools`` create
+#: and reinstall -- the only ones that installer can be said to repair.
+_INSTALLER_MANAGED_TOOLS = frozenset({"studyloop", "agent-session-tools"})
 
 
 def _uv_tool_dir() -> Path:
@@ -82,34 +85,96 @@ def _uv_tool_dir() -> Path:
     return Path.home() / ".local" / "share" / "uv" / "tools"
 
 
-def install_hint(prefix: str | Path | None = None) -> str:
+def _is_studyloop_checkout(root: Path) -> bool:
+    """A uv workspace whose members include this package: the StudyLoop checkout."""
+    pyproject = root / "pyproject.toml"
+    try:
+        text = pyproject.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return (
+        "[tool.uv.workspace]" in text
+        and (root / "packages" / "agent-session-tools" / "pyproject.toml").exists()
+    )
+
+
+def _checkout_root(package_file: Path) -> Path | None:
+    """The StudyLoop checkout this package's source lives in, if it does.
+
+    ``./scripts/install.sh`` installs both tool venvs ``--editable`` and the
+    workspace venv is a source install by construction, so in every supported
+    layout ``agent_session_tools/__init__.py`` sits under
+    ``<checkout>/packages/agent-session-tools/src/``. A wheel install in
+    site-packages has no checkout above it and returns None.
+    """
+    try:
+        parents = package_file.resolve().parents
+    except OSError:
+        return None
+    for parent in parents:
+        if _is_studyloop_checkout(parent):
+            return parent
+    return None
+
+
+def install_hint(
+    prefix: str | Path | None = None, *, package_file: Path | None = None
+) -> str:
     """The install line for the interpreter that lacks the semantic runtime.
 
-    Names the venv (``sys.prefix`` unless given) and a command that fixes THAT
-    venv. The old literal ``uv tool install 'agent-session-tools[semantic]'``
-    installs into agent-session-tools' own tool venv, which is almost never
-    the interpreter that raised the error: ``studyloop web`` runs in the
-    ``studyloop`` tool venv, a developer's ``session-maint`` in the workspace
-    ``.venv`` -- following it changed nothing the learner could see.
+    Names the venv (``sys.prefix`` unless given) and a command, anchored to the
+    checkout, that fixes THAT venv. The old literal
+    ``uv tool install 'agent-session-tools[semantic]'`` installs into
+    agent-session-tools' own tool venv, which is almost never the interpreter
+    that raised the error: ``studyloop web`` runs in the ``studyloop`` tool
+    venv, a developer's ``session-maint`` in the workspace ``.venv`` --
+    following it changed nothing the learner could see.
+
+    Three venv kinds, each judged by evidence rather than by a directory name
+    (council review 9, A2):
+
+    - one of the two installer-managed tool venvs, a DIRECT child of uv's tool
+      dir named ``studyloop`` or ``agent-session-tools`` -> the tool installer,
+      which reinstalls exactly those two with every extra;
+    - the checkout's own ``.venv`` (its parent is a uv workspace that contains
+      ``packages/agent-session-tools``) -> ``uv sync`` with the extra;
+    - anything else -> ``uv pip install --python <prefix>`` of the checkout's
+      package path with the extra. The package is not published (R-29), so
+      when no checkout is known the path is an explicit placeholder, never a
+      PyPI name that cannot resolve.
     """
     venv = Path(sys.prefix if prefix is None else prefix)
+    checkout = _checkout_root(Path(__file__) if package_file is None else package_file)
+
     try:
-        in_tool_dir = _uv_tool_dir().resolve() in venv.resolve().parents
+        resolved = venv.resolve()
+        tool_dir = _uv_tool_dir().resolve()
     except OSError:
-        in_tool_dir = False
-    if in_tool_dir:
+        resolved, tool_dir = venv, _uv_tool_dir()
+    if resolved.parent == tool_dir and resolved.name in _INSTALLER_MANAGED_TOOLS:
+        where = f"cd {checkout} && " if checkout else "from the StudyLoop checkout: "
         return (
-            f"./scripts/install.sh --tools-only  (from the StudyLoop checkout; "
-            f"reinstalls the {venv.name} tool venv at {venv} with every extra)"
+            f"{where}./scripts/install.sh --tools-only  "
+            f"(reinstalls the {resolved.name} tool venv at {venv} with every extra)"
         )
-    if venv.name == ".venv" and (venv.parent / "pyproject.toml").exists():
+
+    if venv.name == ".venv" and _is_studyloop_checkout(venv.parent):
         return (
-            f"uv sync --all-packages --group dev --extra semantic  "
+            f"cd {venv.parent} && uv sync --all-packages --group dev --extra semantic  "
             f"(just sync-semantic; the workspace venv at {venv})"
         )
+
+    if checkout is not None:
+        package = checkout / "packages" / "agent-session-tools"
+        return (
+            f"uv pip install --python {venv} '{package}[semantic]'  "
+            f"(the interpreter at {venv} lacks the semantic extra)"
+        )
     return (
-        f"install {_SEMANTIC_EXTRA} into the interpreter at {venv} "
-        f"(source checkout: ./scripts/install.sh --tools-only)"
+        f"uv pip install --python {venv} "
+        f"'<StudyLoop checkout>/packages/agent-session-tools[semantic]'  "
+        f"(the interpreter at {venv} lacks the semantic extra; {_SEMANTIC_EXTRA} is "
+        "not published, so the path must be a StudyLoop checkout)"
     )
 
 
