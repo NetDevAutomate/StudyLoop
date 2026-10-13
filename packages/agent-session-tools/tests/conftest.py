@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -95,6 +96,28 @@ def _isolated_state_dir(tmp_path, monkeypatch):
     state = tmp_path / "isolated-state"
     monkeypatch.setenv("STUDYLOOP_STATE_DIR", str(state))
     monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "isolated-sessions.db"))
+
+
+@pytest.fixture(autouse=True)
+def _hf_hub_offline_does_not_leak_between_tests():
+    """Restore ``HF_HUB_OFFLINE`` after each test.
+
+    ``retrieval._encoder``, the query-encoder warm and the export's auto-embed
+    all write ``HF_HUB_OFFLINE=1`` straight into ``os.environ`` -- deliberately,
+    as a courtesy for libraries that read it, and harmless in the one-shot
+    processes they run in. A test process is not one-shot: the first warm test
+    to run left the flag set for every later test, and ``artefact_fetch``
+    (which reads it as "do not fetch") then reported ``offline_skip`` wherever
+    a test expected ``fetched``. ``monkeypatch`` cannot see a write made by
+    production code, so this fixture snapshots and restores the variable
+    itself.
+    """
+    before = os.environ.get("HF_HUB_OFFLINE")
+    yield
+    if before is None:
+        os.environ.pop("HF_HUB_OFFLINE", None)
+    else:
+        os.environ["HF_HUB_OFFLINE"] = before
 
 
 @pytest.fixture

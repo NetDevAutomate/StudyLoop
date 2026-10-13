@@ -44,6 +44,14 @@ def _fake_registry(monkeypatch: pytest.MonkeyPatch):
     from agent_session_tools import embeddings
 
     monkeypatch.setitem(embeddings.ONNX_ARTIFACTS, FAKE_MODEL, _fake_artefact())
+    # ``HF_HUB_OFFLINE`` is an INPUT to the fetch (``offline_skip``), so every
+    # test here states it: the one offline test sets it, the rest start without
+    # it. Without this line the "fetched" cases inherited whatever the process
+    # already had -- the warm and ``_encoder`` write ``HF_HUB_OFFLINE=1`` into
+    # ``os.environ`` on purpose (a courtesy for libraries that read it), so any
+    # retrieval test collected before this file turned six of these into
+    # ``offline_skip``; a shell that exports it did the same.
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
 
 
 def _content_for(relpath: str) -> bytes:
