@@ -43,6 +43,12 @@ FILE_KEY = "LITELLM_MASTER_KEY"  # pragma: allowlist secret
 FILE_KEY_REF = "LITELLM_MASTER_KEY_REF"  # pragma: allowlist secret
 
 
+#: How long ``op read`` may take. Signed-in, it answers in well under a
+#: second; a longer wait means it is sitting on an unlock prompt nobody will
+#: answer in an unattended run, which must become an exit, not a hang.
+OP_TIMEOUT_SECONDS = 60
+
+
 def _env_file_values() -> dict[str, str]:
     values: dict[str, str] = {}
     if not DOCKER_ENV.exists():
@@ -55,15 +61,74 @@ def _env_file_values() -> dict[str, str]:
     return values
 
 
+def _classify_op_failure(stderr: str) -> str:
+    """A fixed-vocabulary reading of ``op``'s stderr -- never the text itself.
+
+    The CLI's diagnostics are what a human needs ("not signed in", "no such
+    item"), but quoting stderr verbatim is not a "never the key" guarantee, so
+    the message carries one of these phrases or nothing.
+    """
+    text = stderr.lower()
+    if "not signed in" in text or "sign in" in text:
+        return "account is not signed in"
+    if "isn't an item" in text or "not found" in text or "doesn't exist" in text:
+        return "the reference names no item or field"
+    if "unauthorized" in text or "permission" in text or "forbidden" in text:
+        return "the account is not authorized for that item"
+    return "see `op read` stderr"
+
+
+def _resolve_reference(reference: str) -> str:
+    """``op read <reference>``, or a clean exit that never quotes its output.
+
+    stdout is the channel the secret arrives on, so on failure it is never
+    echoed -- not even a fragment; stderr is classified into a fixed phrase by
+    :func:`_classify_op_failure`. The remedy names both unattended paths: a
+    signed-in CLI or ``OP_SERVICE_ACCOUNT_TOKEN``.
+    """
+    remedy = (
+        f"sign in with `op signin` (or set OP_SERVICE_ACCOUNT_TOKEN for an "
+        f"unattended run), or set {ENV_KEY}"
+    )
+    try:
+        result = subprocess.run(
+            ["op", "read", reference],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=OP_TIMEOUT_SECONDS,
+        )
+    except FileNotFoundError:
+        raise SystemExit(
+            f"gateway key: the 1Password op CLI is not installed, so "
+            f"`op read {reference}` cannot run; install it, or set {ENV_KEY}"
+        ) from None
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"gateway key: `op read {reference}` did not answer within "
+            f"{OP_TIMEOUT_SECONDS}s (an unlock prompt nobody can answer?); {remedy}"
+        ) from None
+    except OSError as exc:
+        raise SystemExit(
+            f"gateway key: `op read {reference}` could not be run ({type(exc).__name__}); {remedy}"
+        ) from None
+    resolved = result.stdout.strip()
+    if result.returncode == 0 and resolved:
+        return resolved
+    reason = f"exit {result.returncode}: {_classify_op_failure(result.stderr or '')}"
+    raise SystemExit(f"gateway key: `op read {reference}` failed ({reason}); {remedy}")
+
+
 def _api_key() -> str:
     """The gateway key: ``LITELLM_API_KEY``, else the proxy's ``.env``.
 
     The ``.env`` carries either the literal key or a 1Password reference
     (``op://...``) that ``op read`` resolves without a prompt when the CLI is
     signed in -- the file moved to references, which is why a runner that knew
-    only the literal exited "no gateway key" beside a live gateway. The value
-    is returned, never printed: an error names the reference and the CLI's
-    reason, not the secret.
+    only the literal exited "no gateway key" beside a live gateway. The same
+    reference is accepted from the environment (``LITELLM_MASTER_KEY_REF``) for
+    a container or CI that injects it. The value is returned, never printed:
+    an error names the reference and the CLI's reason, not the secret.
     """
     key = os.environ.get(ENV_KEY, "").strip()
     if key:
@@ -71,19 +136,9 @@ def _api_key() -> str:
     values = _env_file_values()
     if values.get(FILE_KEY):
         return values[FILE_KEY]
-    reference = values.get(FILE_KEY_REF, "")
+    reference = os.environ.get(FILE_KEY_REF, "").strip() or values.get(FILE_KEY_REF, "")
     if reference:
-        result = subprocess.run(
-            ["op", "read", reference], capture_output=True, text=True, check=False
-        )
-        resolved = result.stdout.strip()
-        if result.returncode == 0 and resolved:
-            return resolved
-        reason = (result.stderr or result.stdout).strip() or f"exit {result.returncode}"
-        raise SystemExit(
-            f"gateway key: `op read {reference}` failed ({reason}); "
-            f"sign in with `op signin` or set {ENV_KEY}"
-        )
+        return _resolve_reference(reference)
     raise SystemExit(f"no gateway key: set {ENV_KEY} or install litellm-proxy-docker")
 
 
