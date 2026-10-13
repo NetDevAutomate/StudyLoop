@@ -169,10 +169,17 @@ experience may change before `1.0.0`.
   agent-session-tools' own tool venv, which is almost never the interpreter
   that raised the error (`studyloop web` runs in the `studyloop` tool venv, a
   developer's `session-maint` in the workspace `.venv`), so following it
-  changed nothing. The hint is now computed from the interpreter's prefix: a
-  uv tool venv gets `./scripts/install.sh --tools-only`, the workspace venv
-  gets `uv sync --all-packages --group dev --extra semantic`, anything else is
-  named with the extra to install into it.
+  changed nothing. The hint is now computed from the interpreter's prefix and
+  from where this package's own source lives, each venv judged by evidence:
+  one of the two installer-managed tool venvs (`studyloop`,
+  `agent-session-tools`, direct children of uv's tool dir) gets
+  `cd <checkout> && ./scripts/install.sh --tools-only`, the checkout's own
+  `.venv` gets `cd <checkout> && uv sync --all-packages --group dev --extra
+  semantic`, and any other interpreter gets `uv pip install --python <prefix>
+  '<checkout>/packages/agent-session-tools[semantic]'` — with an explicit
+  placeholder when no checkout is known, since the package is not published.
+  Verified on a venv with neither runtime: `doctor` warned, the hint's
+  command was run verbatim, the re-check passed.
 - `agent-session-tools[semantic]` declares what the ONNX query-encoder path
   imports directly — `onnxruntime`, `tokenizers`, `huggingface-hub` (#46).
   The default `auto` backend resolves to ONNX for `bge-small-en-v1.5`, and
