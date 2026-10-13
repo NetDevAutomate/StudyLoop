@@ -161,6 +161,46 @@ experience may change before `1.0.0`.
   mirrors the repo-root `STUDYLOOP_DB` isolation it already mirrored for
   `STUDYLOOP_STATE_DIR`, so a package-rooted `pytest` run cannot reach the
   real database either.
+- The semantic layer's missing-runtime hint names the venv that raised it and
+  a command that fixes that venv (#46). `embedding_store.INSTALL_HINT` was the
+  literal `uv tool install 'agent-session-tools[semantic]'` everywhere it was
+  printed — the warm's failure detail (the web header chip's tooltip),
+  `session-maint embed`, `doctor` — but that installs into
+  agent-session-tools' own tool venv, which is almost never the interpreter
+  that raised the error (`studyloop web` runs in the `studyloop` tool venv, a
+  developer's `session-maint` in the workspace `.venv`), so following it
+  changed nothing. The hint is now computed from the interpreter's prefix: a
+  uv tool venv gets `./scripts/install.sh --tools-only`, the workspace venv
+  gets `uv sync --all-packages --group dev --extra semantic`, anything else is
+  named with the extra to install into it.
+- `agent-session-tools[semantic]` declares what the ONNX query-encoder path
+  imports directly — `onnxruntime`, `tokenizers`, `huggingface-hub` (#46).
+  The default `auto` backend resolves to ONNX for `bge-small-en-v1.5`, and
+  those three used to arrive only through `kokoro-onnx` in `[tts]`, so `[all]`
+  worked by coupling and `[semantic]` alone failed at `onnxruntime is not
+  installed`. A contract test scans the semantic layer's source for its
+  third-party imports and fails if the extra stops declaring one.
+- `studyloop doctor` reports a missing semantic runtime as a warning, not an
+  info, wherever a surface resolves to hybrid (#46). The check probed
+  `sentence_transformers` as a proxy for "the extra is installed" — not what
+  the ONNX path imports — and reported *info: semantic layer not installed;
+  does not apply* even when the web and MCP surfaces were resolving to hybrid
+  and silently falling back to lexical search. It now resolves the backend
+  first, probes that path's own modules (`embedding_store.RUNTIME_MODULES`),
+  names the missing ones and the surfaces affected, and carries the
+  venv-correct hint; with no hybrid surface it stays an info.
+- `scripts/council/run_council.py` finds the gateway key again when the
+  proxy's `.env` holds a 1Password reference (`LITELLM_MASTER_KEY_REF=op://…`)
+  instead of a literal `LITELLM_MASTER_KEY`: the reference is resolved with
+  `op read`, and a failed resolution is a clean exit naming the reference and
+  the CLI's reason, never the key.
+- Three order- and machine-dependent test failures are deterministic:
+  `test_artefact_fetch` no longer inherits the `HF_HUB_OFFLINE=1` the warm
+  writes process-wide (six cases reported `offline_skip` whenever a retrieval
+  test ran first), the virgin-HOME scope test supplies a `tmux` stand-in (a
+  `mise` shim on PATH cannot resolve its tool under a scrubbed HOME, so the
+  CLI exited on the multiplexer message before the scope check), and the
+  `agent-session-tools` conftest restores `HF_HUB_OFFLINE` after every test.
 - Ending any Kiro session could overwrite the learner's `study-mentor.json`
   with a stale copy. The Kiro adapter swaps a generated agent file onto
   `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what

@@ -236,7 +236,13 @@ class TestSeverityMatrix:
         assert result.status == "info", result.message
         assert result.fix_auto is False
         assert "sentence_transformers" in result.message
-        assert "agent-session-tools[semantic]" in result.fix_hint
+        # The hint names the venv that raised it and a command that fixes that
+        # venv (issue #46 item 1), never the agent-session-tools tool venv's
+        # install line as a literal.
+        from agent_session_tools import embedding_store
+
+        assert result.fix_hint == embedding_store.install_hint()
+        assert "uv tool install 'agent-session-tools[semantic]'" not in result.fix_hint
         # info must not move the exit code: a missing optional extra is not a fault.
         from studyloop.cli._doctor import _compute_exit_code
 

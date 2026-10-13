@@ -30,14 +30,17 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "einops" },
+    { name = "huggingface-hub" },
     { name = "kokoro-onnx" },
     { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "sentence-transformers" },
     { name = "sounddevice" },
     { name = "sqlite-vec" },
     { name = "textual" },
     { name = "tiktoken" },
+    { name = "tokenizers" },
     { name = "watchdog" },
 ]
 dev = [
@@ -48,9 +51,12 @@ dev = [
 ]
 semantic = [
     { name = "einops" },
+    { name = "huggingface-hub" },
     { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "sentence-transformers" },
     { name = "sqlite-vec" },
+    { name = "tokenizers" },
 ]
 test = [
     { name = "sqlite-vec" },
@@ -85,10 +91,12 @@ requires-dist = [
     { name = "agent-session-tools", extras = ["tokens", "tui", "watch", "semantic", "tts"], marker = "extra == 'all'" },
     { name = "einops", marker = "extra == 'semantic'", specifier = ">=0.8.2" },
     { name = "fastmcp", specifier = ">=3.1.1,<4" },
+    { name = "huggingface-hub", marker = "extra == 'semantic'", specifier = ">=0.20.0" },
     { name = "kokoro-onnx", marker = "extra == 'tts'", specifier = ">=0.4.0" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'tts'", specifier = ">=1.0.0,<2" },
     { name = "numpy", marker = "extra == 'semantic'", specifier = ">=1.24.0" },
     { name = "numpy", marker = "extra == 'tts'", specifier = ">=1.24.0" },
+    { name = "onnxruntime", marker = "extra == 'semantic'", specifier = ">=1.17.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
@@ -102,6 +110,7 @@ requires-dist = [
     { name = "sqlite-vec", marker = "extra == 'test'", specifier = ">=0.1.6" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=0.40.0" },
     { name = "tiktoken", marker = "extra == 'tokens'", specifier = ">=0.5.0" },
+    { name = "tokenizers", marker = "extra == 'semantic'", specifier = ">=0.15.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "watchdog", marker = "extra == 'watch'", specifier = ">=4.0.0" },
 ]

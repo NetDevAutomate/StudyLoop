@@ -70,6 +70,14 @@ semantic = [
     # ever loaded by code that asked for the semantic layer -- never by a plain
     # connection doing maintenance.
     "sqlite-vec>=0.1.6",
+    # The ONNX query-encoder path (the `auto` default for bge-small-en-v1.5)
+    # imports these directly in onnx_encoder.py. They used to arrive only
+    # through kokoro-onnx in [tts], so [all] worked by coupling and [semantic]
+    # alone failed at "onnxruntime is not installed" (issue #46).
+    # test_semantic_extra_contract.py pins this list to the imports.
+    "onnxruntime>=1.17.0",
+    "tokenizers>=0.15.0",
+    "huggingface-hub>=0.20.0",
 ]
 tts = [
     "kokoro-onnx>=0.4.0",

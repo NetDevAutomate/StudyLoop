@@ -343,6 +343,8 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
 
     missing_modules = _missing_semantic_modules()
     if missing_modules and report.rows == 0:
+        from agent_session_tools import embedding_store
+
         return [
             CheckResult(
                 "database",
@@ -350,7 +352,7 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
                 "info",
                 f"semantic layer not installed ({', '.join(missing_modules)} missing); "
                 f"0 message_embeddings rows, {report.eligible:,} messages eligible",
-                "uv tool install 'agent-session-tools[semantic]'",
+                embedding_store.install_hint(),
                 fix_auto=False,
             )
         ]

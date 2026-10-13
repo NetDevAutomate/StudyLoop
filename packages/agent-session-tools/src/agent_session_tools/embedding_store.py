@@ -36,8 +36,10 @@ the semantic layer can run at all and **never downloads a model**.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
+import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -59,8 +61,60 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 logger = logging.getLogger(__name__)
 
-#: The install line every degradation path prints (D-8).
-INSTALL_HINT = "uv tool install 'agent-session-tools[semantic]'"
+#: Third-party modules each query-encoder path imports directly. One list, read
+#: by the doctor's runtime probe and pinned by ``test_semantic_extra_contract``
+#: against the ``[semantic]`` extra, so the extra, the probe and the imports
+#: cannot drift apart again (issue #46: ``[semantic]`` lacked ``onnxruntime``).
+RUNTIME_MODULES: dict[str, tuple[str, ...]] = {
+    "onnx": ("onnxruntime", "tokenizers", "huggingface_hub", "numpy", "sqlite_vec"),
+    "torch": ("sentence_transformers", "numpy", "sqlite_vec"),
+}
+
+_SEMANTIC_EXTRA = "agent-session-tools[semantic]"
+
+
+def _uv_tool_dir() -> Path:
+    """Where ``uv tool install`` puts its venvs, by uv's own precedence."""
+    if env_dir := os.environ.get("UV_TOOL_DIR"):
+        return Path(env_dir).expanduser()
+    if data_home := os.environ.get("XDG_DATA_HOME"):
+        return Path(data_home).expanduser() / "uv" / "tools"
+    return Path.home() / ".local" / "share" / "uv" / "tools"
+
+
+def install_hint(prefix: str | Path | None = None) -> str:
+    """The install line for the interpreter that lacks the semantic runtime.
+
+    Names the venv (``sys.prefix`` unless given) and a command that fixes THAT
+    venv. The old literal ``uv tool install 'agent-session-tools[semantic]'``
+    installs into agent-session-tools' own tool venv, which is almost never
+    the interpreter that raised the error: ``studyloop web`` runs in the
+    ``studyloop`` tool venv, a developer's ``session-maint`` in the workspace
+    ``.venv`` -- following it changed nothing the learner could see.
+    """
+    venv = Path(sys.prefix if prefix is None else prefix)
+    try:
+        in_tool_dir = _uv_tool_dir().resolve() in venv.resolve().parents
+    except OSError:
+        in_tool_dir = False
+    if in_tool_dir:
+        return (
+            f"./scripts/install.sh --tools-only  (from the StudyLoop checkout; "
+            f"reinstalls the {venv.name} tool venv at {venv} with every extra)"
+        )
+    if venv.name == ".venv" and (venv.parent / "pyproject.toml").exists():
+        return (
+            f"uv sync --all-packages --group dev --extra semantic  "
+            f"(just sync-semantic; the workspace venv at {venv})"
+        )
+    return (
+        f"install {_SEMANTIC_EXTRA} into the interpreter at {venv} "
+        f"(source checkout: ./scripts/install.sh --tools-only)"
+    )
+
+
+#: The install line every degradation path prints (D-8), for THIS interpreter.
+INSTALL_HINT = install_hint()
 
 #: Schema name the sidecar is ATTACHed under, and the vec0 table inside it.
 SIDECAR_SCHEMA = "vec"

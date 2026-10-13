@@ -13,26 +13,93 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _semantic_layer_present(monkeypatch: pytest.MonkeyPatch):
-    """Every test in this file assumes the semantic extra IS installed;
-    the "no semantic layer" skip gets its own dedicated test below with the
-    probe patched the other way."""
-    monkeypatch.setattr(
-        "importlib.util.find_spec",
-        lambda name: object() if name == "sentence_transformers" else None,
-    )
+    """Every test in this file assumes the semantic runtime IS installed; the
+    "runtime missing" branch gets its own tests below with the probe patched
+    the other way. ``find_spec`` answers for every module the probe asks about
+    (``embedding_store.RUNTIME_MODULES``), not just ``sentence_transformers``:
+    the probe asks for the resolved backend's own imports (issue #46 item 3)."""
+    monkeypatch.setattr("importlib.util.find_spec", lambda name: object())
 
 
-class TestNoSemanticLayer:
-    def test_skips_with_info_when_sentence_transformers_absent(
+class TestNoSemanticRuntime:
+    """Issue #46 item 3: a missing runtime is a WARN wherever a surface resolves
+    to hybrid -- that is the silent lexical-only degradation this check exists
+    to report -- and only an info when no surface would use the encoder."""
+
+    @staticmethod
+    def _onnx_for_bge(monkeypatch: pytest.MonkeyPatch) -> None:
+        from agent_session_tools import query_encoders
+
+        monkeypatch.setattr(query_encoders, "resolve_backend", lambda: "auto")
+        monkeypatch.setattr(
+            query_encoders, "_concretise", lambda model, backend: "onnx", raising=False
+        )
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.resolve_fetch_model",
+            lambda model=None: "bge-small-en-v1.5",
+        )
+
+    def test_warns_and_names_the_missing_onnx_modules_when_a_surface_is_hybrid(
         self, monkeypatch: pytest.MonkeyPatch
     ):
+        from agent_session_tools import embedding_store, retrieval
+
+        self._onnx_for_bge(monkeypatch)
+        # onnxruntime and tokenizers absent; the torch half present (so the OLD
+        # probe, sentence_transformers, would have said "installed").
+        monkeypatch.setattr(
+            "importlib.util.find_spec",
+            lambda name: None if name in {"onnxruntime", "tokenizers"} else object(),
+        )
+        monkeypatch.setattr(
+            retrieval,
+            "resolve_mode",
+            lambda requested=None, *, surface: "hybrid" if surface == "web" else "lexical",
+        )
+        from studyloop.doctor.query_encoder import check_query_encoder_artefact
+
+        (result,) = check_query_encoder_artefact()
+        assert result.status == "warn"
+        assert result.category == "deps"
+        assert result.name == "query_encoder_artefact"
+        assert "onnxruntime" in result.message and "tokenizers" in result.message
+        assert "sentence_transformers" not in result.message
+        assert "web" in result.message and "lexical" in result.message
+        assert result.fix_hint == embedding_store.install_hint()
+        assert result.fix_auto is False
+
+    def test_info_when_no_surface_resolves_to_hybrid(self, monkeypatch: pytest.MonkeyPatch):
+        from agent_session_tools import embedding_store, retrieval
+
+        self._onnx_for_bge(monkeypatch)
         monkeypatch.setattr("importlib.util.find_spec", lambda name: None)
+        monkeypatch.setattr(retrieval, "resolve_mode", lambda requested=None, *, surface: "lexical")
         from studyloop.doctor.query_encoder import check_query_encoder_artefact
 
         (result,) = check_query_encoder_artefact()
         assert result.status == "info"
-        assert result.category == "deps"
-        assert result.name == "query_encoder_artefact"
+        assert "onnxruntime" in result.message
+        assert result.fix_hint == embedding_store.install_hint()
+
+    def test_the_torch_path_is_probed_for_its_own_modules(self, monkeypatch: pytest.MonkeyPatch):
+        from agent_session_tools import query_encoders, retrieval
+
+        monkeypatch.setattr(query_encoders, "resolve_backend", lambda: "torch")
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.resolve_fetch_model",
+            lambda model=None: "all-mpnet-base-v2",
+        )
+        monkeypatch.setattr(
+            "importlib.util.find_spec",
+            lambda name: None if name == "sentence_transformers" else object(),
+        )
+        monkeypatch.setattr(retrieval, "resolve_mode", lambda requested=None, *, surface: "hybrid")
+        from studyloop.doctor.query_encoder import check_query_encoder_artefact
+
+        (result,) = check_query_encoder_artefact()
+        assert result.status == "warn"
+        assert "sentence_transformers" in result.message
+        assert "onnxruntime" not in result.message
 
 
 class TestTorchConfigured:

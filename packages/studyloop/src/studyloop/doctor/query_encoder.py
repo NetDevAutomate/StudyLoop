@@ -9,9 +9,18 @@ is ``agent_session_tools.artefact_fetch.fetch_query_encoder_artefact``, which
 except through the fix path the learner asked for by passing ``--fix``).
 
 Never imports ``torch``/``sentence-transformers``/``onnxruntime`` to run:
-backend resolution reads config only, and the cache probe is
+backend resolution reads config only, the runtime probe is
+``importlib.util.find_spec`` over the resolved backend's own imports
+(``embedding_store.RUNTIME_MODULES``), and the cache probe is
 ``huggingface_hub.try_to_load_from_cache`` + a local sha256 hash, so this
 check costs nothing close to what constructing an encoder would.
+
+A runtime the resolved path needs but this interpreter cannot import is a
+WARN wherever a surface resolves to hybrid (issue #46 item 3): that is the
+silent lexical-only degradation this check exists to report, and the hint it
+carries fixes the venv that raised it (``embedding_store.install_hint``).
+Where no surface resolves to hybrid the encoder is never built, so it stays
+an info.
 
 The resolved backend is never compared to :data:`query_encoders.BACKEND_ONNX`
 un-concretised: ``auto`` (the wave-1 encoder mitigation lane) concretises to
@@ -27,24 +36,43 @@ A5-1).
 from __future__ import annotations
 
 import importlib.util
+import sys
 
 from studyloop.doctor.models import CheckResult
 
 
-def check_query_encoder_artefact() -> list[CheckResult]:
-    if importlib.util.find_spec("sentence_transformers") is None:
-        return [
-            CheckResult(
-                "deps",
-                "query_encoder_artefact",
-                "info",
-                "semantic layer not installed; the ONNX query-encoder artefact "
-                "check does not apply",
-                "uv tool install 'agent-session-tools[semantic]'",
-                fix_auto=False,
-            )
-        ]
+def _missing_runtime_modules(backend: str) -> tuple[str, ...]:
+    """The resolved backend's own imports that this interpreter cannot find.
 
+    ``find_spec`` rather than a real import (torch costs seconds). The lists
+    are ``embedding_store.RUNTIME_MODULES`` -- the same ones the ``[semantic]``
+    extra is pinned to -- so the probe asks about what the ONNX path actually
+    imports, not ``sentence_transformers`` as a proxy for "the extra".
+    """
+    from agent_session_tools import embedding_store
+
+    missing: list[str] = []
+    for name in embedding_store.RUNTIME_MODULES.get(backend, ()):
+        try:
+            found = importlib.util.find_spec(name) is not None
+        except (ImportError, ValueError):
+            found = False
+        if not found:
+            missing.append(name)
+    return tuple(missing)
+
+
+def _hybrid_surfaces() -> list[str]:
+    from agent_session_tools import retrieval
+
+    return [
+        surface
+        for surface in retrieval.SURFACES
+        if retrieval.resolve_mode(surface=surface) == retrieval.MODE_HYBRID
+    ]
+
+
+def check_query_encoder_artefact() -> list[CheckResult]:
     from agent_session_tools import query_encoders
 
     try:
@@ -81,6 +109,39 @@ def check_query_encoder_artefact() -> list[CheckResult]:
     # further change here.
     concretise = getattr(query_encoders, "_concretise", None)
     effective_backend = concretise(model, backend) if concretise is not None else backend
+
+    missing = _missing_runtime_modules(effective_backend)
+    if missing:
+        # Issue #46 item 3: a runtime the resolved path needs is not importable
+        # in THIS interpreter. Where a surface resolves to hybrid that is the
+        # silent lexical-only degradation this check exists to report -- a
+        # warn, with the hint that fixes this venv. Where nothing resolves to
+        # hybrid the encoder is never built, so it stays an info.
+        from agent_session_tools import embedding_store
+
+        hybrid = _hybrid_surfaces()
+        where = f"not importable in {sys.prefix}: {', '.join(missing)} missing"
+        if hybrid:
+            message = (
+                f"semantic runtime for the {effective_backend} query encoder is {where}; "
+                f"{', '.join(hybrid)} resolve to hybrid and will silently fall back "
+                "to lexical search"
+            )
+        else:
+            message = (
+                f"semantic runtime for the {effective_backend} query encoder is {where}; "
+                "no surface resolves to hybrid, so the artefact check does not apply"
+            )
+        return [
+            CheckResult(
+                "deps",
+                "query_encoder_artefact",
+                "warn" if hybrid else "info",
+                message,
+                embedding_store.install_hint(),
+                fix_auto=False,
+            )
+        ]
 
     if effective_backend != query_encoders.BACKEND_ONNX:
         return [
