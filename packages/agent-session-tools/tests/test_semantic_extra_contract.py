@@ -10,25 +10,33 @@ worked only because ``kokoro-onnx`` in ``[tts]`` happened to drag
 ``onnxruntime`` in; ``[semantic]`` alone failed at ``onnxruntime is not
 installed``.
 
-The imports are scanned from the source files rather than listed here, so a
-new direct import without a matching declaration fails this test instead of
-the next learner's install.
+The imports are parsed from the source files with ``ast`` rather than listed
+here, and every import root is classified -- standard library, first party,
+or a known distribution -- so a NEW third-party import fails this test as
+"unclassified" instead of being silently ignored (council review 9, A4). The
+per-backend lists the doctor probes (``embedding_store.RUNTIME_MODULES``) are
+checked against the same parsed imports, not against a second hand list.
 """
 
 from __future__ import annotations
 
+import ast
 import re
+import sys
 import tomllib
 from pathlib import Path
+
+import pytest
 
 from agent_session_tools import embedding_store
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = PACKAGE_ROOT / "pyproject.toml"
 SRC = PACKAGE_ROOT / "src" / "agent_session_tools"
+FIRST_PARTY = "agent_session_tools"
 
-# Module imported in source -> distribution name the extra must declare.
-# Stdlib and first-party modules are not in this map and are ignored.
+# Import root -> distribution the extra must declare. Every third-party root
+# the semantic layer imports must appear here; an unknown root FAILS.
 MODULE_TO_DIST = {
     "onnxruntime": "onnxruntime",
     "tokenizers": "tokenizers",
@@ -38,6 +46,12 @@ MODULE_TO_DIST = {
     "sentence_transformers": "sentence-transformers",
 }
 
+#: Which source files make up each query-encoder path. ``sqlite_vec`` is the
+#: vector store both paths search with, so ``embedding_store.py`` belongs to both.
+BACKEND_FILES = {
+    "onnx": ("onnx_encoder.py", "embedding_store.py"),
+    "torch": ("embeddings.py", "embedding_store.py"),
+}
 SEMANTIC_LAYER_FILES = (
     "onnx_encoder.py",
     "embedding_store.py",
@@ -45,8 +59,31 @@ SEMANTIC_LAYER_FILES = (
     "query_encoders.py",
 )
 
-_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 _DEP_NAME_RE = re.compile(r"^([A-Za-z0-9_.\-]+)")
+
+
+def _import_roots(source: str) -> set[str]:
+    """Every top-level module an ``import``/``from … import`` names, anywhere in the file.
+
+    ``ast`` sees indented imports, ``import x as y``, comma lists and imports
+    inside ``try/except ImportError`` -- the forms a regex over line starts
+    missed. Relative imports have no root and are first party by construction.
+    """
+    roots: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            roots.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            roots.add(node.module.split(".")[0])
+    return roots
+
+
+def _third_party_roots(source: str) -> set[str]:
+    return {
+        root
+        for root in _import_roots(source)
+        if root not in sys.stdlib_module_names and root != FIRST_PARTY
+    }
 
 
 def _semantic_extra_dists() -> set[str]:
@@ -60,52 +97,83 @@ def _semantic_extra_dists() -> set[str]:
     return names
 
 
-def _directly_imported_dists() -> dict[str, set[str]]:
-    """``{distribution: {file, ...}}`` for every mapped module the layer imports."""
-    found: dict[str, set[str]] = {}
-    for name in SEMANTIC_LAYER_FILES:
-        text = (SRC / name).read_text(encoding="utf-8")
-        for module in _IMPORT_RE.findall(text):
-            dist = MODULE_TO_DIST.get(module)
-            if dist:
-                found.setdefault(dist, set()).add(name)
-    return found
+def _layer_imports() -> dict[str, set[str]]:
+    """``{file: {third-party root, ...}}`` over the semantic layer's source."""
+    return {
+        name: _third_party_roots((SRC / name).read_text(encoding="utf-8"))
+        for name in SEMANTIC_LAYER_FILES
+    }
 
 
-def test_the_scan_sees_the_onnx_path_at_all():
-    """Guard the guard: if the regex stopped matching, the main test would pass vacuously."""
-    imported = _directly_imported_dists()
-    assert "onnxruntime" in imported, imported
-    assert "sqlite-vec" in imported, imported
+class TestTheScanner:
+    """Guard the guard: prove the scan detects what the contract relies on."""
+
+    def test_sees_indented_aliased_and_guarded_imports(self):
+        source = (
+            "def f():\n"
+            "    import onnxruntime as ort\n"
+            "    try:\n"
+            "        from tokenizers import Tokenizer\n"
+            "    except ImportError:\n"
+            "        pass\n"
+            "    import numpy, sqlite_vec\n"
+            "from . import local\n"
+            "import os\n"
+        )
+        assert _third_party_roots(source) == {
+            "onnxruntime",
+            "tokenizers",
+            "numpy",
+            "sqlite_vec",
+        }
+
+    def test_sees_the_onnx_path_in_the_real_source(self):
+        imports = _layer_imports()
+        assert "onnxruntime" in imports["onnx_encoder.py"], imports
+        assert "sqlite_vec" in imports["embedding_store.py"], imports
+
+    def test_an_unknown_third_party_root_is_reported_not_ignored(self):
+        unknown = _third_party_roots("import some_new_library\n") - set(MODULE_TO_DIST)
+        assert unknown == {"some_new_library"}
+
+
+def test_every_third_party_import_is_classified():
+    """A new direct dependency must be added to MODULE_TO_DIST (and the extra) deliberately."""
+    unclassified = {
+        name: sorted(roots - set(MODULE_TO_DIST))
+        for name, roots in _layer_imports().items()
+    }
+    unclassified = {name: roots for name, roots in unclassified.items() if roots}
+    assert not unclassified, (
+        f"third-party imports not in MODULE_TO_DIST: {unclassified}"
+    )
 
 
 def test_semantic_extra_declares_every_direct_import():
     declared = _semantic_extra_dists()
-    imported = _directly_imported_dists()
-    undeclared = {
-        dist: sorted(files) for dist, files in imported.items() if dist not in declared
-    }
+    undeclared: dict[str, list[str]] = {}
+    for name, roots in _layer_imports().items():
+        for root in roots:
+            dist = MODULE_TO_DIST.get(root)
+            if dist and dist not in declared:
+                undeclared.setdefault(dist, []).append(name)
     assert not undeclared, (
-        f"imported directly but not declared by [semantic]: {undeclared}; "
-        f"declared: {sorted(declared)}"
+        f"imported directly but not declared by [semantic]: {undeclared}; declared: {sorted(declared)}"
     )
 
 
-def test_runtime_module_lists_match_the_direct_imports():
-    """The doctor probes ``RUNTIME_MODULES``; it must name exactly what each path imports."""
-    for backend, modules in embedding_store.RUNTIME_MODULES.items():
-        assert modules, backend
-        for module in modules:
-            assert module in MODULE_TO_DIST, (backend, module)
-    assert set(embedding_store.RUNTIME_MODULES["onnx"]) == {
-        "onnxruntime",
-        "tokenizers",
-        "huggingface_hub",
-        "numpy",
-        "sqlite_vec",
-    }
-    assert set(embedding_store.RUNTIME_MODULES["torch"]) == {
-        "sentence_transformers",
-        "numpy",
-        "sqlite_vec",
-    }
+@pytest.mark.parametrize("backend", sorted(BACKEND_FILES))
+def test_runtime_module_list_covers_what_its_path_imports(backend: str):
+    """The doctor probes ``RUNTIME_MODULES[backend]``; it must name every third-party
+    module that path's own files import, so a missing one cannot go unreported."""
+    imports = _layer_imports()
+    imported = set().union(*(imports[name] for name in BACKEND_FILES[backend]))
+    probed = set(embedding_store.RUNTIME_MODULES[backend])
+    assert imported <= probed, (
+        f"{backend}: imported but not probed: {sorted(imported - probed)}"
+    )
+    assert probed <= set(MODULE_TO_DIST), f"{backend}: probes an unclassified module"
+
+
+def test_runtime_module_lists_name_only_the_backends_in_the_registry():
+    assert set(embedding_store.RUNTIME_MODULES) == set(BACKEND_FILES)

@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 #: cannot drift apart again (issue #46: ``[semantic]`` lacked ``onnxruntime``).
 RUNTIME_MODULES: dict[str, tuple[str, ...]] = {
     "onnx": ("onnxruntime", "tokenizers", "huggingface_hub", "numpy", "sqlite_vec"),
-    "torch": ("sentence_transformers", "numpy", "sqlite_vec"),
+    "torch": ("sentence_transformers", "huggingface_hub", "numpy", "sqlite_vec"),
 }
 
 _SEMANTIC_EXTRA = "agent-session-tools[semantic]"
