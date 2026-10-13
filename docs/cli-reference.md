@@ -602,8 +602,8 @@ session-maint delete --confirm            # Permanently delete old sessions
 session-maint find-duplicates|fts-check|compact  # Integrity and rescue
 session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
-                                          # Embed the backlog (doctor's embeddings_alignment remediation)
-session-maint embed-check [--fix]        # Audit/repair message_embeddings alignment
+                                          # Migrate the DB if behind, then embed the backlog (doctor's embeddings_alignment remediation)
+session-maint embed-check [--fix]        # Migrate the DB if behind, then audit/repair message_embeddings alignment
 session-maint fetch-query-encoder [--model NAME]
                                           # Fetch + verify the pinned ONNX query-encoder artefact
 session-context SESSION_ID               # Token-efficient excerpt for a session

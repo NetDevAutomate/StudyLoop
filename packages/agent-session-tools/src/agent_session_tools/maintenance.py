@@ -24,6 +24,7 @@ from agent_session_tools.deduplication import (
     list_all_duplicates,
     merge_duplicates,
 )
+from agent_session_tools.migrations import migrate
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
 # Logging is set up in the app callback below, which only runs when this module
@@ -962,6 +963,24 @@ def _print_alignment(report) -> None:
     print(f"  hidden:             {report.hidden:,}")
 
 
+def _migrate_or_exit(conn: sqlite3.Connection) -> None:
+    """Bring the schema current before touching migration 48's embedding tables.
+
+    Every other entry point (``session-export``, scrub, the context store)
+    migrates on open; without this, a database last written by an older release
+    fails here with ``no such column: e.content_sha256``. A refused migration is
+    an error line and exit 1 (D-8), never a traceback -- ``migrate`` has already
+    rolled the whole sequence back, so the database is unchanged.
+    """
+    try:
+        applied = migrate(conn)
+    except RuntimeError as exc:
+        print(f"❌ {exc}")
+        raise typer.Exit(1) from exc
+    if applied:
+        print(f"Applied {len(applied)} database migration(s)")
+
+
 @app.command("embed")
 def embed_cmd(
     db: Annotated[Path | None, db_option] = None,
@@ -1009,6 +1028,7 @@ def embed_cmd(
 
     conn = sqlite3.connect(db_path)
     try:
+        _migrate_or_exit(conn)
         try:
             stats = embedding_store.embed(
                 conn,
@@ -1079,6 +1099,7 @@ def embed_check(
     min_length = _min_content_length()
     conn = sqlite3.connect(db_path)
     try:
+        _migrate_or_exit(conn)
         report = alignment_report(
             conn, model=model_name, dim=dim, min_content_length=min_length
         )

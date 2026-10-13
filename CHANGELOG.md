@@ -142,7 +142,13 @@ experience may change before `1.0.0`.
   IMMEDIATE` as the first statement, before any page was dirty, where SQLite
   refuses it instead of ignoring it. Pragma-only migrations now run only
   after the commit, where they already had to be re-applied to take effect.
-
+- `session-maint embed` and `session-maint embed-check` work on a database an
+  older release last wrote. Both read the embedding table migration 48 created
+  without migrating first, so a database still at an earlier schema (one
+  machine's was at v30) stopped with `OperationalError: no such column:
+  e.content_sha256` instead of embedding. They now bring the schema current on
+  open, as `session-export` already does, and a migration that refuses to run
+  is one `❌` line and exit 1 rather than a traceback.
 - Ending any Kiro session could overwrite the learner's `study-mentor.json`
   with a stale copy. The Kiro adapter swaps a generated agent file onto
   `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what
