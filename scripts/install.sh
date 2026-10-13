@@ -162,7 +162,9 @@ fi
 
 if ! $TOOLS_ONLY; then
   step "Syncing workspace"
-  (cd "$REPO_DIR" && uv sync --all-packages)
+  # --inexact: do not strip extras the developer already synced into .venv
+  # (see install_workspace_tools in packages/studyloop/src/studyloop/installers.py).
+  (cd "$REPO_DIR" && uv sync --all-packages --inexact)
   info "Workspace synced"
 fi
 

@@ -84,3 +84,20 @@ def test_uv_tool_smoke_pins_the_interpreter_like_the_installer() -> None:
     text = (repo_root / "scripts/smoke-uv-tool-install.sh").read_text()
     assert ".python-version" in text
     assert text.count("--python") >= 2, "both uv tool install calls must pass --python"
+
+
+def test_install_script_workspace_sync_keeps_what_the_developer_synced() -> None:
+    """``scripts/install.sh`` syncs the workspace with ``--inexact`` for the same
+    reason ``install_workspace_tools`` does: a plain ``uv sync --all-packages``
+    removes every extra the developer had synced into ``.venv`` (semantic, web,
+    content), and a ``.venv/bin/session-maint`` that just lost sqlite-vec is how
+    one machine printed "Semantic layer not installed" straight after an install."""
+    repo_root = Path(__file__).resolve().parents[3]
+    script = (repo_root / "scripts" / "install.sh").read_text(encoding="utf-8")
+    sync_lines = [
+        line
+        for line in script.splitlines()
+        if "uv sync" in line and not line.lstrip().startswith("#")
+    ]
+    assert sync_lines, "install.sh no longer syncs the workspace?"
+    assert all("--inexact" in line for line in sync_lines), sync_lines

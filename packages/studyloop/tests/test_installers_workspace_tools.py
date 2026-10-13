@@ -36,7 +36,12 @@ def test_install_workspace_tools_installs_expected_tool_commands(tmp_path: Path)
 
     assert installed == ["agent-session-tools", "studyloop"]
     assert run.call_args_list == [
-        call(["uv", "sync", "--all-packages"], cwd=repo_root),
+        # --inexact: the installer refreshes the workspace venv but must not
+        # REMOVE what the developer synced into it (the semantic/web/content
+        # extras). A plain `uv sync --all-packages` strips every extra, which
+        # is how a developer's .venv/bin/session-maint lost sqlite-vec and
+        # printed "Semantic layer not installed" right after an install.
+        call(["uv", "sync", "--all-packages", "--inexact"], cwd=repo_root),
         call(
             [
                 "uv",
@@ -99,7 +104,7 @@ def test_install_workspace_tools_can_skip_sync_and_force(tmp_path: Path) -> None
 
     assert installed == ["agent-session-tools", "studyloop"]
     commands = [args.args[0] for args in run.call_args_list]
-    assert ["uv", "sync", "--all-packages"] not in commands
+    assert not any(command[:2] == ["uv", "sync"] for command in commands)
     assert all("--force" not in command for command in commands)
     assert all(command[:5][:4] == ["uv", "tool", "install", "--python"] for command in commands)
     assert all(command[4] == _PY_VER for command in commands)

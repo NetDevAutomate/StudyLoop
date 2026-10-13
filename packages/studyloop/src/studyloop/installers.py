@@ -1337,7 +1337,13 @@ def install_workspace_tools(
     installed: list[str] = []
 
     if sync_workspace:
-        _run(["uv", "sync", "--all-packages"], cwd=repo_root)
+        # --inexact: refresh the workspace venv without REMOVING what the
+        # developer synced into it. A plain `uv sync --all-packages` strips
+        # every extra (semantic, web, content), which is how a developer's
+        # .venv/bin/session-maint lost sqlite-vec straight after an install
+        # and printed "Semantic layer not installed" for a tool venv that was
+        # already correct.
+        _run(["uv", "sync", "--all-packages", "--inexact"], cwd=repo_root)
 
     packages_dir = repo_root / "packages"
     # Pins every `uv tool install` below to the INVOKING interpreter's minor
