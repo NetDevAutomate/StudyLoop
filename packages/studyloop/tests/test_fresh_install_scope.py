@@ -64,11 +64,14 @@ STUDYLOOP_TOOLS_TO_CHECK: tuple[tuple[str, dict], ...] = (
 def _usable_path(agent_bin: Path | None = None) -> str:
     """This venv's own bin dir first, then the real PATH.
 
-    ``studyloop study`` shells out to real system tools (tmux) whose install
-    location is not predictable across machines/CI, so -- unlike the fully
-    hermetic PATH some e2e fixtures build -- this inherits the calling
-    shell's PATH rather than reconstructing a minimal one. HOME (not PATH) is
-    what isolates this test from the learner's real config/database.
+    ``studyloop study`` shells out to system tools whose install location is
+    not predictable across machines/CI, so -- unlike the fully hermetic PATH
+    some e2e fixtures build -- this inherits the calling shell's PATH rather
+    than reconstructing a minimal one. HOME (not PATH) is what isolates this
+    test from the learner's real config/database. The pre-flight tools the
+    scope check sits behind (``claude``, ``tmux``) are NOT left to that PATH:
+    a tool that is really a version-manager shim is PATH-visible but needs the
+    real HOME to work, so the test supplies stand-ins -- see ``_fake_agent_bin``.
 
     ``agent_bin``, when given, is prepended ahead of everything else. It
     exists so a caller can make ``detect_agents()`` (which shells out to
@@ -90,11 +93,11 @@ def _usable_path(agent_bin: Path | None = None) -> str:
 
 
 def _fake_agent_bin(bin_dir: Path) -> Path:
-    """Write a no-op executable named ``claude`` and return its containing dir.
+    """Write the no-op pre-flight executables and return their containing dir.
 
-    ``studyloop study`` refuses to start at all ("No AI agent found") unless
-    ``detect_agents()`` resolves at least one known agent binary via
-    ``shutil.which`` -- see ``studyloop.agent_launcher.detect_agents`` and
+    ``claude``: ``studyloop study`` refuses to start at all ("No AI agent
+    found") unless ``detect_agents()`` resolves at least one known agent binary
+    via ``shutil.which`` -- see ``studyloop.agent_launcher.detect_agents`` and
     ``studyloop.adapters.claude.ADAPTER.binary == "claude"``. That check runs
     *before* the fresh-install scope check this suite exists to prove, so a
     virgin-HOME run must clear it deterministically rather than relying on a
@@ -103,11 +106,32 @@ def _fake_agent_bin(bin_dir: Path) -> Path:
     never actually executed: ``start_study_session()`` raises
     ``ScopeUnconfiguredError`` immediately after agent selection, well before
     any launch command is built.
+
+    ``tmux``: the multiplexer pre-flight (``is_tmux_available``: ``which`` +
+    ``tmux -V`` + a version floor) runs before the agent check and exits 1 on
+    its own message when it fails. The inherited PATH does not make it
+    deterministic: on a machine whose tmux is a ``mise`` shim, the shim is on
+    PATH but needs the real HOME to resolve its tool, so under the virgin HOME
+    ``tmux -V`` prints a mise error and no version, and the test failed before
+    reaching the scope check. The stand-in answers ``-V`` with a qualifying
+    version and, like a real idle machine, reports ``no server running`` for
+    everything else -- which is exactly what makes ``auto_clean_zombies``
+    return early. Any later tmux call fails loudly (exit 1), so a tmux
+    dependency moving ahead of the scope check would surface, not hide.
     """
     bin_dir.mkdir(parents=True, exist_ok=True)
     fake_claude = bin_dir / "claude"
     fake_claude.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake_claude.chmod(0o755)
+    fake_tmux = bin_dir / "tmux"
+    fake_tmux.write_text(
+        "#!/bin/sh\n"
+        'if [ "$1" = "-V" ]; then echo "tmux 3.5a"; exit 0; fi\n'
+        'echo "no server running on /tmp/tmux-fake/default" >&2\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    fake_tmux.chmod(0o755)
     return bin_dir
 
 
