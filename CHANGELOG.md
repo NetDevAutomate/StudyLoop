@@ -119,6 +119,13 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- A database stopped at exactly v5 in rollback-journal mode failed to migrate
+  with `cannot change into wal mode from within a transaction`: the
+  pragma-only v6 migration was executed inside `migrate()`'s `BEGIN
+  IMMEDIATE` as the first statement, before any page was dirty, where SQLite
+  refuses it instead of ignoring it. Pragma-only migrations now run only
+  after the commit, where they already had to be re-applied to take effect.
+
 - Ending any Kiro session could overwrite the learner's `study-mentor.json`
   with a stale copy. The Kiro adapter swaps a generated agent file onto
   `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what

@@ -161,11 +161,19 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             description, migration_func = MIGRATIONS[version]
             logger.info(f"Applying migration v{version}: {description}")
 
-            migration_func(conn)
+            if version in PRAGMA_ONLY_VERSIONS:
+                # Deferred past the commit, never run in here. Inside the
+                # transaction a journal_mode change is a silent no-op once a
+                # page is dirty -- but when the pragma-only migration is the
+                # FIRST pending one (a database stopped at exactly v5) nothing
+                # is dirty yet and SQLite refuses it outright: "cannot change
+                # into wal mode from within a transaction", which rolled back
+                # the whole run.
+                pragma_only_applied.append(version)
+            else:
+                migration_func(conn)
             set_user_version(conn, version)
             applied.append(f"v{version}: {description}")
-            if version in PRAGMA_ONLY_VERSIONS:
-                pragma_only_applied.append(version)
 
         # One commit for the entire sequence, so the lock is never released
         # part-way through and no other migrator can observe a half-applied
@@ -174,7 +182,9 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             conn.commit()
 
             # Only now, with no transaction open, can the pragma-only
-            # migrations actually take effect. See PRAGMA_ONLY_VERSIONS.
+            # migrations actually take effect. See PRAGMA_ONLY_VERSIONS. (A
+            # caller that owns the transaction keeps its own journal/foreign
+            # key settings; init_db sets both before it ever migrates.)
             for version in pragma_only_applied:
                 MIGRATIONS[version][1](conn)
         else:

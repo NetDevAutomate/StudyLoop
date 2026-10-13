@@ -1327,3 +1327,38 @@ class TestMigrationV29UpdatedAtAutoStamp:
             f"touch updated_at must still bump it (got before={before!r}, "
             f"after={after!r})"
         )
+
+
+class TestPragmaOnlyMigrationFirstInSequence:
+    """A pragma-only migration must not be the statement that opens the run.
+
+    ``migrate()`` wraps the sequence in ``BEGIN IMMEDIATE``. SQLite makes
+    ``PRAGMA journal_mode=WAL`` a silent no-op inside a transaction *once a
+    page is dirty* -- but when v6 is the first pending migration (a database
+    stopped at exactly v5) nothing is dirty yet, and it refuses: "cannot change
+    into wal mode from within a transaction". The run rolled back every time.
+    """
+
+    def _rollback_journal_db_at_v5(self, tmp_path: Path) -> Path:
+        db_path = tmp_path / "v5.db"
+        conn = sqlite3.connect(db_path)
+        conn.executescript(SCHEMA_PATH.read_text())
+        for version in range(1, 6):
+            MIGRATIONS[version][1](conn)
+            set_user_version(conn, version)
+        conn.commit()
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        conn.close()
+        return db_path
+
+    def test_v5_database_in_rollback_journal_mode_migrates_to_current(self, tmp_path):
+        conn = sqlite3.connect(self._rollback_journal_db_at_v5(tmp_path))
+        try:
+            applied = migrate(conn)
+
+            assert get_user_version(conn) == CURRENT_VERSION
+            assert applied[0].startswith("v6:")
+            # v6 still takes effect -- after the commit, where it can.
+            assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+        finally:
+            conn.close()
