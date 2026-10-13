@@ -157,7 +157,10 @@ experience may change before `1.0.0`.
   unit test (one machine's is pinned to `all-mpnet-base-v2`, which is how
   `test_load_indicator`'s warm test failed there), and never the one
   searches use under either override. It now resolves the database the way
-  every other reader does.
+  every other reader does, and the `agent-session-tools` test conftest
+  mirrors the repo-root `STUDYLOOP_DB` isolation it already mirrored for
+  `STUDYLOOP_STATE_DIR`, so a package-rooted `pytest` run cannot reach the
+  real database either.
 - Ending any Kiro session could overwrite the learner's `study-mentor.json`
   with a stale copy. The Kiro adapter swaps a generated agent file onto
   `~/.kiro/agents/study-mentor.json` for a terminal session, backing up what

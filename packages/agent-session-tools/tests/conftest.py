@@ -78,15 +78,23 @@ def _isolated_state_dir(tmp_path, monkeypatch):
 
     The repo-root ``conftest.py`` does this for the whole workspace, but it is
     only loaded when pytest's rootdir is the repo root -- this package has its
-    own ``pyproject.toml``, so running its tests directly makes THIS the
-    rootdir and that file is never imported. Without this fixture, anything
-    that persists state (``load_indicator``'s encoder-load durations, lane A4)
-    writes into the learner's real ``~/.local/share/studyloop`` from a unit
-    test, which is exactly the leak
+    own ``pyproject.toml``, so running its tests directly (or naming a path
+    under it on the command line) makes THIS the rootdir and that file is
+    never imported. Without this fixture, anything that persists state
+    (``load_indicator``'s encoder-load durations, lane A4) writes into the
+    learner's real ``~/.local/share/studyloop`` from a unit test, which is
+    exactly the leak
     ``private-docs/0005-vendor-picker-lists-repo-directories.md`` records.
+
+    ``STUDYLOOP_DB`` is mirrored for the same reason: ``get_db_path()`` falls
+    through to the learner's real ``~/.config/studyloop/sessions.db`` without
+    it, so a reader that resolves the database at call time (the query-encoder
+    warm's model pin) saw whatever that machine's corpus was last embedded with
+    -- a test that passed on one machine and failed on another.
     """
     state = tmp_path / "isolated-state"
     monkeypatch.setenv("STUDYLOOP_STATE_DIR", str(state))
+    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "isolated-sessions.db"))
 
 
 @pytest.fixture
