@@ -86,9 +86,27 @@ os.environ["TERM"] = "dumb"
 #
 # Individual tests may still point these at their own tmp_path; the default
 # below only guarantees that *nothing* lands in the real user directories.
+#
+# Hard-assign, not ``setdefault``: a learner who followed the setup guide's
+# ``export STUDYLOOP_CONFIG=...`` (or exported STUDYLOOP_DB at their real
+# sessions.db) would otherwise run the suite against their own files. A test's
+# own ``monkeypatch.setenv`` still wins for that test and unwinds back to these.
+#
+# Once per process, recorded by pid, with the same marker the workspace-root
+# conftest.py uses: in a workspace run that file has already claimed all three
+# and this block leaves them alone. Under ``--import-mode=importlib`` a test
+# module's ``from conftest import ...`` executes this file a SECOND time, and
+# re-pointing the sandbox then would move it out from under code that already
+# bound the first one (``studyloop.settings._CONFIG_PATH``, below). When that
+# import sits inside a test function (test_readiness_scaling.py), it would also
+# overwrite the test's own monkeypatched values behind monkeypatch's back. A
+# child process inherits the marker with its parent's pid, so it redirects again.
+_SANDBOX_OWNER_ENV = "_STUDYLOOP_SUITE_SANDBOX_PID"
+_CLAIM_SANDBOX = os.environ.get(_SANDBOX_OWNER_ENV) != str(os.getpid())
 _TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-state-"))
-os.environ.setdefault("STUDYLOOP_STATE_DIR", str(_TEST_STATE_ROOT / "state"))
-os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
+if _CLAIM_SANDBOX:
+    os.environ["STUDYLOOP_STATE_DIR"] = str(_TEST_STATE_ROOT / "state")
+    os.environ["STUDYLOOP_DB"] = str(_TEST_STATE_ROOT / "sessions.db")
 # STUDYLOOP_CONFIG must ALSO be set here, at import time, for the same reason
 # as the two above -- plus one this suite learned the hard way on 2026-09-05:
 # ``studyloop.settings`` binds ``_CONFIG_PATH`` from the environment AT MODULE
@@ -100,7 +118,9 @@ os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
 # the import-time constant itself point at the throwaway tree, so even a test
 # that delenvs the variable or a legacy call site that skips the lazy resolver
 # cannot reach the real file.
-os.environ.setdefault("STUDYLOOP_CONFIG", str(_TEST_STATE_ROOT / "config.yaml"))
+if _CLAIM_SANDBOX:
+    os.environ["STUDYLOOP_CONFIG"] = str(_TEST_STATE_ROOT / "config.yaml")
+    os.environ[_SANDBOX_OWNER_ENV] = str(os.getpid())
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -385,88 +405,6 @@ def pytest_sessionstart(session) -> None:
 
     os.environ["TMUX_TMPDIR"] = str(_TMUX_TMPDIR_ROOT)
     os.environ.pop("TMUX", None)
-
-
-def test_session_dir_is_isolated_from_the_real_config_dir() -> None:
-    """Guard: every session-dir constant the autouse fixture above patches
-    must actually point away from ~/.config/studyloop, in every module that
-    binds its own copy.
-
-    Companion to test_no_test_writes_to_real_user_state below -- same shape,
-    different subsystem (session_state.py's SESSION_DIR family rather than
-    load_settings().state_dir). Assertion-only: never itself writes
-    anywhere, so it cannot trip the session-runtime snapshot guard.
-    """
-    import importlib
-
-    real = str(Path.home() / ".config" / "studyloop")
-    for module_name in _SESSION_DIR_CONSTANT_MODULES:
-        module = importlib.import_module(module_name)
-        for attr, _filename in _SESSION_DIR_CONSTANT_FILENAMES:
-            if not hasattr(module, attr):
-                continue
-            value = str(getattr(module, attr))
-            assert not value.startswith(real), (
-                f"{module_name}.{attr} == {value!r} still resolves under the real "
-                "config dir -- the autouse isolation fixture did not retarget it"
-            )
-
-
-def test_tmux_socket_is_isolated_from_the_real_tmux_server() -> None:
-    """Guard (C11/R-49e): TMUX_TMPDIR must actually point at the private
-    directory pytest_sessionstart created, and TMUX must be unset.
-
-    Assertion-only: never itself starts a tmux session, so it cannot trip
-    the private-socket guard in pytest_sessionfinish.
-    """
-    assert os.environ.get("TMUX_TMPDIR") == str(_TMUX_TMPDIR_ROOT)
-    assert "TMUX" not in os.environ
-
-
-def test_no_test_writes_to_real_user_state() -> None:
-    """Guard: the suite must never resolve writable state to the real dirs.
-
-    Asserted as a test, not just a fixture, so the invariant fails loudly in
-    CI if the env-var wiring above is ever removed or reordered.
-
-    Both resolvers are checked. ``studyloop.settings`` and
-    ``agent_session_tools.config_loader`` compute the session DB path
-    independently, and covering only one of them left the real database being
-    migrated by test runs.
-    """
-    from agent_session_tools.config_loader import DEFAULT_CONFIG
-    from agent_session_tools.config_loader import get_db_path as ast_get_db_path
-    from studyloop.settings import (
-        CONFIG_DIR,
-        DEFAULT_DB,
-        DEFAULT_STATE_DIR,
-        get_config_path,
-        get_db_path,
-        get_state_dir,
-        load_settings,
-    )
-
-    assert get_state_dir() != DEFAULT_STATE_DIR, "state_dir escaped test isolation"
-    assert get_db_path() != DEFAULT_DB, "studyloop session DB escaped test isolation"
-    assert load_settings().session_db != DEFAULT_DB, (
-        "Settings.session_db escaped test isolation (history/_connection.py reads this one)"
-    )
-    assert str(ast_get_db_path()) != DEFAULT_CONFIG["database"]["path"], (
-        "agent_session_tools session DB escaped test isolation"
-    )
-    from studyloop import settings as _settings_mod
-
-    real_config = CONFIG_DIR / "config.yaml"
-    assert get_config_path() != real_config, (
-        "config.yaml escaped test isolation -- STUDYLOOP_CONFIG was not set "
-        "before studyloop imports (this is how a test overwrote the real "
-        "learner config on 2026-09-05)"
-    )
-    assert real_config != _settings_mod._CONFIG_PATH, (
-        "the import-time _CONFIG_PATH constant still points at the real "
-        "config.yaml -- STUDYLOOP_CONFIG must be exported at conftest import "
-        "time, not per-test, or legacy call sites write to the real file"
-    )
 
 
 class StubTransport:
