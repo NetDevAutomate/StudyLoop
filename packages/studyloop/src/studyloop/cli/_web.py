@@ -136,12 +136,19 @@ def web(
         console.print(f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}")
 
     host = "0.0.0.0" if lan else "127.0.0.1"
+    # Per-process server secret (F-WEB-20, 2026-10-21 review): `/` hands it to
+    # the browser as an HttpOnly, SameSite=Strict cookie and `/api/*` plus both
+    # WebSockets require it, so no cross-site page can drive the API or the
+    # terminal. Never printed, never stored: a restart mints a new one and an
+    # open tab picks it up on its next load of `/`.
+    server_secret = secrets.token_urlsafe(32)
     app = create_app(
         study_dirs=study_dirs,
         username=username,
         password=password,
         dev_mode=dev,
         dev_engine=dev_engine,
+        server_secret=server_secret,
     )
     access_info = build_web_access_info(
         bind_host=host,

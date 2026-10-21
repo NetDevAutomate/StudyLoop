@@ -7,10 +7,13 @@ Two questions are answered here:
   name in ``Host``; refusing names the server does not own is what stops it
   (F-WEB-03 in the 2026-10-21 review).
 - Which ``Origin`` may open a WebSocket (:func:`origin_allowed`).
+- Whether a request carries the per-process server secret
+  (:func:`requires_server_secret`, :func:`server_secret_presented`).
 """
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 import os
 from typing import TYPE_CHECKING, Any
@@ -79,6 +82,36 @@ def is_in_process_test_scope(scope: Mapping[str, Any]) -> bool:
     """Whether this ASGI scope came from Starlette's in-process ``TestClient``."""
     server = scope.get("server")
     return bool(server) and server[0] == IN_PROCESS_TEST_HOST
+
+
+#: The cookie carrying the per-process server secret (F-WEB-20). ``studyloop web``
+#: mints the secret at start; ``/`` hands it to the browser HttpOnly and
+#: SameSite=Strict; ``/api/*`` and both WebSockets require it.
+AUTH_COOKIE = "studyloop_auth"
+
+
+def requires_server_secret(path: str) -> bool:
+    """Whether a request to *path* must present the server secret.
+
+    Everything under ``/api`` except the ``practice_check`` loopback hop, which
+    ``studyloop drill`` (a CLI process with no browser cookie) calls with its own
+    per-session capability token, checked by that route.
+    """
+    from studyloop.modules.hop import ROUTE as PRACTICE_CHECK_ROUTE
+
+    if path == PRACTICE_CHECK_ROUTE:
+        return False
+    return path == "/api" or path.startswith("/api/")
+
+
+def server_secret_presented(cookie_header: str, secret: str) -> bool:
+    """Whether the ``Cookie`` header carries *secret*, compared in constant time."""
+    from starlette.requests import cookie_parser
+
+    presented = cookie_parser(cookie_header).get(AUTH_COOKIE, "")
+    # Bytes, not str: compare_digest raises TypeError on non-ASCII str, and the
+    # presented value is whatever the client chose to send.
+    return bool(presented) and hmac.compare_digest(presented.encode(), secret.encode())
 
 
 def host_allowed(host_header: str, *, in_process_test: bool = False) -> bool:

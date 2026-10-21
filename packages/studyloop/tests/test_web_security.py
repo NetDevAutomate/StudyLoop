@@ -13,10 +13,70 @@ Every test drives the app in-process (``TestClient``); none binds a port.
 
 from __future__ import annotations
 
-import pytest
-from fastapi.testclient import TestClient
+from typing import TYPE_CHECKING, Any
 
+import pytest
+from _helpers import run_async
+from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
+
+from conftest import StubTransport  # pyright: ignore[reportAttributeAccessIssue]
+from studyloop.session import active
+from studyloop.session.transport import SessionConfig, Started
 from studyloop.web.app import create_app
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def _no_live_session():
+    run_async(active.release())
+    yield
+    run_async(active.release())
+
+
+def _start_stub_session(tmp_path: Path) -> None:
+    config = SessionConfig(
+        study_session_id="study-1",
+        agent="claude",
+        persona_file=str(tmp_path / "persona.md"),
+        cwd=str(tmp_path),
+        env={},
+        cols=80,
+        rows=24,
+    )
+    stub = StubTransport(events=[Started(agent="claude")])
+    run_async(active.acquire(config, lambda: stub))
+
+
+def _run_studyloop_web(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *args: str
+) -> tuple[dict[str, Any], str]:
+    """Run ``studyloop web`` up to the point it would serve; return what it would serve.
+
+    ``uvicorn.Server.run`` is replaced so nothing binds a port; the captured
+    app is the exact object the real command hands to uvicorn.
+    """
+    import uvicorn
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "config.yaml"))
+    monkeypatch.delenv("STUDYLOOP_WEB_PASSWORD", raising=False)
+    monkeypatch.setattr("studyloop.cli._web._candidate_lan_hosts", lambda: ("192.168.1.42",))
+    captured: dict[str, Any] = {}
+
+    def capture(server: Any, *_args: Any, **_kwargs: Any) -> None:
+        captured["app"] = server.config.app
+        captured["host"] = server.config.host
+
+    monkeypatch.setattr(uvicorn.Server, "run", capture)
+    result = CliRunner().invoke(cli, ["web", *args])
+    assert result.exit_code == 0, result.output
+    return captured, result.output
+
 
 # ---------------------------------------------------------------------------
 # F-WEB-03 — Host allowlist (DNS rebinding)
@@ -39,8 +99,6 @@ class TestHostAllowlist:
         assert client.get("/api/session/state", headers={"Host": host}).status_code == 200
 
     def test_foreign_host_on_the_terminal_socket_is_refused_before_accept(self) -> None:
-        from starlette.websockets import WebSocketDisconnect
-
         client = TestClient(create_app())
         with (
             pytest.raises(WebSocketDisconnect) as exc_info,
@@ -103,3 +161,128 @@ class TestOriginPolicy:
         from studyloop.web.ws_origin import origin_allowed
 
         assert origin_allowed(origin, host=host) is allowed
+
+
+# ---------------------------------------------------------------------------
+# F-WEB-20 — per-process server secret on /api/* and both WebSockets
+# ---------------------------------------------------------------------------
+
+
+class TestServerSecret:
+    def test_ws_without_server_secret_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A client that never loaded the page gets no terminal, even with a loopback Origin."""
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        _start_stub_session(tmp_path)
+        client = TestClient(captured["app"])
+
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/api/session/ws", headers={"Origin": "http://localhost"}
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+    def test_browser_flow_with_the_cookie_from_index_reaches_api_and_terminal(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """The normal flow: load ``/``, keep its cookie, then the API and the terminal work."""
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        _start_stub_session(tmp_path)
+        client = TestClient(captured["app"])
+
+        index = client.get("/")
+        assert index.status_code == 200
+        set_cookie = index.headers["set-cookie"]
+        assert set_cookie.startswith("studyloop_auth=")
+        assert "httponly" in set_cookie.lower()
+        assert "samesite=strict" in set_cookie.lower()
+
+        assert client.get("/api/session/state").status_code == 200
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1", headers={"Origin": "http://localhost"}
+        ) as ws:
+            assert ws.receive_json() == {"type": "started", "agent": "claude"}
+
+    @pytest.mark.parametrize(
+        "cookie",
+        [None, "studyloop_auth=wrong", "studyloop_auth=caf\u00e9".encode(), "other=1"],
+    )
+    def test_api_request_without_the_right_cookie_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, cookie: str | bytes | None
+    ) -> None:
+        """Covers the cross-site form post too: SameSite=Strict means it arrives with no cookie.
+
+        The non-ASCII value goes on the wire as raw UTF-8 bytes: a constant-time
+        compare on ``str`` would raise on it and turn a refusal into a 500.
+        """
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        client = TestClient(captured["app"])
+        headers: dict[str, Any] = {"Cookie": cookie} if cookie else {}
+
+        response = client.post("/api/session/end", headers=headers)
+
+        assert response.status_code == 403
+        assert response.json()["code"] == "server_secret_required"
+
+    def test_content_generation_socket_also_requires_the_secret(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        client = TestClient(captured["app"])
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/api/content/generate/ws?job_id=gen-x", headers={"Origin": "http://localhost"}
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+    def test_practice_check_hop_keeps_its_own_capability_gate(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``studyloop drill`` has no browser cookie; its route checks its own token."""
+        from studyloop.modules.hop import ROUTE
+
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        client = TestClient(captured["app"])
+        response = client.post(ROUTE, json={})
+        assert response.json().get("code") != "server_secret_required"
+
+    def test_secret_is_never_printed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path)
+        client = TestClient(captured["app"])
+        client.get("/")
+        secret = client.cookies["studyloop_auth"]
+        assert len(secret) >= 32
+        assert secret not in output
+
+    def test_each_studyloop_web_process_mints_its_own_secret(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        secrets_seen = set()
+        for _ in range(2):
+            captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+            client = TestClient(captured["app"])
+            client.get("/")
+            secrets_seen.add(client.cookies["studyloop_auth"])
+        assert len(secrets_seen) == 2
+
+    def test_lan_401_does_not_hand_out_the_cookie(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """The cookie is set on a successful ``/`` only, never beside a Basic-auth refusal."""
+        captured, _ = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
+        client = TestClient(captured["app"])
+        response = client.get("/", headers={"Host": "192.168.1.42:8567"})
+        assert response.status_code == 401
+        assert "set-cookie" not in response.headers
+
+    def test_in_process_create_app_leaves_the_cookie_gate_off(self) -> None:
+        """``create_app()`` without a secret (tests, embedding) keeps today's behaviour."""
+        response = TestClient(create_app()).get("/api/session/state")
+        assert response.status_code == 200
