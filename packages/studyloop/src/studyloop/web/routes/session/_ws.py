@@ -11,7 +11,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from studyloop.web.routes.session._router import router
 from studyloop.web.routes.session._transport import _PermissionResponder
-from studyloop.web.ws_origin import origin_allowed
+from studyloop.web.ws_origin import is_in_process_test_scope, origin_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,9 @@ async def live_session_socket(websocket: WebSocket) -> None:
     # a failed upgrade. After accept() we can only send a WS close frame.
     origin = websocket.headers.get("origin", "")
     host = websocket.headers.get("host", "")
-    if not origin_allowed(origin, host=host):
+    if not origin_allowed(
+        origin, host=host, in_process_test=is_in_process_test_scope(websocket.scope)
+    ):
         logger.warning("WS /session/ws rejected: disallowed origin=%r host=%r", origin, host)
         await websocket.close(code=_WS_CLOSE_POLICY)
         return

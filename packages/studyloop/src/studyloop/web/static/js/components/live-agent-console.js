@@ -475,29 +475,13 @@ export function liveAgentConsole(origin = 'study') {
                 this._handlePlan(frame.payload);
               }
             } else if (frame.kind === 'request_permission') {
+              /* Always the learner's decision, including during the invisible
+                 persona-injection turn: answering it here, with no prompt and no
+                 click, granted whatever tool call the persona turn triggered
+                 (F-WEB-02, 2026-10-21 review). The prompt renders over the
+                 "Setting up your mentor…" banner; nothing is sent until a click. */
               if (this.terminalMode === 'acp-chat') {
-                if (this._suppressStreamingBubble) {
-                  /* Auto-allow during the persona-injection turn. The user
-                     hasn't typed anything yet — surfacing a permission
-                     prompt for tool calls the persona triggered would be
-                     confusing UX. Pick allow_once if available, else the
-                     first option. */
-                  const opts = (frame.payload && frame.payload.options) || [];
-                  const chosen =
-                    opts.find((o) => o && o.kind === 'allow_once') ||
-                    opts.find((o) => o && o.kind === 'allow_always') ||
-                    opts[0];
-                  const rid = frame.payload && frame.payload._request_id;
-                  if (rid && chosen && this._ws) {
-                    this._ws.send(JSON.stringify({
-                      type: 'permission_response',
-                      requestId: rid,
-                      outcome: { outcome: 'selected', optionId: chosen.optionId },
-                    }));
-                  }
-                } else {
-                  this._handleRequestPermission(frame.payload);
-                }
+                this._handleRequestPermission(frame.payload);
               }
             }
           }

@@ -215,12 +215,113 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
+class RequestBoundaryMiddleware:
+    """Refuse a request before routing when its ``Host`` is not one this server
+    answers to (``ws_origin.host_allowed``), or, when a per-process server
+    secret is configured, when an ``/api/*`` request or WebSocket lacks it.
+
+    DNS rebinding (F-WEB-03, 2026-10-21 review): a page on attacker.example
+    re-resolves its own name to 127.0.0.1 and becomes same-origin with the
+    dashboard, every ``/api/*`` route and the terminal WebSocket. The browser
+    still sends ``Host: attacker.example``, so checking Host here, ahead of every
+    route, middleware and Basic-auth check, is what closes it. HTTP gets 400;
+    a WebSocket is closed with 1008 before accept, which the client sees as a
+    refused upgrade.
+
+    Server secret (F-WEB-20): ``studyloop web`` mints one per process. ``GET /``
+    sets it as an HttpOnly, SameSite=Strict cookie; ``/api/*`` (HTTP 403) and
+    both WebSockets (1008) require it. SameSite=Strict keeps the browser from
+    attaching it to any cross-site request, which closes cross-site form posts
+    and socket opens. It does NOT stop a local process that loads ``/`` first
+    and replays the cookie: that needs the secret delivered out of band (see
+    the lane-3 log of the 2026-10-21 review). Empty secret, the ``create_app``
+    default, turns this half off.
+
+    Wraps the finished FastAPI app (inside ``SecurityHeadersMiddleware``, so a
+    refusal still carries the security headers) and forwards attribute access
+    to it the same way, so ``create_app().state`` and friends keep working.
+    """
+
+    def __init__(self, app, *, server_secret: str = "") -> None:  # type: ignore[no-untyped-def]
+        self.app = app
+        self._server_secret = server_secret
+
+    def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
+        return getattr(self.app, name)
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        if scope["type"] not in {"http", "websocket"}:
+            await self.app(scope, receive, send)
+            return
+
+        from starlette.datastructures import Headers
+
+        from studyloop.web.ws_origin import (
+            AUTH_COOKIE,
+            host_allowed,
+            is_in_process_test_scope,
+            requires_server_secret,
+            server_secret_presented,
+        )
+
+        headers = Headers(scope=scope)
+        if not host_allowed(
+            headers.get("host", ""), in_process_test=is_in_process_test_scope(scope)
+        ):
+            await _refuse(scope, receive, send, status=400, detail="Invalid host header")
+            return
+
+        secret = self._server_secret
+        if secret:
+            path = scope.get("path", "")
+            if requires_server_secret(path) and not server_secret_presented(
+                headers.get("cookie", ""), secret
+            ):
+                await _refuse(
+                    scope,
+                    receive,
+                    send,
+                    status=403,
+                    detail="This request lacks the StudyLoop server cookie. Reload the page.",
+                    code="server_secret_required",
+                )
+                return
+            if scope["type"] == "http" and path == "/" and scope.get("method") == "GET":
+                cookie = f"{AUTH_COOKIE}={secret}; HttpOnly; SameSite=Strict; Path=/"
+                send = _with_cookie_on_success(send, cookie)
+
+        await self.app(scope, receive, send)
+
+
+def _with_cookie_on_success(send, cookie: str):  # type: ignore[no-untyped-def]
+    """Wrap *send* so a 200 response also sets *cookie* (a 401 from Basic auth does not)."""
+
+    async def send_with_cookie(message) -> None:  # type: ignore[no-untyped-def]
+        if message["type"] == "http.response.start" and message.get("status") == 200:
+            MutableHeaders(scope=message).append("set-cookie", cookie)
+        await send(message)
+
+    return send_with_cookie
+
+
+async def _refuse(  # type: ignore[no-untyped-def]
+    scope, receive, send, *, status: int, detail: str, code: str = ""
+) -> None:
+    """Answer a refused request: an HTTP status, or a pre-accept 1008 close."""
+    if scope["type"] == "websocket":
+        await send({"type": "websocket.close", "code": 1008})
+        return
+    content = {"code": code, "detail": detail} if code else {"detail": detail}
+    await JSONResponse(status_code=status, content=content)(scope, receive, send)
+
+
 def create_app(
     study_dirs: list[str] | None = None,
     username: str = "study",
     password: str = "",
     dev_mode: bool = False,
     dev_engine: str | None = None,
+    server_secret: str = "",
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -237,6 +338,11 @@ def create_app(
                     this is not set. Ignored (and left unvalidated) when
                     dev_mode=False. Raises ValueError at startup for an unknown
                     engine name.
+        server_secret: Per-process secret ``/`` sets as a cookie and ``/api/*``
+                    plus both WebSockets require (``RequestBoundaryMiddleware``).
+                    ``studyloop web`` mints one at start; empty (the default for
+                    in-process callers) leaves the cookie gate off. The Host
+                    check applies either way.
     """
     from studyloop.web.dev_engines import resolve_dev_engine
 
@@ -399,4 +505,10 @@ def create_app(
     # instance, so it remains a drop-in replacement for every caller that
     # holds onto create_app()'s return value -- but it is not actually a
     # FastAPI subclass, hence the ignore below.
-    return SecurityHeadersMiddleware(app)  # type: ignore[return-value]
+    #
+    # RequestBoundaryMiddleware sits directly inside it: the first layer that
+    # judges a request, ahead of routing and every add_middleware() layer
+    # (Basic auth included), with only the header decorator outside it.
+    return SecurityHeadersMiddleware(  # type: ignore[return-value]
+        RequestBoundaryMiddleware(app, server_secret=server_secret)
+    )

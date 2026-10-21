@@ -425,6 +425,22 @@ Access the live dashboard from your iPad at `http://<mac-ip>:8567/session`. Use 
 2. `lan_password` in `~/.config/studyloop/config.yaml`
 3. Auto-generated (displayed in terminal output, saved to session state)
 
+`--lan` never serves without a password: when neither source is set, one is generated.
+
+**Security caveats.** `--lan` serves plain HTTP on every interface. Read these before using it:
+
+- Basic authentication does **not** encrypt the password, requests, responses or terminal traffic.
+- LAN peers or intermediaries able to observe traffic may steal credentials and study content; active intermediaries may tamper with traffic.
+- Never reuse a password, expose this mode directly to the Internet, or treat public/shared Wi-Fi as trusted.
+- Prefer loopback access through an authenticated encrypted tunnel, or a correctly configured HTTPS/WSS reverse proxy with the application bound to loopback.
+- `0.0.0.0` exposes every IPv4 interface unless a firewall restricts access.
+
+**Reach the Mac by its IP address**, as printed under `LAN:`. The server answers only `localhost`, IP addresses, and names you list, which is what stops a DNS-rebinding web page from reaching it. A hostname such as `<mac-name>.local` gets HTTP 400 until you list it:
+
+```bash
+export STUDYLOOP_ALLOWED_ORIGINS=http://<mac-name>.local:8567
+```
+
 ### Hosts — Cross-Machine Sync
 
 #### Prerequisites: Passwordless SSH
