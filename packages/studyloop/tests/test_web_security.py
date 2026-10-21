@@ -76,3 +76,30 @@ class TestHostAllowlist:
         assert not host_allowed("testserver")
         assert not is_in_process_test_scope({"server": ("127.0.0.1", 8567)})
         assert is_in_process_test_scope({"server": ["testserver", 80]})
+
+
+# ---------------------------------------------------------------------------
+# F-WEB-03 — WebSocket Origin no longer trusts the request's own Host
+# ---------------------------------------------------------------------------
+
+
+class TestOriginPolicy:
+    def test_ws_origin_equal_to_foreign_host_is_refused(self) -> None:
+        """Under rebinding Origin and Host are BOTH the attacker's name: equal, and foreign."""
+        from studyloop.web.ws_origin import origin_allowed
+
+        assert not origin_allowed("http://rebind.example:8567", host="rebind.example:8567")
+
+    @pytest.mark.parametrize(
+        ("origin", "host", "allowed"),
+        [
+            ("http://192.168.1.20:8567", "192.168.1.20:8567", True),  # LAN, same-origin
+            ("http://[::1]:5173", "127.0.0.1:8567", True),  # loopback dev origin
+            ("http://1.2.3.4", "127.0.0.1:8567", False),  # cross-site page by IP
+            ("http://testserver", "testserver", False),  # name alone grants nothing
+        ],
+    )
+    def test_origin_matrix(self, origin: str, host: str, allowed: bool) -> None:
+        from studyloop.web.ws_origin import origin_allowed
+
+        assert origin_allowed(origin, host=host) is allowed

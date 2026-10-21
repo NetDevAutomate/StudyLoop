@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-_LOCALHOST_NAMES = frozenset({"localhost", "127.0.0.1"})
+_LOCALHOST_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 
 #: Starlette's ``TestClient`` talks to the app in-process; its scope's ``server``
 #: is taken from the client's base URL, ``http://testserver`` by default. A real
@@ -104,13 +104,20 @@ def host_allowed(host_header: str, *, in_process_test: bool = False) -> bool:
     return in_process_test and name == IN_PROCESS_TEST_HOST
 
 
-def origin_allowed(origin: str, *, host: str = "") -> bool:
+def origin_allowed(origin: str, *, host: str = "", in_process_test: bool = False) -> bool:
     """Return whether a WebSocket Origin is allowed for the request Host.
 
     Rules are intentionally narrow:
-    - localhost / 127.0.0.1 are allowed on any port for local development.
+    - localhost / 127.0.0.1 / [::1] are allowed on any port for local development.
     - STUDYLOOP_ALLOWED_ORIGINS entries are exact matches.
-    - LAN origins are allowed only when the origin netloc matches Host exactly.
+    - Any other origin must be same-origin with this server: its netloc equals
+      Host exactly AND that Host passes :func:`host_allowed`.
+
+    The Host condition is the F-WEB-03 fix. Under DNS rebinding Origin and Host
+    are both the attacker's name, so "Origin == Host" alone admitted it. The
+    equality is still required on top of the Host allowlist: the allowlist
+    answers any IP literal, so "origin is on the allowlist" alone would let a
+    page served from some other address open the terminal socket.
     """
     origin = origin.strip()
     if not origin:
@@ -127,4 +134,8 @@ def origin_allowed(origin: str, *, host: str = "") -> bool:
     if parsed.scheme in {"http", "https"} and hostname in _LOCALHOST_NAMES:
         return True
 
-    return bool(host) and parsed.netloc.lower() == host.strip().lower()
+    return (
+        bool(host)
+        and parsed.netloc.lower() == host.strip().lower()
+        and host_allowed(host, in_process_test=in_process_test)
+    )
