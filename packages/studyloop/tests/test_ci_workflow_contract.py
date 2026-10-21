@@ -401,3 +401,11 @@ def test_removed_orphan_workflow_script_stays_removed() -> None:
     shared ``/tmp`` paths. Deleted, it must not drift back."""
     assert not (REPO_ROOT / "scripts" / "gen_quality_workflow.js").exists()
     assert _tracked_mentions("gen_quality_workflow") == []
+
+
+def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
+    """CHANGELOG.md is written by hand (docs/contributor-changelog.md, section 5);
+    no recipe or workflow generates it. A config whose usage line is
+    ``git cliff --output CHANGELOG.md`` tells the reader to replace that curated
+    history with commit subjects (``chore`` commits skipped). F-OPS-21@claude."""
+    assert _tracked_mentions("--output CHANGELOG.md") == []
