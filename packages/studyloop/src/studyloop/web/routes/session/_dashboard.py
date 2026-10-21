@@ -275,14 +275,29 @@ async def end_session() -> JSONResponse:
             status_code=404,
         )
 
-    from studyloop.session.cleanup import end_session_common
+    from studyloop.session.cleanup import SessionNotPersistedError, end_session_common
 
     # Persist FIRST, release second. ``active.release()`` unlinks the topics
     # and parking files (``clear_session_files``), so persisting after it
     # stored every browser-ended session as "No topics recorded during
     # session." (review 2026-10-21, F-WEB-01). end_session_common is
     # synchronous, so no grace timer or reaper tick can run in between.
-    topic = end_session_common(state)
+    try:
+        topic = end_session_common(state)
+    except SessionNotPersistedError:
+        # Nothing was torn down and nothing is released here: releasing would
+        # unlink the topics and parking files, the only copy of what the
+        # learner recorded. The End dialog stays open on a non-2xx and the
+        # same button retries (session-timer.js, R-70).
+        return JSONResponse(
+            {
+                "error": (
+                    "Could not save this session, so it is still running and its "
+                    "topics and parking lot were kept. Try ending it again."
+                )
+            },
+            status_code=503,
+        )
 
     # Then cancel any grace timer and release the singleton. A socket that
     # disconnected moments ago has scheduled a release for this session;

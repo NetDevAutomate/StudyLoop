@@ -127,3 +127,37 @@ def test_browser_end_persists_topics_and_parking_before_release(
     # agent was ended exactly once.
     assert run_async(active.current()) is None
     assert transport.end_calls == 1
+
+
+def test_end_with_persistence_failure_keeps_source_files(
+    client: TestClient, db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed save must leave the evidence where a retry can find it.
+
+    The browser's End dialog stays open and retries on any non-2xx response
+    (session-timer.js, R-70), so the route answers with an error, keeps the
+    session running and leaves the topics and parking files untouched.
+    """
+    from studyloop import history
+
+    study_id, transport = _start_live_session(tmp_path)
+    _record_evidence()
+    topics_before = session_state.TOPICS_FILE.read_text()
+    parking_before = session_state.PARKING_FILE.read_text()
+
+    def _locked(*_args: object, **_kwargs: object) -> bool:
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(history, "end_study_session", _locked)
+
+    resp = client.post("/api/session/end")
+
+    assert resp.status_code >= 500, resp.text
+    assert session_state.TOPICS_FILE.read_text() == topics_before
+    assert session_state.PARKING_FILE.read_text() == parking_before
+    assert session_state.read_session_state().get("study_session_id") == study_id
+    # The session was not torn down behind the learner's back.
+    current = run_async(active.current())
+    assert current is not None and current.study_session_id == study_id
+    assert transport.end_calls == 0
+    assert _stored_row(db, study_id)["ended_at"] is None
