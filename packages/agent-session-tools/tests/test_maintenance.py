@@ -495,6 +495,43 @@ class TestArchive:
         archive_conn.close()
         assert count == 2
 
+    def test_archive_twice_appends_second_batch(self, tmp_path):
+        """F-AST-05@claude: the second run re-inserted every archived
+        message into messages_fts with its existing rowid, which FTS5
+        refuses, so archiving worked once per machine."""
+        db_path = _make_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        _insert_session(db_path, "old-1", self._old_date(200))
+        _insert_message(db_path, "m-1", "old-1", content="first batch")
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        _insert_session(db_path, "old-2", self._old_date(150))
+        _insert_message(db_path, "m-2", "old-2", content="second batch")
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _count(archive_path, "sessions") == 2
+        assert _count(archive_path, "messages") == 2
+        assert _count(archive_path, "messages_fts") == 2
+        conn = sqlite3.connect(archive_path)
+        hits = conn.execute(
+            "SELECT session_id FROM messages_fts WHERE messages_fts MATCH 'batch'"
+            " ORDER BY session_id"
+        ).fetchall()
+        conn.close()
+        assert hits == [("old-1",), ("old-2",)]
+        assert _count(db_path, "sessions") == 0
+
+    def test_archiving_the_same_session_again_leaves_one_fts_entry(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        for _ in range(2):
+            _insert_session(db_path, "old-1", self._old_date(200))
+            _insert_message(db_path, "m-1", "old-1", content="re-imported")
+            assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _count(archive_path, "messages") == 1
+        assert _count(archive_path, "messages_fts") == 1
+
     def test_archive_preserves_all_columns(self, tmp_path):
         """Archive must not silently drop columns added by later migrations.
 

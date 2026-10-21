@@ -494,14 +494,26 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
             )
             source_conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
 
-        # Populate FTS index in archive from the messages table
-        # (no triggers in archive DB — insert directly after all messages are copied)
-        archive_conn.execute("""
+        # Index this run's sessions in the archive's FTS table (no triggers in
+        # the archive DB). Only this run's sessions: re-inserting rows an
+        # earlier run indexed reuses their rowids, which FTS5 refuses, so the
+        # second archive on a machine failed (F-AST-05). Clearing them first
+        # also drops entries left by a session archived again (INSERT OR
+        # REPLACE gives its messages new rowids).
+        placeholders = ",".join("?" * len(session_ids))
+        archive_conn.execute(
+            f"DELETE FROM messages_fts WHERE session_id IN ({placeholders})",
+            session_ids,
+        )
+        archive_conn.execute(
+            f"""
             INSERT INTO messages_fts(rowid, content, session_id, role)
             SELECT m.rowid, m.content, m.session_id, m.role
             FROM messages m
-            WHERE m.content IS NOT NULL
-        """)
+            WHERE m.content IS NOT NULL AND m.session_id IN ({placeholders})
+            """,
+            session_ids,
+        )
 
         archive_conn.commit()
         source_conn.commit()
