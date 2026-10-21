@@ -65,7 +65,7 @@ _tests_dir = Path(__file__).resolve().parents[2]
 if str(_tests_dir) not in sys.path:
     sys.path.insert(0, str(_tests_dir))
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import server_opener, start_web_server  # noqa: E402
 
 from acceptance.turn_script import load_turn_script  # noqa: E402
 from acceptance.uat.bundle import ManifestFields, RunCounts, write_bundle  # noqa: E402
@@ -237,9 +237,10 @@ def _end_session() -> None:
     import urllib.error
     import urllib.request
 
-    req = urllib.request.Request(f"http://127.0.0.1:{WEB_PORT}/api/session/end", method="POST")
+    base = f"http://127.0.0.1:{WEB_PORT}"
+    req = urllib.request.Request(f"{base}/api/session/end", method="POST")
     with contextlib.suppress(urllib.error.HTTPError, urllib.error.URLError):
-        urllib.request.urlopen(req, timeout=10)
+        server_opener(base).open(req, timeout=10)
 
 
 @pytest.fixture()

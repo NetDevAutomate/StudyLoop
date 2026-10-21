@@ -53,7 +53,6 @@ import stat
 import subprocess
 import sys
 import time
-import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -84,6 +83,8 @@ from .uat.redaction import RedactionLeakError, contains_forbidden_content
 _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import server_opener  # noqa: E402
 
 # Lane W's PUBLIC constants only; its helpers are private and copied into personas/world.py.
 from e2e.test_module_labs_journey import DRILL_REF, TASK, VALID_SCAFFOLD  # noqa: E402
@@ -632,9 +633,8 @@ class TestHarnessSelection:
                 "the fake agent was injected although a harness is selected"
             )
             assert world.harness == harness
-            with urllib.request.urlopen(
-                f"{world.server.base_url}/api/modules/labs", timeout=10
-            ) as r:
+            base = world.server.base_url
+            with server_opener(base).open(f"{base}/api/modules/labs", timeout=10) as r:
                 agents = {a["value"]: a for a in json.load(r)["agents"]}
             assert agents[harness]["available"] is True, agents[harness]
         finally:

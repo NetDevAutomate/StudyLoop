@@ -52,7 +52,7 @@ _tests_dir = Path(__file__).resolve().parent.parent
 if str(_tests_dir) not in sys.path:
     sys.path.insert(0, str(_tests_dir))
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import server_opener, start_web_server  # noqa: E402
 
 from acceptance.conftest import not_selected_marker, require_harness  # noqa: E402
 from acceptance.turn_script import load_turn_script  # noqa: E402
@@ -118,10 +118,11 @@ def _end_session(port: int) -> None:
 
     # No Basic auth: see the module docstring's AUTH NOTE -- the scratch
     # config this lane runs against sets no lan_password.
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/session/end", method="POST")
+    base = f"http://127.0.0.1:{port}"
+    req = urllib.request.Request(f"{base}/api/session/end", method="POST")
     # Already ended / nothing active is not this helper's job to assert.
     with contextlib.suppress(urllib.error.HTTPError):
-        urllib.request.urlopen(req, timeout=10)
+        server_opener(base).open(req, timeout=10)
 
 
 def _start_acp_session_via_api(page: Page, port: int) -> dict:
