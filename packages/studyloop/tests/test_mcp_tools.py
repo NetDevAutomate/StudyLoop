@@ -476,3 +476,17 @@ class TestGetStudyHistoryStruggles:
         topics = [row["topic"] for row in result["struggles"]]
         # Not "fixed" by handing back everyone's struggles: python only, sql excluded.
         assert topics == ["python"]
+
+
+class TestLogStruggleTruthfulness:
+    """F-LRN-10: ``log_struggle`` must not answer "logged" when nothing was stored."""
+
+    def test_log_struggle_raises_when_park_fails(self) -> None:
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        # park_topic's documented failure value: None for any sqlite3.Error.
+        with (
+            patch("studyloop.parking.park_topic", return_value=None),
+            pytest.raises(ToolError, match="not recorded"),
+        ):
+            _get_tool("log_struggle")(question="why ROWS not RANGE?", topic_tag="sql")

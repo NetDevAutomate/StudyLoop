@@ -865,6 +865,14 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         from studyloop.parking import park_topic
 
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
+        if row_id is None:
+            # park_topic returns None for any sqlite3.Error (it logs the cause).
+            # Answering "logged" would tell the learner the struggle is saved for
+            # later study when no row exists (F-LRN-10).
+            raise ToolError(
+                "struggle not recorded: the sessions database could not take the write "
+                "-- run `studyloop doctor`"
+            )
         return {"status": "logged", "id": row_id}
 
     @tool()
