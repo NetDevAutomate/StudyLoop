@@ -8,7 +8,9 @@ agent will run. These tests hold that text to the code it describes:
   Click tree (F-XCUT-10: the Kiro mentor named ``studyloop state`` and
   ``studyloop schedule``, which never existed);
 * every ``mcp[cli]`` spec handed to ``uvx --from`` must carry the same version
-  bound the pyproject declares (F-OPS-03).
+  bound the pyproject declares (F-OPS-03);
+* no file the installer projects into a harness carries developer-tool
+  steering meant for agents working on this repository (F-OPS-05).
 """
 
 from __future__ import annotations
@@ -217,3 +219,43 @@ def test_uvx_mcp_specs_carry_the_pyproject_upper_bound() -> None:
     pin = _pyproject_mcp_pin()
     unpinned = [f"{loc}: {spec}" for loc, spec in _uvx_mcp_spec_cases() if spec != pin]
     assert unpinned == [], f"expected {pin!r}:\n" + "\n".join(unpinned)
+
+
+# ---------------------------------------------------------------------------
+# installed mentor text carries no developer-tool steering
+# ---------------------------------------------------------------------------
+
+
+def _installed_repo_sources() -> list[Path]:
+    """Every repository file ``studyloop install agents`` links into a harness."""
+    from studyloop import installers
+
+    specs = [spec for specs in installers._TOOL_LINKS.values() for spec in specs]
+    specs.extend(installers._SHARED_LINKS)
+    files: set[Path] = set()
+    for spec in specs:
+        if not spec.source.startswith("agents/"):
+            continue  # hub-relative links (~/.agents/...) point back at these same sources
+        source = REPO_ROOT / spec.source
+        if source.is_dir():
+            files.update(p for p in source.rglob("*") if p.is_file())
+        elif source.is_file():
+            files.add(source)
+    return sorted(files)
+
+
+def test_installed_sources_include_the_codex_and_grok_persona() -> None:
+    assert REPO_ROOT / "agents" / "codex" / "AGENTS.md" in _installed_repo_sources()
+
+
+def test_mentor_definitions_carry_no_developer_tool_steering() -> None:
+    """F-OPS-05: agents/codex/AGENTS.md is the Codex and Grok Build learner
+    persona ("a strict Socratic mentor, not a code assistant"), yet it carried a
+    KiroGraph block telling the model to explore "this codebase" and to ask the
+    learner to run `kirograph init --index`. No other harness's mentor had it."""
+    hits = [
+        p.relative_to(REPO_ROOT).as_posix()
+        for p in _installed_repo_sources()
+        if "kirograph" in p.read_text(encoding="utf-8", errors="replace").lower()
+    ]
+    assert hits == []
