@@ -54,6 +54,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:  # pragma: no cover - import plumbing
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_opener  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
@@ -105,7 +106,7 @@ def live_env(tmp_path_factory: pytest.TempPathFactory) -> Generator[RunningServe
             req = urllib.request.Request(
                 f"{server.base_url}/api/session/end", data=b"", method="POST"
             )
-            urllib.request.urlopen(req, timeout=10)
+            server_opener(server.base_url).open(req, timeout=10)
         except Exception:
             pass
         _await_no_session(server.base_url)
@@ -130,16 +131,20 @@ def live_page(live_env: RunningServer, browser):
         req = urllib.request.Request(
             f"{live_env.base_url}/api/session/end", data=b"", method="POST"
         )
-        urllib.request.urlopen(req, timeout=10)
+        server_opener(live_env.base_url).open(req, timeout=10)
     _await_no_session(live_env.base_url)
 
 
 def _await_no_session(base_url: str, timeout: float = 15.0) -> None:
     """Block until the server reports no active session."""
     deadline = time.time() + timeout
+    try:
+        opener = server_opener(base_url)
+    except Exception:
+        return
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(f"{base_url}/api/session/state", timeout=5) as resp:
+            with opener.open(f"{base_url}/api/session/state", timeout=5) as resp:
                 import json as _json
 
                 if not _json.loads(resp.read()).get("study_session_id"):
