@@ -45,6 +45,7 @@ from _playwright_helpers import (  # noqa: E402
     auth_context_fixture_factory,
     clean_ipc,
     effective_credentials,
+    server_opener,
     start_web_server,
 )
 
@@ -173,7 +174,8 @@ def _end_session_over_http() -> None:
         creds = base64.b64encode(f"{user}:{password}".encode()).decode()
         req.add_header("Authorization", f"Basic {creds}")
     with contextlib.suppress(Exception):
-        urllib.request.urlopen(req, timeout=3)
+        # The server cookie `/` sets is required on /api (F-WEB-20).
+        server_opener(BASE, basic_auth=(user, password) if password else None).open(req, timeout=3)
 
 
 def _end_any_active_session(page: Page) -> None:
