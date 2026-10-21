@@ -237,7 +237,7 @@ Each agent has an `mcp.json` in its `agents/` directory. The server command uses
   "mcpServers": {
     "speaker": {
       "command": "uvx",
-      "args": ["--from", "mcp[cli]", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
+      "args": ["--from", "mcp[cli]>=1.0.0,<2", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
     }
   }
 }
@@ -251,7 +251,7 @@ Grok Build has no repo-owned `mcp.json` — it reads MCP servers from
 `~/.grok/config.toml`. Register the speaker server with the CLI:
 
 ```bash
-grok mcp add speaker -- uvx --from "mcp[cli]" mcp run /absolute/path/to/agents/mcp/study-speak-server.py
+grok mcp add speaker -- uvx --from "mcp[cli]>=1.0.0,<2" mcp run /absolute/path/to/agents/mcp/study-speak-server.py
 ```
 
 Or write the entry by hand:
@@ -259,7 +259,7 @@ Or write the entry by hand:
 ```toml
 [mcp_servers.speaker]
 command = "uvx"
-args = ["--from", "mcp[cli]", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
+args = ["--from", "mcp[cli]>=1.0.0,<2", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
 ```
 
 ---

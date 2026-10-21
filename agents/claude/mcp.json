@@ -22,7 +22,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "mcp[cli]",
+        "mcp[cli]>=1.0.0,<2",
         "mcp",
         "run",
         "/path/to/studyloop/agents/mcp/study-speak-server.py"

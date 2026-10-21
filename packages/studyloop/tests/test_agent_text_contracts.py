@@ -6,7 +6,9 @@ agent will run. These tests hold that text to the code it describes:
 
 * every ``studyloop ...`` command the text names must parse against the real
   Click tree (F-XCUT-10: the Kiro mentor named ``studyloop state`` and
-  ``studyloop schedule``, which never existed).
+  ``studyloop schedule``, which never existed);
+* every ``mcp[cli]`` spec handed to ``uvx --from`` must carry the same version
+  bound the pyproject declares (F-OPS-03).
 """
 
 from __future__ import annotations
@@ -164,3 +166,54 @@ def test_every_studyloop_command_in_agent_files_parses() -> None:
         if problem is not None:
             problems.append(f"{location}: {command!r} -> {problem}")
     assert problems == [], "\n".join(problems)
+
+
+# ---------------------------------------------------------------------------
+# uvx mcp[cli] specs carry the project's own version bound
+# ---------------------------------------------------------------------------
+
+_MCP_SPEC_RE = re.compile(r"mcp\[cli\][^\"'\s\]]*")
+#: How far before a spec to look for the uvx / --from that makes it a resolver input.
+_UVX_CONTEXT_CHARS = 60
+
+
+def _pyproject_mcp_pin() -> str:
+    extras = tomllib.loads(STUDYLOOP_PYPROJECT.read_text())["project"]["optional-dependencies"]
+    (pin,) = extras["mcp"]
+    assert pin.startswith("mcp[cli]"), pin
+    return pin
+
+
+def _uvx_mcp_spec_cases() -> list[tuple[str, str]]:
+    """(location, spec) for every ``mcp[cli]...`` handed to ``uvx --from``."""
+    paths = [p for p in sorted(AGENTS_DIR.rglob("*")) if p.is_file()]
+    paths.append(REPO_ROOT / "docs" / "voice-output.md")
+    cases: list[tuple[str, str]] = []
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        for match in _MCP_SPEC_RE.finditer(text):
+            before = text[max(0, match.start() - _UVX_CONTEXT_CHARS) : match.start()]
+            if "--from" in before or "uvx" in before:
+                line = text.count("\n", 0, match.start()) + 1
+                cases.append((f"{rel}:{line}", match.group(0)))
+    return cases
+
+
+def test_uvx_mcp_spec_scan_finds_the_installed_kiro_agent() -> None:
+    """Guard the scanner: the installed Kiro agent and the voice guide must be seen."""
+    locations = [loc for loc, _spec in _uvx_mcp_spec_cases()]
+    assert any(loc.startswith("agents/kiro/study-mentor.json:") for loc in locations)
+    assert any(loc.startswith("docs/voice-output.md:") for loc in locations)
+
+
+def test_uvx_mcp_specs_carry_the_pyproject_upper_bound() -> None:
+    """F-OPS-03: every manifest pins ``mcp[cli]>=1.0.0,<2``; a bare ``mcp[cli]``
+    given to ``uvx --from`` resolves whatever is newest instead, so the
+    study-speak server runs against an MCP SDK the project never accepted."""
+    pin = _pyproject_mcp_pin()
+    unpinned = [f"{loc}: {spec}" for loc, spec in _uvx_mcp_spec_cases() if spec != pin]
+    assert unpinned == [], f"expected {pin!r}:\n" + "\n".join(unpinned)
