@@ -48,6 +48,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_opener, server_session  # noqa: E402
 from e2e._env import ConsoleWatch, diag, goto_view, launch_env, shutdown  # noqa: E402
 
 if TYPE_CHECKING:
@@ -87,7 +88,7 @@ def env(tmp_path_factory):
         yield e
     finally:
         with contextlib.suppress(Exception):
-            urllib.request.urlopen(
+            server_opener(e.base_url).open(
                 urllib.request.Request(f"{e.base_url}/api/session/end", data=b"", method="POST"),
                 timeout=10,
             )
@@ -196,7 +197,7 @@ class TestEndingASessionIsFindableAndComplete:
         failure into a 30s timeout that names the wrong thing."""
         yield
         with contextlib.suppress(Exception):
-            urllib.request.urlopen(
+            server_opener(env.base_url).open(
                 urllib.request.Request(f"{env.base_url}/api/session/end", data=b"", method="POST"),
                 timeout=10,
             )
@@ -315,26 +316,22 @@ class TestEndingASessionIsFindableAndComplete:
 
 
 def _park_via_api(env, question: str) -> None:
-    import requests
-
-    response = requests.post(
+    response = server_session(env.base_url).post(
         f"{env.base_url}/api/parking/item", json={"question": question, "notes": ""}, timeout=15
     )
     assert response.status_code in (200, 201), response.text
 
 
 def _clear_parking(env) -> None:
-    import requests
-
     with contextlib.suppress(Exception):
-        requests.post(
+        server_session(env.base_url).post(
             f"{env.base_url}/api/parking/clear", json={"all": True, "hard": True}, timeout=15
         )
 
 
 def _end_any_session(env) -> None:
     with contextlib.suppress(Exception):
-        urllib.request.urlopen(
+        server_opener(env.base_url).open(
             urllib.request.Request(f"{env.base_url}/api/session/end", data=b"", method="POST"),
             timeout=10,
         )
@@ -561,8 +558,6 @@ class TestTheAgentIsTheCentreOfALiveSession:
             ctx.close()
 
     def test_the_note_topic_is_what_you_are_working_on(self, bd_page: Page, env) -> None:
-        import requests
-
         try:
             for topic in _STUDY_TOPICS[:3]:
                 _park_via_api(env, topic)
@@ -580,7 +575,11 @@ class TestTheAgentIsTheCentreOfALiveSession:
             bd_page.locator("#bd-note-title").fill("Filed under the activity")
             bd_page.locator("#bd-save-note").click()
             bd_page.wait_for_selector("#bd-note-saved", state="visible", timeout=10_000)
-            notes = requests.get(f"{env.base_url}/api/notes?limit=5", timeout=15).json()
+            notes = (
+                server_session(env.base_url)
+                .get(f"{env.base_url}/api/notes?limit=5", timeout=15)
+                .json()
+            )
             match = next(n for n in notes["notes"] if n["title"] == "Filed under the activity")
             assert match["topic"] == "Plan the allotment beds", match
         except Exception:

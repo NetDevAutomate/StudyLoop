@@ -45,6 +45,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_cookie_header  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
 pytestmark = pytest.mark.e2e
@@ -108,6 +109,8 @@ class Server:
         self.running: RunningServer = start_server(world)
         self.session_dir = world.session_dir
         self.base = self.running.base_url
+        # Loaded once from / and presented on every /api call and socket open.
+        self.cookie = server_cookie_header(self.base)
 
     # -- HTTP ---------------------------------------------------------------
 
@@ -117,7 +120,7 @@ class Server:
             f"{self.base}{path}",
             data=data,
             method="POST",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Cookie": self.cookie},
         )
         try:
             with urllib.request.urlopen(req, timeout=25) as resp:
@@ -126,7 +129,10 @@ class Server:
             return exc.code, json.loads(exc.read() or b"{}")
 
     def state(self) -> dict:
-        with urllib.request.urlopen(f"{self.base}/api/session/state", timeout=10) as resp:
+        req = urllib.request.Request(
+            f"{self.base}/api/session/state", headers={"Cookie": self.cookie}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read())
 
     # -- WS -----------------------------------------------------------------
@@ -135,7 +141,7 @@ class Server:
         return ws_connect(
             f"ws://127.0.0.1:{self.port}/api/session/ws?study_session_id={session_id}",
             open_timeout=10,
-            additional_headers={"Origin": self.base},
+            additional_headers={"Origin": self.base, "Cookie": self.cookie},
         )
 
     # -- lifecycle ----------------------------------------------------------

@@ -48,7 +48,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import server_opener, start_web_server  # noqa: E402
 from e2e._env import await_async_predicate  # noqa: E402
 
 _TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
@@ -128,7 +128,7 @@ def _post(base_url: str, path: str, body: dict) -> tuple[int, dict]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as res:
+        with server_opener(base_url).open(req, timeout=30) as res:
             raw = res.read().decode()
             return res.status, (json.loads(raw) if raw else {})
     except urllib.error.HTTPError as exc:
@@ -137,7 +137,7 @@ def _post(base_url: str, path: str, body: dict) -> tuple[int, dict]:
 
 
 def _get(base_url: str, path: str) -> dict:
-    with urllib.request.urlopen(f"{base_url}{path}", timeout=30) as res:
+    with server_opener(base_url).open(f"{base_url}{path}", timeout=30) as res:
         return json.loads(res.read().decode())
 
 

@@ -46,6 +46,7 @@ if str(_tests_dir) not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    server_opener,
 )
 
 if TYPE_CHECKING:
@@ -207,7 +208,10 @@ def _teardown_server(proc: subprocess.Popen) -> None:
 
             creds = base64.b64encode(f"{user}:{password}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        urllib.request.urlopen(req, timeout=3)
+        # The server cookie `/` sets is required on /api (F-WEB-20).
+        server_opener(
+            f"http://127.0.0.1:{WEB_PORT}", basic_auth=(user, password) if password else None
+        ).open(req, timeout=3)
     except Exception:
         pass
     proc.terminate()
@@ -264,7 +268,10 @@ def _end_any_active_session_via_api() -> None:
 
             creds = base64.b64encode(f"{user}:{password}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        urllib.request.urlopen(req, timeout=3)
+        # The server cookie `/` sets is required on /api (F-WEB-20).
+        server_opener(
+            f"http://127.0.0.1:{WEB_PORT}", basic_auth=(user, password) if password else None
+        ).open(req, timeout=3)
     except Exception:
         pass
 

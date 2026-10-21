@@ -30,6 +30,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+from _playwright_helpers import server_opener
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -141,7 +142,9 @@ def web_app(web_venv: Path, tmp_path_factory: pytest.TempPathFactory):
         deadline = time.monotonic() + 60
         while True:
             try:
-                with urllib.request.urlopen(base_url + LAUNCH_TARGET_PATH, timeout=5):
+                # An /api route: it needs the server cookie that `/` sets.
+                opener = server_opener(base_url, timeout=5)
+                with opener.open(base_url + LAUNCH_TARGET_PATH, timeout=5):
                     break
             except (urllib.error.URLError, OSError):
                 if server.poll() is not None or time.monotonic() > deadline:
@@ -160,9 +163,14 @@ def web_app(web_venv: Path, tmp_path_factory: pytest.TempPathFactory):
             server.wait(timeout=10)
 
 
-def _get(base_url: str, path: str):
-    """(status, case-insensitive headers, body) for one localhost GET."""
-    with urllib.request.urlopen(base_url + path, timeout=10) as response:
+def _get(base_url: str, path: str, *, opener: urllib.request.OpenerDirector | None = None):
+    """(status, case-insensitive headers, body) for one localhost GET.
+
+    Pass ``opener=server_opener(base_url)`` for an ``/api`` path, which needs
+    the server cookie that ``/`` sets.
+    """
+    open_url = opener.open if opener is not None else urllib.request.urlopen
+    with open_url(base_url + path, timeout=10) as response:
         return response.status, response.headers, response.read()
 
 
@@ -188,7 +196,7 @@ def test_installed_studyloop_does_not_import_from_the_checkout(web_venv: Path) -
 
 
 def test_launch_target_route_responds_from_the_installed_app(web_app: str) -> None:
-    status, headers, body = _get(web_app, LAUNCH_TARGET_PATH)
+    status, headers, body = _get(web_app, LAUNCH_TARGET_PATH, opener=server_opener(web_app))
 
     assert status == 200
     assert headers.get("Cache-Control") == "no-store"

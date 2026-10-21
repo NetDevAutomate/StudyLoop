@@ -39,7 +39,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import server_opener, start_web_server  # noqa: E402
 
 if TYPE_CHECKING:
     import subprocess
@@ -133,7 +133,7 @@ def _post(base_url: str, path: str, body: dict) -> tuple[int, dict]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as res:
+        with server_opener(base_url).open(req, timeout=30) as res:
             raw = res.read().decode()
             return res.status, (json.loads(raw) if raw else {})
     except urllib.error.HTTPError as exc:

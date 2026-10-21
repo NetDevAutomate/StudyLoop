@@ -44,6 +44,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_session  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
@@ -101,27 +102,24 @@ def running_server(
 @pytest.fixture()
 def clean(running_server: RunningServer) -> str:
     """Hard-clear both panels before each test so counts mean something."""
-    import requests
-
     base_url = running_server.base_url
+    http = server_session(base_url)
     for path in ("/api/parking/clear", "/api/notes/clear"):
-        requests.post(f"{base_url}{path}", json={"all": True, "hard": True}, timeout=10)
+        http.post(f"{base_url}{path}", json={"all": True, "hard": True}, timeout=10)
     return base_url
 
 
 def _seed_cards(server: str, *questions: str) -> None:
-    import requests
-
+    http = server_session(server)
     for question in questions:
-        resp = requests.post(f"{server}/api/parking/item", json={"question": question}, timeout=10)
+        resp = http.post(f"{server}/api/parking/item", json={"question": question}, timeout=10)
         assert resp.status_code == 201, resp.text
 
 
 def _seed_notes(server: str, *titles: str) -> None:
-    import requests
-
+    http = server_session(server)
     for title in titles:
-        resp = requests.post(
+        resp = http.post(
             f"{server}/api/notes",
             json={"title": title, "body": "Body for " + title, "kind": "note"},
             timeout=10,
@@ -625,8 +623,7 @@ def test_both_panels_call_the_bulk_action_the_same_thing(page: Page, clean: str)
 
 def test_parking_select_all_then_delete_selected_clears_the_board(page: Page, clean: str) -> None:
     """``#parking-select-all`` was referenced by no test anywhere. Now it is."""
-    import requests
-
+    http = server_session(clean)
     try:
         _seed_cards(clean, "Alpha", "Beta", "Gamma")
         _open_parking(page, clean)
@@ -645,7 +642,7 @@ def test_parking_select_all_then_delete_selected_clears_the_board(page: Page, cl
 
         page.locator("#parking-clear-selected").click()
         page.wait_for_selector("#parking-empty", state="visible", timeout=8_000)
-        assert requests.get(f"{clean}/api/parking/board", timeout=10).json()["total"] == 0
+        assert http.get(f"{clean}/api/parking/board", timeout=10).json()["total"] == 0
 
         # Soft, so the undo the toast promises is real.
         page.locator("#parking-undo-clear").click()
@@ -691,8 +688,7 @@ def test_parking_select_none_drops_the_whole_selection(page: Page, clean: str) -
 
 def test_notes_select_all_then_delete_selected_empties_the_list(page: Page, clean: str) -> None:
     """``#notes-select-all`` — the other half of the untested pair."""
-    import requests
-
+    http = server_session(clean)
     try:
         _seed_notes(clean, "Note one", "Note two", "Note three")
         _open_notes(page, clean)
@@ -712,7 +708,7 @@ def test_notes_select_all_then_delete_selected_empties_the_list(page: Page, clea
             "() => document.querySelector('#notes-total-count').innerText === '0 notes'",
             timeout=10_000,
         )
-        assert requests.get(f"{clean}/api/notes", timeout=10).json()["notes"] == []
+        assert http.get(f"{clean}/api/notes", timeout=10).json()["notes"] == []
 
         page.locator("#notes-undo-clear").click()
         page.wait_for_function(
@@ -757,8 +753,7 @@ def test_ticking_a_checkbox_alone_arms_delete_selected(page: Page, clean: str) -
 
     No mode button anywhere in this test — that is the point.
     """
-    import requests
-
+    http = server_session(clean)
     try:
         _seed_cards(clean, "Delete me", "Keep me")
         _open_parking(page, clean)
@@ -779,7 +774,7 @@ def test_ticking_a_checkbox_alone_arms_delete_selected(page: Page, clean: str) -
             timeout=8_000,
         )
 
-        board = requests.get(f"{clean}/api/parking/board", timeout=10).json()
+        board = http.get(f"{clean}/api/parking/board", timeout=10).json()
         survivors = {i["question"] for c in board["columns"] for i in c["items"]}
         assert survivors == {"Keep me"}
     except Exception:

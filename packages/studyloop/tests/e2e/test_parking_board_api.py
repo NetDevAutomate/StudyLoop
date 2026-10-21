@@ -27,6 +27,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_session  # noqa: E402
 from e2e._env import launch_env, shutdown  # noqa: E402
 
 pytestmark = [pytest.mark.e2e]
@@ -37,28 +38,29 @@ PORT = 18605
 @pytest.fixture(scope="module")
 def api(tmp_path_factory):
     """Server with an isolated session DB; yields a small request helper."""
-    import requests
-
     root = tmp_path_factory.mktemp("parking-board")
     env = launch_env(root, PORT)
 
-    class Api:
-        base = env.base_url
-
-        def get(self, path: str, **kw):
-            return requests.get(f"{self.base}{path}", timeout=20, **kw)
-
-        def post(self, path: str, **kw):
-            return requests.post(f"{self.base}{path}", timeout=20, **kw)
-
-        def patch(self, path: str, **kw):
-            return requests.patch(f"{self.base}{path}", timeout=20, **kw)
-
-        def delete(self, path: str, **kw):
-            return requests.delete(f"{self.base}{path}", timeout=20, **kw)
-
     try:
-        yield Api()
+        # Presents the server cookie `/` sets, which every /api route requires.
+        with server_session(env.base_url) as http:
+
+            class Api:
+                base = env.base_url
+
+                def get(self, path: str, **kw):
+                    return http.get(f"{self.base}{path}", timeout=20, **kw)
+
+                def post(self, path: str, **kw):
+                    return http.post(f"{self.base}{path}", timeout=20, **kw)
+
+                def patch(self, path: str, **kw):
+                    return http.patch(f"{self.base}{path}", timeout=20, **kw)
+
+                def delete(self, path: str, **kw):
+                    return http.delete(f"{self.base}{path}", timeout=20, **kw)
+
+            yield Api()
     finally:
         shutdown(env)
 

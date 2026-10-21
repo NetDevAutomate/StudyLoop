@@ -78,6 +78,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_opener  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import launch_env, shutdown  # noqa: E402
 
@@ -140,7 +141,7 @@ def _post(base: str, path: str, payload: dict) -> dict:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
+    with server_opener(base).open(request, timeout=10) as response:
         return json.loads(response.read())
 
 

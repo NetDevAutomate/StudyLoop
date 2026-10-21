@@ -79,6 +79,7 @@ from _playwright_helpers import (  # noqa: E402
     _isolated_child_env,
     auth_context_fixture_factory,
     effective_credentials,
+    server_opener,
     start_web_server,
 )
 from mcp import ClientSession, StdioServerParameters  # noqa: E402
@@ -236,13 +237,10 @@ def page(web_server, auth_context: BrowserContext) -> Generator[Page, None, None
 
 def _http(path: str, method: str = "GET") -> Any:
     user, password = effective_credentials()
+    # Loads `/` for the server cookie /api requires; Basic auth when configured.
+    opener = server_opener(BASE, basic_auth=(user, password) if password else None)
     req = urllib.request.Request(f"{BASE}{path}", method=method)
-    if password:
-        import base64
-
-        creds = base64.b64encode(f"{user}:{password}".encode()).decode()
-        req.add_header("Authorization", f"Basic {creds}")
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with opener.open(req, timeout=10) as resp:
         raw = resp.read()
     return json.loads(raw) if raw else {}
 

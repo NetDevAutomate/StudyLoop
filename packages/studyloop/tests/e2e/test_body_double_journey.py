@@ -50,6 +50,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_opener  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import (  # noqa: E402
     RunningServer,
@@ -157,7 +158,7 @@ def bd_env(tmp_path_factory: pytest.TempPathFactory) -> Generator[RunningServer,
         # End any live session before the server goes away, so a failed phase
         # cannot leave an orphaned agent process behind.
         with contextlib.suppress(Exception):
-            urllib.request.urlopen(
+            server_opener(server.base_url).open(
                 urllib.request.Request(
                     f"{server.base_url}/api/session/end", data=b"", method="POST"
                 ),

@@ -21,6 +21,7 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_representative_user_
 
 from __future__ import annotations
 
+import contextlib
 import sys
 import time
 from pathlib import Path
@@ -38,7 +39,11 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import (  # noqa: E402
+    server_cookie_header,
+    server_session,
+    start_web_server,
+)
 
 _TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
 
@@ -172,9 +177,8 @@ def test_session_start_contract_is_structured(running_server: str) -> None:
     thing that must NOT happen is an opaque non-JSON 500. We assert the
     response is always JSON with a meaningful shape.
     """
-    import requests
-
-    resp = requests.post(
+    http = server_session(running_server)
+    resp = http.post(
         f"{running_server}/api/session/start",
         json={"topic": "Abstraction and Coupling", "energy": 7, "transport": "pty"},
         timeout=15,
@@ -187,7 +191,7 @@ def test_session_start_contract_is_structured(running_server: str) -> None:
         assert body["transport"] == "pty"
         assert body["ws_url"].startswith("/api/session/ws")
         # Clean up the started session so the module server stays usable.
-        requests.post(f"{running_server}/api/session/end", timeout=10)
+        http.post(f"{running_server}/api/session/end", timeout=10)
     else:
         # Structured failure: a cause the UI can render, not an opaque crash.
         assert resp.status_code in (400, 409, 500, 503)
@@ -196,9 +200,7 @@ def test_session_start_contract_is_structured(running_server: str) -> None:
 
 def test_acp_transport_rejected_for_pty_only_agent(running_server: str) -> None:
     """Phase 3b — the server-side ACP guard rejects a PTY-only agent (400)."""
-    import requests
-
-    resp = requests.post(
+    resp = server_session(running_server).post(
         f"{running_server}/api/session/start",
         json={"topic": "X", "energy": 5, "agent": "claude", "transport": "acp"},
         timeout=15,
@@ -211,9 +213,7 @@ def test_acp_transport_rejected_for_pty_only_agent(running_server: str) -> None:
 
 def test_backlog_surface_reachable(running_server: str) -> None:
     """Phase 2b — the 3-topic backlog contract is served."""
-    import requests
-
-    body = requests.get(f"{running_server}/api/backlog", timeout=10).json()
+    body = server_session(running_server).get(f"{running_server}/api/backlog", timeout=10).json()
     assert "active" in body and "parking_lot" in body
     assert body["max_active"] >= 1
 
@@ -271,11 +271,11 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
     """
     import json
 
-    import requests
     from websockets.sync.client import connect as ws_connect
 
     # --- Spawn ---
-    resp = requests.post(
+    http = server_session(fake_agent_server)
+    resp = http.post(
         f"{fake_agent_server}/api/session/start",
         json={
             "topic": "Fake Agent Walk",
@@ -292,7 +292,8 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
 
     # --- WS: bytes out (banner), bytes in (input), echo back ---
     # The WS guard rejects requests with no Origin (non-browser clients);
-    # send the same localhost Origin a browser would. NOTE the ordering:
+    # send the same localhost Origin a browser would, plus the server cookie
+    # that `/` sets. NOTE the ordering:
     # /api/session/end must be called while the WS is still OPEN — a WS
     # disconnect triggers active.release() which clears the session state,
     # after which end returns 404 (that's the real product semantics; the
@@ -300,7 +301,10 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
     with ws_connect(
         ws_url,
         open_timeout=10,
-        additional_headers={"Origin": fake_agent_server},
+        additional_headers={
+            "Origin": fake_agent_server,
+            "Cookie": server_cookie_header(fake_agent_server),
+        },
     ) as ws:
         buf = b""
         for _ in range(20):  # frames until the banner shows
@@ -322,7 +326,7 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
         assert b"FAKE-AGENT VERDICT:" in buf, f"no echo; got {buf!r}"
 
         # --- End WHILE connected (mirrors the UI's End button) ---
-        end = requests.post(f"{fake_agent_server}/api/session/end", timeout=15)
+        end = http.post(f"{fake_agent_server}/api/session/end", timeout=15)
         assert end.status_code == 200, end.text
         assert end.json()["ended"] is True
 
@@ -425,12 +429,10 @@ def test_fake_agent_terminal_renders_in_browser(browser, fake_agent_server: str)
         _diag(page, "fake-agent-browser")
         raise
     finally:
-        try:
-            import requests
-
-            requests.post(f"{fake_agent_server}/api/session/end", timeout=10)
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            server_session(fake_agent_server).post(
+                f"{fake_agent_server}/api/session/end", timeout=10
+            )
         page.close()
 
 

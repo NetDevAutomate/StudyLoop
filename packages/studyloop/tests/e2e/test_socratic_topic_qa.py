@@ -28,6 +28,7 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_socratic_topic_qa.py
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -41,6 +42,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_cookie_header, server_session  # noqa: E402
 from e2e._env import (  # noqa: E402
     STUDY_TOPIC,
     ConsoleWatch,
@@ -77,12 +79,8 @@ def env(tmp_path_factory):
     try:
         yield e
     finally:
-        try:
-            import requests
-
-            requests.post(f"{e.base_url}/api/session/end", timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+        with contextlib.suppress(Exception):
+            server_session(e.base_url).post(f"{e.base_url}/api/session/end", timeout=10)
         shutdown(e)
 
 
@@ -135,14 +133,14 @@ def test_mentor_asks_topic_relevant_questions_and_grades_answers(env) -> None:
     (assert acceptance + canonical answer) → work through the remaining
     questions → assert every question was on-topic and the session completed.
     """
-    import requests
     from _socratic_bank import bank_for_topic
     from websockets.sync.client import connect as ws_connect
 
     bank = bank_for_topic(STUDY_TOPIC)
     assert bank.questions, f"no question bank for {STUDY_TOPIC!r} — nothing to teach"
 
-    resp = requests.post(
+    http = server_session(env.base_url)
+    resp = http.post(
         f"{env.base_url}/api/session/start",
         json={"topic": STUDY_TOPIC, "energy": 6, "agent": "codex", "transport": "pty"},
         timeout=25,
@@ -152,7 +150,8 @@ def test_mentor_asks_topic_relevant_questions_and_grades_answers(env) -> None:
     ws_url = f"ws://127.0.0.1:{env.port}{body['ws_url']}"
 
     t = Transcript()
-    with ws_connect(ws_url, open_timeout=15, additional_headers={"Origin": env.base_url}) as ws:
+    ws_headers = {"Origin": env.base_url, "Cookie": server_cookie_header(env.base_url)}
+    with ws_connect(ws_url, open_timeout=15, additional_headers=ws_headers) as ws:
         assert _read_until(ws, t, "FAKE-AGENT READY"), f"no banner; got {t.text[:400]!r}"
 
         # --- The mentor picked up the topic from its persona briefing ---
@@ -225,7 +224,7 @@ def test_mentor_asks_topic_relevant_questions_and_grades_answers(env) -> None:
             f"not all concepts confirmed: {done[0]!r}"
         )
 
-        end = requests.post(f"{env.base_url}/api/session/end", timeout=15)
+        end = http.post(f"{env.base_url}/api/session/end", timeout=15)
         assert end.status_code == 200, end.text
 
 
@@ -352,10 +351,6 @@ def test_learner_answers_questions_in_the_browser_terminal(browser: Browser, env
         diag(page, "socratic-browser-qa", watch)
         raise
     finally:
-        try:
-            import requests
-
-            requests.post(f"{env.base_url}/api/session/end", timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+        with contextlib.suppress(Exception):
+            server_session(env.base_url).post(f"{env.base_url}/api/session/end", timeout=10)
         ctx.close()

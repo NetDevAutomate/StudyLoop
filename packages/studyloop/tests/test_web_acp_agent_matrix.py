@@ -47,6 +47,7 @@ if str(_tests_dir) not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    server_opener,
     start_web_server,
 )
 
@@ -141,7 +142,10 @@ def stub_acp_server():
 
                 creds = base64.b64encode(f"{user}:{password}".encode()).decode()
                 req.add_header("Authorization", f"Basic {creds}")
-            urllib.request.urlopen(req, timeout=2)
+            # The server cookie `/` sets is required on /api (F-WEB-20).
+            server_opener(
+                f"http://127.0.0.1:{WEB_PORT}", basic_auth=(user, password) if password else None
+            ).open(req, timeout=2)
         except Exception:
             pass
         proc.terminate()

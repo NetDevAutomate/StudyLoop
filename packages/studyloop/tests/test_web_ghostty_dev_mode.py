@@ -32,7 +32,7 @@ _tests_dir = str(Path(__file__).resolve().parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from _playwright_helpers import start_web_server  # noqa: E402
+from _playwright_helpers import server_opener, start_web_server  # noqa: E402
 
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
@@ -362,7 +362,10 @@ def ghostty_pty_server():
         if _PASS:
             creds = base64.b64encode(f"{_USER}:{_PASS}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        urllib.request.urlopen(req, timeout=2)
+        # The server cookie `/` sets is required on /api (F-WEB-20).
+        server_opener(
+            f"http://127.0.0.1:{WEB_GHOSTTY_PTY_PORT}", basic_auth=(_USER, _PASS) if _PASS else None
+        ).open(req, timeout=2)
     except Exception:
         pass
     proc.terminate()
