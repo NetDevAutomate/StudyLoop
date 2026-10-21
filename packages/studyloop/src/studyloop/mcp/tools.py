@@ -526,15 +526,24 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         Returns ``{"ended": True, "topic": <resolved topic>}`` after
         the session's tmux/PTY resources have been torn down and
-        the IPC files cleared.
+        the IPC files cleared. When the study_sessions row cannot be
+        written the session is NOT torn down -- its topics and parking lot
+        are kept -- and a ``ToolError`` says so; call ``end_session`` again
+        once the database is healthy.
         """
-        from studyloop.session.cleanup import end_session_common
+        from studyloop.session.cleanup import SessionNotPersistedError, end_session_common
         from studyloop.web.routes.session import read_session_state
 
         state = read_session_state()
         if not state.get("study_session_id"):
             return {"ended": False, "topic": None}
-        topic = end_session_common(state)
+        try:
+            topic = end_session_common(state)
+        except SessionNotPersistedError as exc:
+            raise ToolError(
+                f"session could not be saved: {exc}. The session is still running and its "
+                "topics and parking lot were kept; run `studyloop doctor`, then end it again."
+            ) from exc
         return {"ended": True, "topic": topic}
 
     @tool()

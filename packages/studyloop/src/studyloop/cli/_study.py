@@ -344,9 +344,9 @@ def _handle_start(
         ctx.exit(1)
 
 
-def _handle_end(_ctx: click.Context) -> None:
+def _handle_end(ctx: click.Context) -> None:
     """End the current study session cleanly (user-facing)."""
-    from studyloop.session.cleanup import end_session_common
+    from studyloop.session.cleanup import SessionNotPersistedError, end_session_common
     from studyloop.session_state import read_session_state
 
     state = read_session_state()
@@ -355,7 +355,19 @@ def _handle_end(_ctx: click.Context) -> None:
         console.print("[yellow]No active session found.[/yellow]")
         return
 
-    topic = end_session_common(state)
+    try:
+        topic = end_session_common(state)
+    except SessionNotPersistedError as exc:
+        # Nothing was torn down: the topics and parking lot are the only copy
+        # of what the learner recorded, and end_session_common keeps them for
+        # a retry (review 2026-10-21, lane 2). Say so instead of a traceback.
+        console.print(f"[red]Could not save this session:[/red] {exc}")
+        console.print("The session is still running and its topics and parking lot were kept.")
+        console.print(
+            "Fix the database (`studyloop doctor`) and run `studyloop study --end` again."
+        )
+        ctx.exit(1)
+        return
     if topic:
         console.print(f"[bold]Session ended:[/bold] {topic}")
         console.print("  tmux session closed.")
