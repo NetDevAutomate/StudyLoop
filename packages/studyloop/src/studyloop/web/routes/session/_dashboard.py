@@ -265,30 +265,65 @@ async def end_session() -> JSONResponse:
     from studyloop.web.routes.session import _grace
 
     state = session_pkg.read_session_state()
-
-    # Cancel any grace timer FIRST, before releasing the singleton. A socket
-    # that disconnected moments ago has scheduled a release for this session;
-    # ending the session now must not leave that timer armed, or it fires later
-    # against a slot that has already moved on. _grace.release_now is the
-    # documented path for "end arrived during the grace window" and leaves no
-    # orphan timer behind.
     session_id = state.get("study_session_id")
-    if session_id:
-        await _grace.release_now(str(session_id), reason="ended-by-user")
 
-    # Release the PTY singleton first — idempotent, safe when the session
-    # was a CLI tmux flow (studyloop study) that never touched active.py.
-    await session_active.release()
-
-    if not state.get("study_session_id"):
+    if not session_id:
+        # Still release: idempotent, and frees a slot whose state file is gone.
+        await session_active.release()
         return JSONResponse(
             {"error": "No active session"},
             status_code=404,
         )
 
-    from studyloop.session.cleanup import end_session_common
+    from studyloop.session.cleanup import (
+        SessionNotPersistedError,
+        end_session_common,
+        teardown_session,
+    )
 
-    topic = end_session_common(state)
+    if state.get("mode") == "ended":
+        # Another end has already persisted this session: an overlapping End
+        # whose release is still awaiting the agent, or `studyloop session end`
+        # in a terminal. Both deleted the topics file after saving, so
+        # persisting again would overwrite the stored summary with "No topics
+        # recorded" and store every progress report twice. Only tear down and
+        # release.
+        teardown_session(state)
+        topic = state.get("topic")
+    else:
+        # Persist FIRST, release second. ``active.release()`` unlinks the
+        # topics and parking files (``clear_session_files``), so persisting
+        # after it stored every browser-ended session as "No topics recorded
+        # during session." (review 2026-10-21, F-WEB-01). end_session_common
+        # is synchronous, so no grace timer or reaper tick can run in between.
+        try:
+            topic = end_session_common(state)
+        except SessionNotPersistedError:
+            # Nothing was torn down and nothing is released here: releasing
+            # would unlink the topics and parking files, the only copy of what
+            # the learner recorded. The End dialog stays open on a non-2xx and
+            # the same button retries (session-timer.js, R-70).
+            return JSONResponse(
+                {
+                    "error": (
+                        "Could not save this session, so it is still running and its "
+                        "topics and parking lot were kept. Try ending it again."
+                    )
+                },
+                status_code=503,
+            )
+
+    # Then cancel any grace timer and release the singleton. A socket that
+    # disconnected moments ago has scheduled a release for this session;
+    # ending the session now must not leave that timer armed, or it fires later
+    # against a slot that has already moved on. _grace.release_now is the
+    # documented path for "end arrived during the grace window" and leaves no
+    # orphan timer behind. persist=False: the session was saved just above, and
+    # the ended marker that would otherwise tell _grace so is best effort. The
+    # bare release() after it is idempotent and covers a CLI tmux flow
+    # (studyloop study) that never touched active.py.
+    await _grace.release_now(str(session_id), reason="ended-by-user", persist=False)
+    await session_active.release()
 
     return JSONResponse(
         {"ended": True, "topic": topic or "Unknown"},

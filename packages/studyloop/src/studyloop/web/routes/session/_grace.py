@@ -366,15 +366,16 @@ def schedule_release(session_id: str, *, grace: float | None = None) -> None:
     )
 
 
-async def release_now(session_id: str, *, reason: str) -> None:
+async def release_now(session_id: str, *, reason: str, persist: bool = True) -> None:
     """Cancel any grace timer and release ``session_id`` immediately.
 
     Used when the agent has exited, the learner pressed Stop, or
     ``POST /api/session/end`` arrived during the grace window. Leaves no
-    orphan timer behind.
+    orphan timer behind. ``persist=False`` is for a caller that has already
+    saved the session itself (the End route); see :func:`_release_if_current`.
     """
     cancel_pending_release(session_id)
-    await _release_if_current(session_id, reason=reason)
+    await _release_if_current(session_id, reason=reason, persist=persist)
 
 
 # --- Slot reaper -------------------------------------------------------------
@@ -656,6 +657,39 @@ def _read_topic(session_id: str) -> str | None:
     return topic if isinstance(topic, str) else None
 
 
+def _persist_before_release(session_id: str) -> None:
+    """Save ``session_id``'s evidence before ``active.release()`` deletes it.
+
+    Stop, agent exit, grace expiry, the reaper and shutdown all end a session
+    through :func:`_release_if_current` alone. Before review 2026-10-21
+    (F-WEB-02) that released the slot, which unlinks the topics and parking
+    files, and never wrote the ``study_sessions`` row: the row stayed open with
+    no notes and the evidence was unrecoverable.
+
+    Skips a state file that is not this session's (cleared or replaced from
+    another process; its files are not this session's evidence) and one
+    already marked ``mode=ended`` (saved by whoever wrote the marker).
+
+    Synchronous for the reason :func:`_read_topic` gives: no new yield point
+    in the WS route's ``finally``. Best effort, because none of these paths can
+    keep the slot for a retry: a failed save is logged and the release goes on.
+    """
+    from studyloop import session_state
+
+    try:
+        state = session_state.read_session_state()
+    except Exception:  # pragma: no cover — defensive
+        return
+    if state.get("study_session_id") != session_id or state.get("mode") == "ended":
+        return
+    from studyloop.session.cleanup import persist_session_end
+
+    try:
+        persist_session_end(state, raise_if_not_persisted=False)
+    except Exception:  # pragma: no cover — defensive; must not wedge the slot
+        logger.exception("saving session %s before release failed", session_id)
+
+
 def _transport_alive(transport: AgentSessionTransport) -> bool:
     """Best-effort liveness. Transports without a probe are assumed alive."""
     if isinstance(transport, _LivenessProbe):
@@ -667,12 +701,16 @@ def _transport_alive(transport: AgentSessionTransport) -> bool:
     return True
 
 
-async def _release_if_current(session_id: str, *, reason: str) -> bool:
+async def _release_if_current(session_id: str, *, reason: str, persist: bool = True) -> bool:
     """Release the active session only if it is still ``session_id``.
 
     The id re-check is what makes the grace timer safe to race against an
     explicit end or a fresh start: it never tears down a session it does not
     own.
+
+    With ``persist`` (every caller except the End route, which has already
+    saved the session) the session's evidence is saved first, because
+    ``active.release()`` deletes the topics and parking files.
     """
     from studyloop.session import active as session_active
 
@@ -681,6 +719,8 @@ async def _release_if_current(session_id: str, *, reason: str) -> bool:
         return False
     topic = _read_topic(session_id)
     _record_release(session_id, reason, topic, current.config.agent)
+    if persist:
+        _persist_before_release(session_id)
     # Free the consumer slot with the session it belonged to. Leaving it to the
     # WS handler's ``finally`` is what let "refresh → End → Start" refuse the
     # next session's first WebSocket with a handshake 403.

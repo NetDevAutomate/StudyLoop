@@ -7,6 +7,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class SessionNotPersistedError(RuntimeError):
+    """The session's ``study_sessions`` end record could not be written.
+
+    Raised by :func:`end_session_common` *before* any teardown, so the session,
+    its topics file and its parking file are left exactly as they were and the
+    end can be retried. The database error is the ``__cause__``.
+    """
+
+
 def build_session_notes(
     topics: list,
     parking: list,
@@ -44,11 +53,14 @@ def _persist_session_data(
     notes: str,
     *,
     auto_persist: bool,
+    raise_if_not_persisted: bool = False,
 ) -> None:
     """Persist session data: backlog, flashcards, and DB record.
 
     All three operations are individually guarded so a failure in one does
-    not prevent the others from running.
+    not prevent the others from running -- except that with
+    ``raise_if_not_persisted`` a failed DB end record raises
+    :class:`SessionNotPersistedError` and skips the study_progress step.
     """
     from studyloop.history import end_study_session
 
@@ -86,8 +98,17 @@ def _persist_session_data(
     struggle_count = sum(1 for t in topic_entries if t.status == "struggling")
     try:
         end_study_session(study_id, notes=notes, win_count=win_count, struggle_count=struggle_count)
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to end study session in DB")
+        if raise_if_not_persisted:
+            # Stop before study_progress. The caller keeps the evidence and
+            # retries, which re-runs this function: the backlog and flashcard
+            # writes above dedupe, but every record_progress call stores a new
+            # report, so recording progress now would store it twice.
+            raise SessionNotPersistedError(
+                f"study session {study_id} could not be saved; its topics and "
+                "parking lot were kept so ending it again can retry"
+            ) from exc
 
     # Forward per-topic confidence into study_progress — the session DB's
     # single source of truth for "what am I struggling with". This is what
@@ -243,37 +264,88 @@ def end_session_common(
     state: dict,
     *,
     auto_persist: bool = True,
+    raise_if_not_persisted: bool = True,
 ) -> str | None:
     """Shared session-ending logic used by both _handle_end and cleanup_on_exit.
 
     Captures session notes, ends the DB record, cleans up temp files, kills
     tmux sessions, and clears IPC files. Returns the topic name or None.
 
+    Persistence comes first and teardown second. When the DB end record cannot
+    be written this raises :class:`SessionNotPersistedError` before any
+    teardown, leaving the topics and parking files (the only copy of what the
+    learner recorded) in place for a retry. ``raise_if_not_persisted=False``
+    keeps the older best-effort behaviour: log the failure and tear down
+    anyway.
+
     The caller controls user-facing output and error handling -- this function
     only does the work.
     """
-    from studyloop.session_state import parse_parking_file, parse_topics_file
-
     study_id = state.get("study_session_id")
     topic = state.get("topic", "unknown")
 
     if not study_id:
         return None
 
+    persist_session_end(
+        state,
+        auto_persist=auto_persist,
+        raise_if_not_persisted=raise_if_not_persisted,
+    )
+    teardown_session(state)
+
+    return topic
+
+
+def persist_session_end(
+    state: dict,
+    *,
+    auto_persist: bool = True,
+    raise_if_not_persisted: bool = True,
+) -> None:
+    """The persistence half of :func:`end_session_common`, with no teardown.
+
+    Reads the topics and parking files, writes the backlog, flashcards, the
+    ``study_sessions`` end record and study_progress, then marks the state
+    ``mode=ended`` -- the marker other end paths read as "already saved".
+    Deletes nothing. Same ``raise_if_not_persisted`` contract as
+    :func:`end_session_common`. A state without a session id is a no-op.
+    """
+    from studyloop.session_state import parse_parking_file, parse_topics_file
+
+    study_id = state.get("study_session_id")
+    if not study_id:
+        return
+
     # Capture session context as notes
     topic_entries = parse_topics_file()
     notes = build_session_notes(topic_entries, parse_parking_file())
 
-    _persist_session_data(study_id, state, topic_entries, notes, auto_persist=auto_persist)
+    _persist_session_data(
+        study_id,
+        state,
+        topic_entries,
+        notes,
+        auto_persist=auto_persist,
+        raise_if_not_persisted=raise_if_not_persisted,
+    )
     _signal_dashboard_ended()
+
+
+def teardown_session(state: dict) -> None:
+    """The teardown half of :func:`end_session_common`, with no persistence.
+
+    For a session another end path has already persisted (its state says
+    ``mode=ended``): agent teardown, background processes, the session's own
+    tmux session and the transient IPC files. Every step is idempotent, so
+    running it after a full end changes nothing.
+    """
     _teardown_agent(state)
     _kill_background_processes(state)
     _cleanup_tmux_and_files(
         session_name=state.get("tmux_session"),
         persona_file=state.get("persona_file"),
     )
-
-    return topic
 
 
 def auto_clean_zombies() -> None:
@@ -352,4 +424,7 @@ def cleanup_on_exit() -> None:
 
     with contextlib.suppress(Exception):
         state = read_session_state()
-        end_session_common(state)
+        # Best effort, as before: the agent has already exited and nothing is
+        # left to retry the end, so a failed DB write must not leave the tmux
+        # session and IPC files behind.
+        end_session_common(state, raise_if_not_persisted=False)
