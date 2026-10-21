@@ -286,3 +286,69 @@ class TestServerSecret:
         """``create_app()`` without a secret (tests, embedding) keeps today's behaviour."""
         response = TestClient(create_app()).get("/api/session/state")
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# ledger 21 / F-WEB-01@gpt-5.6-terra — --lan never serves without a password
+# ---------------------------------------------------------------------------
+
+
+class TestLanFailsClosed:
+    """The plan's RED 3 expected ``--lan`` with no password to bind open today.
+
+    It does not: with no ``--password`` and no ``lan_password``, ``studyloop web``
+    generates one and prints it (``cli/_web.py``), and ``studyloop study --lan``
+    does the same in the parent (``session/start.py``). These tests pin that
+    fail-closed invariant on the real command path, so removing the generation
+    cannot silently put the terminal on 0.0.0.0 behind nothing.
+    """
+
+    @pytest.mark.parametrize("config_text", [None, 'lan_password: ""\n'])
+    def test_lan_mode_never_serves_without_a_password(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, config_text: str | None
+    ) -> None:
+        import base64
+        import re
+
+        if config_text is not None:
+            (tmp_path / "config.yaml").write_text(config_text)
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
+        assert captured["host"] == "0.0.0.0"
+        lan = {"Host": "192.168.1.42:8567"}
+        client = TestClient(captured["app"])
+
+        assert client.get("/", headers=lan).status_code == 401
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/api/session/ws", headers={**lan, "Origin": "http://192.168.1.42:8567"}
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+        match = re.search(r"Password: (\S+)", output)
+        assert match, f"the generated password must be shown, or nobody can sign in:\n{output}"
+        token = base64.b64encode(f"study:{match.group(1)}".encode()).decode()
+        signed_in = client.get("/", headers={**lan, "Authorization": f"Basic {token}"})
+        assert signed_in.status_code == 200
+
+    def test_setup_guide_lan_section_carries_the_cleartext_caveats(self) -> None:
+        """Ledger 21: the documented acceptance warning, in the section a ``--lan`` user reads."""
+        from pathlib import Path
+
+        guide = Path(__file__).resolve().parents[3] / "docs" / "setup-guide.md"
+        text = guide.read_text(encoding="utf-8")
+        section = text.split("### Remote Study (iPad on the Bus)", 1)[1].split("\n### ", 1)[0]
+        for caveat in (
+            "Basic authentication does **not** encrypt the password, requests, responses or "
+            "terminal traffic.",
+            "LAN peers or intermediaries able to observe traffic may steal credentials and study "
+            "content; active intermediaries may tamper with traffic.",
+            "Never reuse a password, expose this mode directly to the Internet, or treat "
+            "public/shared Wi-Fi as trusted.",
+            "Prefer loopback access through an authenticated encrypted tunnel, or a correctly "
+            "configured HTTPS/WSS reverse proxy with the application bound to loopback.",
+            "`0.0.0.0` exposes every IPv4 interface unless a firewall restricts access.",
+        ):
+            assert f"- {caveat}" in section, caveat
