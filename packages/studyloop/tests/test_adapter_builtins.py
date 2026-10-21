@@ -94,7 +94,8 @@ class TestCodexAdapter:
         from studyloop.adapters.codex import _codex_launch
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
-        assert cmd.endswith("codex --resume")
+        # `codex resume`, the subcommand: Codex has no --resume flag (F-CLI-01).
+        assert cmd.endswith("codex resume --last")
 
 
 class TestGrokAdapter:

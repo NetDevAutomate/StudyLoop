@@ -24,10 +24,16 @@ def _codex_setup(canonical_content: str, session_dir: Path) -> Path:
 
 
 def _codex_launch(_persona_path: Path, resume: bool) -> str:
-    """Build Codex launch command. Codex reads AGENTS.md from cwd."""
+    """Build Codex launch command. Codex reads AGENTS.md from cwd.
+
+    Resume is the ``resume`` SUBCOMMAND: Codex has no ``--resume`` flag and
+    exits on one with ``unexpected argument '--resume'`` (codex-cli 0.160.1).
+    ``--last`` takes the most recent session for the working directory
+    without opening the interactive picker.
+    """
     binary = shutil.which("codex") or "codex"
     if resume:
-        return f"{binary} --resume"
+        return f"{binary} resume --last"
     return binary
 
 

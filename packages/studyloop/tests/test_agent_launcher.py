@@ -539,7 +539,7 @@ class TestCodexAdapter:
         from studyloop.agent_launcher import _codex_launch
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
-        assert cmd.endswith("codex --resume")
+        assert cmd.endswith("codex resume --last")
 
 
 # ---------------------------------------------------------------------------
