@@ -265,22 +265,11 @@ async def end_session() -> JSONResponse:
     from studyloop.web.routes.session import _grace
 
     state = session_pkg.read_session_state()
-
-    # Cancel any grace timer FIRST, before releasing the singleton. A socket
-    # that disconnected moments ago has scheduled a release for this session;
-    # ending the session now must not leave that timer armed, or it fires later
-    # against a slot that has already moved on. _grace.release_now is the
-    # documented path for "end arrived during the grace window" and leaves no
-    # orphan timer behind.
     session_id = state.get("study_session_id")
-    if session_id:
-        await _grace.release_now(str(session_id), reason="ended-by-user")
 
-    # Release the PTY singleton first — idempotent, safe when the session
-    # was a CLI tmux flow (studyloop study) that never touched active.py.
-    await session_active.release()
-
-    if not state.get("study_session_id"):
+    if not session_id:
+        # Still release: idempotent, and frees a slot whose state file is gone.
+        await session_active.release()
         return JSONResponse(
             {"error": "No active session"},
             status_code=404,
@@ -288,7 +277,22 @@ async def end_session() -> JSONResponse:
 
     from studyloop.session.cleanup import end_session_common
 
+    # Persist FIRST, release second. ``active.release()`` unlinks the topics
+    # and parking files (``clear_session_files``), so persisting after it
+    # stored every browser-ended session as "No topics recorded during
+    # session." (review 2026-10-21, F-WEB-01). end_session_common is
+    # synchronous, so no grace timer or reaper tick can run in between.
     topic = end_session_common(state)
+
+    # Then cancel any grace timer and release the singleton. A socket that
+    # disconnected moments ago has scheduled a release for this session;
+    # ending the session now must not leave that timer armed, or it fires later
+    # against a slot that has already moved on. _grace.release_now is the
+    # documented path for "end arrived during the grace window" and leaves no
+    # orphan timer behind. The bare release() after it is idempotent and covers
+    # a CLI tmux flow (studyloop study) that never touched active.py.
+    await _grace.release_now(str(session_id), reason="ended-by-user")
+    await session_active.release()
 
     return JSONResponse(
         {"ended": True, "topic": topic or "Unknown"},
