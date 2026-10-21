@@ -24,6 +24,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
+    import requests
     from playwright.sync_api import Browser, BrowserContext, Page
 
 
@@ -281,6 +282,108 @@ def _port_is_free(port: int) -> bool:
         except OSError:
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# Server cookie for out-of-band clients (F-WEB-20 follow-up)
+# ---------------------------------------------------------------------------
+#
+# `studyloop web` mints a per-process secret. GET / hands it to the browser as
+# the HttpOnly `studyloop_auth` cookie, and every /api/* request (403) and both
+# WebSockets (1008) are refused without it. A Playwright page loads / first and
+# keeps the cookie like any browser does. A test that drives a real server out
+# of band -- urllib, requests, websockets -- has to do the same thing: load /
+# once and present the cookie. These helpers are the one way tests do that; they
+# change nothing about the server.
+#
+# Stateless by design: each call loads / afresh, so a server restarted on the
+# same port (new process, new secret) is never answered with a stale cookie.
+# Hold the returned opener/session for a series of calls to one server.
+
+
+def _basic_auth_value(username: str, password: str) -> str:
+    import base64
+
+    return "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
+
+
+def server_cookie_header(
+    base_url: str,
+    *,
+    basic_auth: tuple[str, str] | None = None,
+    timeout: float = 10.0,
+) -> str:
+    """Load ``/`` from the server at *base_url*; return its auth ``Cookie`` value.
+
+    The result is ``"studyloop_auth=<secret>"``: the value for a ``Cookie``
+    header on a urllib ``Request``, a requests call, or
+    ``websockets`` ``connect(additional_headers=...)``.
+
+    *basic_auth* is ``(username, password)`` for a server running with LAN
+    password protection, whose ``/`` answers 401 and sets no cookie without it.
+
+    Raises ``RuntimeError`` when ``/`` answers without setting the cookie. Every
+    real ``studyloop web`` sets it, so its absence is a server regression and is
+    reported as one here, rather than as a 403 on some later ``/api`` call.
+    """
+    import http.cookiejar
+
+    from studyloop.web.ws_origin import AUTH_COOKIE
+
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    request = urllib.request.Request(base_url.rstrip("/") + "/")
+    if basic_auth is not None:
+        request.add_header("Authorization", _basic_auth_value(*basic_auth))
+    with opener.open(request, timeout=timeout) as response:
+        response.read()
+    for cookie in jar:
+        if cookie.name == AUTH_COOKIE and cookie.value:
+            return f"{AUTH_COOKIE}={cookie.value}"
+    msg = (
+        f"GET {base_url.rstrip('/')}/ answered without setting the {AUTH_COOKIE} "
+        "cookie; a real `studyloop web` always sets it (RequestBoundaryMiddleware)"
+    )
+    raise RuntimeError(msg)
+
+
+def server_opener(
+    base_url: str,
+    *,
+    basic_auth: tuple[str, str] | None = None,
+    timeout: float = 10.0,
+) -> urllib.request.OpenerDirector:
+    """A urllib opener that presents *base_url*'s server cookie on every request.
+
+    Use ``server_opener(base).open(request, timeout=...)`` where a test would
+    call ``urllib.request.urlopen(request, timeout=...)``; errors behave the same
+    (``HTTPError`` on a 4xx/5xx). The headers go to every URL the opener opens,
+    so use it only against the server it was built for.
+    """
+    opener = urllib.request.build_opener()
+    headers = [("Cookie", server_cookie_header(base_url, basic_auth=basic_auth, timeout=timeout))]
+    if basic_auth is not None:
+        headers.append(("Authorization", _basic_auth_value(*basic_auth)))
+    opener.addheaders = [*opener.addheaders, *headers]
+    return opener
+
+
+def server_session(
+    base_url: str,
+    *,
+    basic_auth: tuple[str, str] | None = None,
+    timeout: float = 10.0,
+) -> requests.Session:
+    """A ``requests.Session`` that presents *base_url*'s server cookie on every call."""
+    import requests
+
+    session = requests.Session()
+    session.headers["Cookie"] = server_cookie_header(
+        base_url, basic_auth=basic_auth, timeout=timeout
+    )
+    if basic_auth is not None:
+        session.auth = basic_auth
+    return session
 
 
 # ---------------------------------------------------------------------------
