@@ -58,6 +58,32 @@ jobs:
         # user data; actual values always go through bound parameters.
         run: uv run --group dev bandit --recursive --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B603,B606,B607,B608 packages/
 
+  secrets:
+    # The commit-time secret hooks only run where a contributor installed and
+    # kept the pre-commit hook, so a pull request from anyone else reached main
+    # with no secret scan at all. These steps run the same hooks server-side,
+    # through pre-commit, so .pre-commit-config.yaml's pinned revs and its
+    # detect-secrets `exclude` list are the ones in force (pre-commit itself
+    # comes from the locked dev group). Not mirrored here: `no-aws-tokens`
+    # matches AWS's documented sample key in two committed files, so an
+    # all-files run of it is red on a clean tree.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --all-packages --group dev
+      - name: detect-secrets against .secrets.baseline (whole checkout)
+        run: uv run --group dev pre-commit run detect-secrets --all-files
+      - name: detect-private-key (whole checkout)
+        run: uv run --group dev pre-commit run detect-private-key --all-files
+      # Matches only credentials configured on the runner itself (none), so
+      # this is parity with the commit gate rather than extra coverage.
+      - name: detect-aws-credentials (whole checkout)
+        run: uv run --group dev pre-commit run detect-aws-credentials --all-files
+
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10

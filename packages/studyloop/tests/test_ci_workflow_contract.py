@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -311,3 +312,100 @@ def test_nightly_installer_job_proves_the_studyloop_tool_env_carries_the_semanti
         '"$UV_TOOL_DIR/studyloop/bin/python" -c '
         '"import huggingface_hub, numpy, onnxruntime, sqlite_vec, tokenizers"'
     ) in verify["run"]
+
+
+# --- Secret scanning in CI (F-XCUT-05@luna) ----------------------------------
+#
+# The commit-time secret hooks (.pre-commit-config.yaml) only run on a machine
+# where a contributor installed and kept the hook. A pull request from anyone
+# else reaches main with no secret scan at all. CI must run the same hooks, from
+# the same pinned config, so the gate holds server-side too.
+
+SECRET_HOOK_IDS = ("detect-private-key", "detect-aws-credentials", "detect-secrets")
+
+
+def _steps_running(needle: str) -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
+    """Every (job name, job, step) in ci.yml whose ``run`` contains ``needle``."""
+    return [
+        (name, job, step)
+        for name, job in _workflow()["jobs"].items()
+        for step in job["steps"]
+        if isinstance(step, dict) and needle in str(step.get("run", ""))
+    ]
+
+
+def _assert_blocking(hits: list[tuple[str, dict[str, Any], dict[str, Any]]], what: str) -> None:
+    assert hits, f"no ci.yml step runs {what}"
+    for name, job, step in hits:
+        assert not job.get("continue-on-error"), f"job {name!r} may not soften {what}"
+        assert not step.get("continue-on-error"), f"the {what} step in {name!r} must block"
+
+
+def test_ci_runs_a_secret_scanner() -> None:
+    """detect-secrets runs over the whole checkout against the committed
+    baseline, through pre-commit so the hook's pinned rev and its ``exclude``
+    list are the ones in force -- the same check a local commit gets."""
+    hits = _steps_running("pre-commit run detect-secrets --all-files")
+    _assert_blocking(hits, "detect-secrets")
+    for _name, _job, step in hits:
+        assert step["run"].startswith("uv run --group dev pre-commit run "), (
+            "run pre-commit from the locked dev group, not an unpinned uvx/pip copy"
+        )
+
+
+def test_ci_runs_every_commit_gate_secret_hook() -> None:
+    for hook_id in SECRET_HOOK_IDS:
+        _assert_blocking(_steps_running(f"pre-commit run {hook_id} --all-files"), hook_id)
+
+    configured = {
+        hook["id"]
+        for repo in yaml.safe_load(
+            (REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+        )["repos"]
+        for hook in repo.get("hooks", [])
+    }
+    assert set(SECRET_HOOK_IDS) <= configured, "CI must run hooks the commit gate defines"
+
+
+# --- Removed orphans stay removed (ledger 13, F-OPS-13/14@sol) ---------------
+
+
+def _tracked_mentions(needle: str) -> list[str]:
+    """Tracked files that mention ``needle``, excluding this contract file."""
+    proc = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "grep",
+            "-I",
+            "-l",
+            "-F",
+            "-e",
+            needle,
+            "--",
+            ".",
+            f":!{Path(__file__).resolve().relative_to(REPO_ROOT)}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode in (0, 1), proc.stderr  # 1 = no match; anything else is git failing
+    return proc.stdout.split()
+
+
+def test_removed_orphan_workflow_script_stays_removed() -> None:
+    """``scripts/gen_quality_workflow.js`` was referenced by nothing (no recipe,
+    workflow, doc or script) and carried a shell-injection heredoc and fixed
+    shared ``/tmp`` paths. Deleted, it must not drift back."""
+    assert not (REPO_ROOT / "scripts" / "gen_quality_workflow.js").exists()
+    assert _tracked_mentions("gen_quality_workflow") == []
+
+
+def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
+    """CHANGELOG.md is written by hand (docs/contributor-changelog.md, section 5);
+    no recipe or workflow generates it. A config whose usage line is
+    ``git cliff --output CHANGELOG.md`` tells the reader to replace that curated
+    history with commit subjects (``chore`` commits skipped). F-OPS-21@claude."""
+    assert _tracked_mentions("--output CHANGELOG.md") == []
