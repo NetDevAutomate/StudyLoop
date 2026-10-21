@@ -74,8 +74,15 @@ _PEM_BLOCK = re.compile(
     rf"-----BEGIN{_PEM_LABEL}-----{_PEM_BODY}-----END{_PEM_LABEL}-----"
 )
 # A BEGIN line whose END line never arrived (output cut off mid-key): the
-# header plus the body that followed it on the next line.
-_PEM_HEAD = re.compile(rf"-----BEGIN{_PEM_LABEL}-----(?:(?=\r?\n|\\[rn]){_PEM_BODY})?")
+# header plus the body that followed it on the next line -- or, for a key
+# pasted flat on one line, the base64 run glued straight onto the armour
+# (council pass 2: that run used to survive with only its header redacted).
+# The inline form stops at whitespace, so prose after a bare armour line
+# ("...PRIVATE KEY----- and nothing follows") is never treated as a body.
+_PEM_INLINE_BODY = r"(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
+_PEM_HEAD = re.compile(
+    rf"-----BEGIN{_PEM_LABEL}-----(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"
+)
 _PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
 
 

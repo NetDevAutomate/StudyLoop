@@ -404,6 +404,25 @@ def test_unterminated_pem_block_redacts_the_truncated_body() -> None:
     assert result.scrubbed
 
 
+def test_flattened_unterminated_pem_leaves_no_body() -> None:
+    """A key pasted on one line and cut off before its END armour.
+
+    Council pass 2 (gpt-6-astra) found that the truncated-block rule only
+    consumed a body that started on the NEXT line, so ``-----BEGIN PRIVATE
+    KEY-----QUJD...`` had its header redacted and its body left in place --
+    the same shape as the original critical (header-only redaction).
+    """
+    body = "".join(_pem_body("flat")[:3])
+    text = "paste: " + _pem_marker("BEGIN", "") + body + " [cut]"
+    result = Scrubber().scrub(text)
+    assert body not in result.text
+    assert body[:24] not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert result.text.startswith("paste: [PRIVATE_KEY-")
+    assert result.text.endswith(" [cut]")
+    assert result.scrubbed
+
+
 def test_pem_tail_without_begin_line_redacts_body_and_footer() -> None:
     """Output cut off at the front: the body before END is key material too."""
     body = _pem_body("tail")[3:]
