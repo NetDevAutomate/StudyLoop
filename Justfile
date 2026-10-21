@@ -8,20 +8,25 @@ export PYTHONWARNINGS := "ignore:builtin type swigvarlink has no __module__ attr
 default:
     @just --list
 
+# --inexact on every workspace sync: a plain `uv sync` removes each package the
+# requested extras do not need, so `just sync-full` then `just sync-semantic`
+# would strip the web and content extras from the same .venv. install.sh and
+# install_workspace_tools pass --inexact for the same reason. For an exact env,
+# run the `uv sync` line yourself without it.
 sync-dev:
-    uv sync --all-packages --group dev
+    uv sync --inexact --all-packages --group dev
 
 sync-full:
-    uv sync --all-packages --group dev --all-extras
+    uv sync --inexact --all-packages --group dev --all-extras
 
 sync-web:
-    uv sync --all-packages --group dev --extra web
+    uv sync --inexact --all-packages --group dev --extra web
 
 sync-content:
-    uv sync --all-packages --group dev --extra content
+    uv sync --inexact --all-packages --group dev --extra content
 
 sync-semantic:
-    uv sync --all-packages --group dev --extra semantic
+    uv sync --inexact --all-packages --group dev --extra semantic
 
 test:
     uv run --group dev pytest
