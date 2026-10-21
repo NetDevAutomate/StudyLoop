@@ -31,8 +31,19 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
     "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36}\b"),
     "github_fine_grained": re.compile(r"\bgithub_pat_\w{82}\b"),
     "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36}\b"),
-    "openai_key": re.compile(r"\bsk-(?:proj|svcacct|admin)-[A-Za-z0-9_-]{20,80}\b"),
-    "anthropic_key": re.compile(r"\bsk-ant-[a-zA-Z0-9\-_]{80,100}\b"),
+    # OpenAI: sk-proj-/sk-svcacct-/sk-admin- plus 120-160 characters that can
+    # include "-" and "_", or legacy sk- plus 48 alphanumerics with
+    # "T3BlbkFJ" (base64 "OpenAI") at offset 20. Anthropic: sk-ant-api03- or
+    # sk-ant-admin01- plus 95 characters. A modern key's body runs to the end
+    # of the key-character run, with no upper bound and no trailing \b: the
+    # old {20,80} / {80,100} bounds were shorter than real keys, and a \b
+    # that can only fall beside an inner "-" redacted a prefix and left the
+    # tail in the text (F-AST-07).
+    "openai_key": re.compile(
+        r"\bsk-(?:proj|svcacct|admin)-[A-Za-z0-9_-]{20,}"
+        r"|\bsk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}\b"
+    ),
+    "anthropic_key": re.compile(r"\bsk-ant-[A-Za-z0-9_-]{80,}"),
     "jwt": re.compile(
         r"\bey[a-zA-Z0-9]{17,}\.ey[a-zA-Z0-9/\\_-]{17,}\.[a-zA-Z0-9/\\_-]{10,}\b"
     ),

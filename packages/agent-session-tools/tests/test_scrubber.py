@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import string
 
 import pytest
 
@@ -442,6 +443,64 @@ def test_pem_body_holding_an_aws_key_shape_is_one_private_key_redaction() -> Non
     assert "AKIA" not in result.text
     assert "PRIVATE KEY" not in result.text
     assert [f["type"] for f in result.findings] == ["private_key"]
+
+
+# ===========================================================================
+# Provider keys in their real shapes (F-AST-07@claude). The older fixtures
+# above were sized to fit the old regexes, so they could not fail on a real
+# key. These follow the published gitleaks rule shapes; every value is
+# synthetic and assembled at runtime.
+# ===========================================================================
+
+_FILL = (string.ascii_letters + string.digits) * 4
+
+
+def _provider_keys() -> list[tuple[str, str, str]]:
+    marker = "T3Blbk" + "FJ"  # base64 of "OpenAI", inside every OpenAI key
+    return [
+        (
+            "openai-project",
+            "openai_key",
+            "sk-proj-" + _FILL[:74] + marker + _FILL[74:148],
+        ),
+        (
+            "openai-project-with-dash",
+            "openai_key",
+            "sk-proj-" + _FILL[:30] + "-" + _FILL[31:74] + marker + _FILL[74:148],
+        ),
+        (
+            "openai-service-account",
+            "openai_key",
+            "sk-svcacct-" + _FILL[:58] + marker + _FILL[58:116],
+        ),
+        ("openai-legacy", "openai_key", "sk-" + _FILL[:20] + marker + _FILL[20:40]),
+        (
+            "anthropic-api",
+            "anthropic_key",
+            "sk-ant-api03-" + _FILL[:93] + "AA",
+        ),
+        (
+            "anthropic-api-with-dash",
+            "anthropic_key",
+            "sk-ant-api03-" + _FILL[:40] + "-" + _FILL[41:93] + "AA",
+        ),
+        (
+            "anthropic-admin",
+            "anthropic_key",
+            "sk-ant-admin01-" + _FILL[:93] + "AA",
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("kind", "key"),
+    [pytest.param(kind, key, id=name) for name, kind, key in _provider_keys()],
+)
+def test_redacts_format_faithful_provider_keys(kind: str, key: str) -> None:
+    result = Scrubber().scrub(f"export KEY={key}\nnext line")
+    assert result.text == f"export KEY=[{kind.upper()}-001]\nnext line"
+    assert [f["type"] for f in result.findings] == [kind]
+    assert result.findings[0]["length"] == len(key)
 
 
 def test_prose_mentioning_private_key_is_untouched() -> None:
