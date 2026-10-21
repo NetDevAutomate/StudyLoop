@@ -36,7 +36,6 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
     "jwt": re.compile(
         r"\bey[a-zA-Z0-9]{17,}\.ey[a-zA-Z0-9/\\_-]{17,}\.[a-zA-Z0-9/\\_-]{10,}\b"
     ),
-    "private_key_header": re.compile(r"-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE KEY-----"),
     "connection_string": re.compile(
         r"(?i)(?:postgres|mysql|mongodb|redis)://[^:\s]+:[^@\s]+@[^\s\"']+",
     ),
@@ -48,6 +47,57 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
         r"\s*[=:]\s*['\"][^\s'\"]{8,}['\"]"
     ),
 }
+
+# PEM-armoured private keys. The secret is the base64 BODY, so a match is
+# the whole block, never just its BEGIN line (F-AST-01). The body class is
+# what a PEM body can hold: base64, whitespace, a line break written out as
+# "\n" (JSON, a SQL dump) and the "Proc-Type: 4,ENCRYPTED" / "DEK-Info:
+# AES-128-CBC,<iv>" lines of a legacy encrypted key. It holds no quote
+# character, so a span never crosses the end of the SQL or JSON string that
+# contains it, and it stops at "-----", so it never runs through the next
+# armour line.
+_PEM_LABEL = r"[ A-Z0-9_-]{0,100}PRIVATE KEY"
+_PEM_BODY_CHAR = re.compile(r"[A-Za-z0-9+/=,:\\ \t\r\n\f\v-]")
+_PEM_BODY = rf"(?:(?!-----){_PEM_BODY_CHAR.pattern})*+"
+_PEM_BLOCK = re.compile(
+    rf"-----BEGIN{_PEM_LABEL}-----{_PEM_BODY}-----END{_PEM_LABEL}-----"
+)
+# A BEGIN line whose END line never arrived (output cut off mid-key): the
+# header plus the body that followed it on the next line.
+_PEM_HEAD = re.compile(rf"-----BEGIN{_PEM_LABEL}-----(?:(?=\r?\n|\\[rn]){_PEM_BODY})?")
+_PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
+
+
+def _private_key_spans(text: str) -> list[tuple[int, int]]:
+    """Return the sorted, disjoint spans of PEM private-key material in text.
+
+    Whole blocks first. Then, for a block cut off at the end, its BEGIN line
+    and the body that followed; for a block cut off at the front, its END
+    line and the body before it. Truncated key material is still key
+    material, so a cut-off block is redacted as far as it goes.
+    """
+    if "PRIVATE KEY-----" not in text:
+        return []
+    spans: list[tuple[int, int]] = []
+    # Each claimed span is overwritten with NULs (same length, so offsets
+    # hold); NUL is not a body character, so later passes stop at it.
+    masked = text
+    for pattern in (_PEM_BLOCK, _PEM_HEAD):
+        for match in pattern.finditer(masked):
+            start, end = match.span()
+            spans.append((start, end))
+            masked = masked[:start] + "\0" * (end - start) + masked[end:]
+    for match in _PEM_FOOT.finditer(masked):
+        start = match.start()
+        if masked.endswith(("\n", "\\n"), 0, start):
+            while (
+                start > 0
+                and _PEM_BODY_CHAR.fullmatch(masked[start - 1])
+                and not masked.endswith("-----", 0, start)
+            ):
+                start -= 1
+        spans.append((start, match.end()))
+    return sorted(spans)
 
 
 @dataclass
@@ -124,6 +174,32 @@ class Scrubber:
             return True
         return any(pattern.search(value) for pattern in self._allowlist_patterns)
 
+    def _scrub_private_keys(self, text: str, findings: list[dict[str, Any]]) -> str:
+        """Replace each PEM private-key span with its placeholder.
+
+        Runs before SECRET_PATTERNS so no other detector can split a block
+        first (a base64 body line can look like an AWS key id), which would
+        leave the rest of the body unmatched.
+        """
+        pieces: list[str] = []
+        cursor = 0
+        for start, end in _private_key_spans(text):
+            original = text[start:end]
+            if self._is_allowlisted(original):
+                continue
+            placeholder = self._placeholder("private_key", original)
+            findings.append(
+                {
+                    "type": "private_key",
+                    "placeholder": placeholder,
+                    "length": len(original),
+                }
+            )
+            pieces += [text[cursor:start], placeholder]
+            cursor = end
+        pieces.append(text[cursor:])
+        return "".join(pieces)
+
     def scrub(self, text: str) -> ScrubResult:
         """Scrub secrets from text, returning the cleaned text and findings.
 
@@ -133,7 +209,7 @@ class Scrubber:
             return ScrubResult(text=text)
 
         findings: list[dict[str, Any]] = []
-        result = text
+        result = self._scrub_private_keys(text, findings)
 
         for entity_type, pattern in SECRET_PATTERNS.items():
             for match in pattern.finditer(result):

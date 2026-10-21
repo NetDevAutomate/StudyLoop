@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+
+import pytest
 
 from agent_session_tools.scrubber import (
     SECRET_PATTERNS,
@@ -33,8 +37,6 @@ JWT_TOKEN = (
     ".eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ"
     ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 )
-# Constructed at runtime to avoid detect-private-key hook literal match
-PRIVATE_KEY_HEADER = "-----BEGIN RSA " + "PRIVATE KEY-----"
 CONNECTION_STRING = (
     "postgres://myuser:mysecretpassword@localhost:5432/mydb"  # pragma: allowlist secret
 )
@@ -64,7 +66,9 @@ class TestSecretPatterns:
 
     def test_aws_secret_key_unquoted(self):
         # The common .env / CLI-export shape has NO quotes around the value.
-        unquoted = "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # pragma: allowlist secret
+        # Assembled at runtime: the literal assignment trips the no-aws-tokens
+        # commit hook, which reads source text, not this fake value.
+        unquoted = "aws_secret_access_key = " + AWS_SECRET_KEY_VALUE
         assert SECRET_PATTERNS["aws_secret_key"].search(unquoted)
 
     def test_aws_secret_key_no_false_positive_on_short_value(self):
@@ -91,13 +95,11 @@ class TestSecretPatterns:
     def test_jwt(self):
         assert SECRET_PATTERNS["jwt"].search(JWT_TOKEN)
 
-    def test_private_key_header(self):
-        assert SECRET_PATTERNS["private_key_header"].search(PRIVATE_KEY_HEADER)
-
-    def test_private_key_header_ec_variant(self):
-        assert SECRET_PATTERNS["private_key_header"].search(
-            "-----BEGIN EC " + "PRIVATE KEY-----"  # pragma: allowlist secret
-        )
+    def test_private_keys_are_not_a_single_token_pattern(self):
+        # PEM blocks span lines and need truncation handling, so they are
+        # matched by Scrubber._scrub_private_keys, not by a SECRET_PATTERNS
+        # entry that could only ever see the header (F-AST-01).
+        assert not any("private" in name for name in SECRET_PATTERNS)
 
     def test_connection_string_postgres(self):
         assert SECRET_PATTERNS["connection_string"].search(CONNECTION_STRING)
@@ -144,8 +146,8 @@ class TestSecretPatterns:
         assert not SECRET_PATTERNS["generic_secret"].search("token = 'abc'")
 
     def test_pattern_count(self):
-        """Ensure we have exactly 14 named patterns (no silent additions/removals)."""
-        assert len(SECRET_PATTERNS) == 14
+        """Ensure we have exactly 13 named patterns (no silent additions/removals)."""
+        assert len(SECRET_PATTERNS) == 13
 
 
 # ===========================================================================
@@ -284,6 +286,162 @@ class TestScrubberDetection:
         result = s.scrub(AWS_ACCESS_KEY)
         for finding in result.findings:
             assert AWS_ACCESS_KEY not in str(finding)
+
+
+# ===========================================================================
+# PEM private-key blocks (F-AST-01@sol): the base64 body is the secret,
+# so the whole block goes, not just its BEGIN line.
+# ===========================================================================
+
+
+def _pem_marker(kind: str, label: str) -> str:
+    """One PEM armour line: five dashes, BEGIN or END, the label, five dashes.
+
+    Assembled at runtime so the detect-private-key commit hook does not
+    read this test file as a leaked key.
+    """
+    words = [kind, *([label] if label else []), "PRIVATE", "KEY"]
+    return "-----" + " ".join(words) + "-----"
+
+
+def _pem_body(seed: str, lines: int = 6) -> list[str]:
+    """Synthetic 64-column base64 body lines (last one padded); no real key."""
+    raw = b"".join(
+        hashlib.sha256(f"{seed}:{i}".encode()).digest() for i in range(lines * 2)
+    )
+    text = base64.b64encode(raw[: lines * 48 - 7]).decode()
+    return [text[i : i + 64] for i in range(0, len(text), 64)]
+
+
+def _pem(
+    label: str,
+    seed: str,
+    *,
+    newline: str = "\n",
+    headers: tuple[str, ...] = (),
+) -> str:
+    lines = [_pem_marker("BEGIN", label)]
+    if headers:
+        lines += [*headers, ""]
+    lines += [*_pem_body(seed), _pem_marker("END", label)]
+    return newline.join(lines)
+
+
+_LEGACY_ENCRYPTED_HEADERS = (
+    "Proc-Type: 4,ENCRYPTED",
+    "DEK-Info: AES-128-CBC," + "0A" * 16,
+)
+
+
+@pytest.mark.parametrize(
+    ("label", "seed", "newline", "headers"),
+    [
+        pytest.param("RSA", "rsa", "\n", (), id="rsa"),
+        pytest.param("EC", "ec", "\n", (), id="ec"),
+        pytest.param("", "pkcs8", "\n", (), id="pkcs8"),
+        pytest.param("ENCRYPTED", "enc", "\n", (), id="encrypted-pkcs8"),
+        pytest.param(
+            "RSA", "legacy", "\n", _LEGACY_ENCRYPTED_HEADERS, id="legacy-encrypted"
+        ),
+        pytest.param("OPENSSH", "openssh", "\n", (), id="openssh"),
+        pytest.param("RSA", "crlf", "\r\n", (), id="crlf"),
+        pytest.param("RSA", "json", "\\n", (), id="json-escaped-newlines"),
+        pytest.param("RSA", "oneline", " ", (), id="single-line"),
+    ],
+)
+def test_pem_block_body_and_end_line_are_redacted(
+    label: str, seed: str, newline: str, headers: tuple[str, ...]
+) -> None:
+    text = "Here is the key:\n" + _pem(label, seed, newline=newline, headers=headers)
+    text += "\nThat was it."
+    result = Scrubber().scrub(text)
+    for line in _pem_body(seed):
+        assert line not in result.text
+    assert "-----BEGIN" not in result.text
+    assert "-----END" not in result.text
+    assert result.text.startswith("Here is the key:\n")
+    assert result.text.endswith("\nThat was it.")
+    assert [f["type"] for f in result.findings] == ["private_key"]
+
+
+def test_two_pem_blocks_in_one_text_are_both_redacted() -> None:
+    text = (
+        "old key:\n"
+        + _pem("RSA", "first")
+        + "\nnew key:\n"
+        + _pem("EC", "second")
+        + "\ndone"
+    )
+    result = Scrubber().scrub(text)
+    for line in _pem_body("first") + _pem_body("second"):
+        assert line not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert "old key:" in result.text
+    assert "new key:" in result.text
+    assert result.text.endswith("\ndone")
+    placeholders = [f["placeholder"] for f in result.findings]
+    assert len(placeholders) == 2
+    assert len(set(placeholders)) == 2
+
+
+def test_unterminated_pem_block_redacts_the_truncated_body() -> None:
+    """Output cut off mid-key: the body that did arrive is still key material."""
+    body = _pem_body("cut")[:3]
+    text = (
+        "output:\n"
+        + _pem_marker("BEGIN", "RSA")
+        + "\n"
+        + "\n".join(body)
+        + "\n[output truncated]"
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert result.text.startswith("output:\n")
+    assert result.text.endswith("[output truncated]")
+    assert result.scrubbed
+
+
+def test_pem_tail_without_begin_line_redacts_body_and_footer() -> None:
+    """Output cut off at the front: the body before END is key material too."""
+    body = _pem_body("tail")[3:]
+    text = "...\n" + "\n".join(body) + "\n" + _pem_marker("END", "RSA") + "\nnext"
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert result.text.startswith("...")
+    assert result.text.endswith("\nnext")
+    assert result.scrubbed
+
+
+def test_pem_block_inside_sql_dump_keeps_statement_structure() -> None:
+    """scrub_sql runs over a whole dump: a redaction must stay inside its string."""
+    cut = _pem_marker("BEGIN", "RSA") + "\n" + _pem_body("row1")[0]
+    sql = (
+        "INSERT INTO messages VALUES('m1','" + cut + "');\n"
+        "INSERT INTO messages VALUES('m2','" + _pem("EC", "row2") + "');\n"
+        "INSERT INTO messages VALUES('m3','ok');"
+    )
+    out, report = Scrubber().scrub_sql(sql)
+    assert out.count("');\n") == 2
+    assert "INSERT INTO messages VALUES('m2','[PRIVATE_KEY-" in out
+    assert out.endswith("INSERT INTO messages VALUES('m3','ok');")
+    for line in _pem_body("row1")[:1] + _pem_body("row2"):
+        assert line not in out
+    assert report.findings_by_type == {"private_key": 2}
+
+
+def test_pem_body_holding_an_aws_key_shape_is_one_private_key_redaction() -> None:
+    """Another detector must not split the block before the PEM match sees it."""
+    body = _pem_body("aws")
+    body[2] = "AKIA" + "Q" * 16
+    text = "\n".join([_pem_marker("BEGIN", "RSA"), *body, _pem_marker("END", "RSA")])
+    result = Scrubber().scrub(text)
+    assert "AKIA" not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert [f["type"] for f in result.findings] == ["private_key"]
 
 
 class TestScrubberDeterministicPlaceholders:
