@@ -7,13 +7,14 @@
 
 set -euo pipefail
 
-# Colors
-GREEN='\033[32m'
-YELLOW='\033[33m'
-RED='\033[31m'
-CYAN='\033[36m'
-DIM='\033[2m'
-RESET='\033[0m'
+# Colors: real escape bytes, so the line is printed with printf '%s' and a
+# backslash in the topic stays a backslash.
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+RED=$'\033[31m'
+CYAN=$'\033[36m'
+DIM=$'\033[2m'
+RESET=$'\033[0m'
 
 # Every value shown below is data, never code (F-OPS-01): the topic is free
 # text a user typed, and the stdin JSON is whatever Claude Code pipes in. One
@@ -162,6 +163,12 @@ PARTS+=("${DIM}⏱️ ${DURATION_DISPLAY}${RESET}")
 PARTS+=("${CTX_COLOR}📊 ${CTX_PCT}%${RESET}")
 PARTS+=("${DIM}\$${COST}${RESET}")
 
-# Join with separator
-IFS=' │ '
-echo -e "${PARTS[*]}"
+# Join with separator. An IFS join uses only IFS's first character (a space),
+# so the │ never appeared; join explicitly instead.
+LINE=""
+SEP=""
+for part in "${PARTS[@]}"; do
+    LINE+="${SEP}${part}"
+    SEP=" │ "
+done
+printf '%s\n' "$LINE"

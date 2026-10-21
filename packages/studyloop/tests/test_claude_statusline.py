@@ -28,6 +28,7 @@ import pytest
 
 EXECUTED_MARKER = "MARKER7731RAN"
 INJECTION = "x;echo MARKER$((7700+31))RAN"
+SEPARATOR = " │ "
 
 
 def _repo_root() -> Path:
@@ -140,3 +141,19 @@ def test_control_characters_in_topic_cannot_shift_fields_or_reach_the_terminal(
     assert "Med" in result.stdout, f"energy lost to a shifted field: {result.stdout!r}"
     assert "ab[2Jcd" in result.stdout
     assert result.stdout.count("\n") == 1, f"status line is not one line: {result.stdout!r}"
+
+
+def test_topic_backslashes_are_printed_literally(bash: str, tmp_path: Path) -> None:
+    result = _render(bash, tmp_path, state={"energy_label": "medium", "topic": r"notes\new\c"})
+
+    assert result.returncode == 0, result.stderr
+    assert r"notes\new\c" in result.stdout
+    assert result.stdout.count("\n") == 1, f"status line is not one line: {result.stdout!r}"
+
+
+def test_segments_are_joined_with_box_drawing_separator(bash: str, tmp_path: Path) -> None:
+    """Topic, energy, timer, context and cost: five segments, four separators."""
+    result = _render(bash, tmp_path, state={"energy_label": "medium", "topic": "SQL"})
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count(SEPARATOR) == 4, f"segments not joined by │: {result.stdout!r}"
