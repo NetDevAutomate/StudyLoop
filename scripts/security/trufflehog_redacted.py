@@ -6,6 +6,11 @@ transcript. This wrapper consumes trufflehog's ``--json`` stream and prints
 only the detector, verification state, commit, file and line -- never ``Raw``
 or ``RawV2`` -- and exits non-zero when anything was found.
 
+Exit codes: 0 clean, 1 findings, 2 scanner error. Output this wrapper cannot
+read (a stdout line that is not a finding object, or trufflehog's ``--fail``
+code 183 with no parsed finding) is a scanner error, never a clean result, and
+the unreadable lines are not echoed because they may carry the raw match.
+
 Usage (from the repo root)::
 
     uv run python scripts/security/trufflehog_redacted.py            # staged/uncommitted changes
@@ -33,8 +38,21 @@ import sys
 REDACT_KEYS = {"Raw", "RawV2", "Redacted"}
 
 
-def _rows(stream: str) -> list[dict]:
+def _mapping(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _rows(stream: str) -> tuple[list[dict], int]:
+    """Parse trufflehog's ``--json`` stdout into redacted finding rows.
+
+    Returns the rows and the number of nonblank lines that were NOT a finding
+    object. trufflehog 3.x writes exactly one finding object per stdout line and
+    sends its logs to stderr (checked against 3.99.2), so any such line means
+    the output format changed under this wrapper: the scan cannot be read as
+    clean, and the caller fails closed.
+    """
     findings: list[dict] = []
+    unrecognised = 0
     for line in stream.splitlines():
         line = line.strip()
         if not line:
@@ -42,10 +60,12 @@ def _rows(stream: str) -> list[dict]:
         try:
             item = json.loads(line)
         except json.JSONDecodeError:
+            unrecognised += 1
             continue
-        if "DetectorName" not in item:
+        if not isinstance(item, dict) or "DetectorName" not in item:
+            unrecognised += 1
             continue
-        git = ((item.get("SourceMetadata") or {}).get("Data") or {}).get("Git") or {}
+        git = _mapping(_mapping(_mapping(item.get("SourceMetadata")).get("Data")).get("Git"))
         findings.append(
             {
                 "detector": item.get("DetectorName", "?"),
@@ -55,7 +75,7 @@ def _rows(stream: str) -> list[dict]:
                 "line": git.get("line", ""),
             }
         )
-    return findings
+    return findings, unrecognised
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,16 +100,29 @@ def main(argv: list[str] | None = None) -> int:
         "--results=verified,unknown,unverified",
         "--no-update",
         "--json",
+        # Exit 183 when anything was found: a signal that does not depend on
+        # this wrapper parsing the JSON, so 183 with no parsed row is caught.
+        "--fail",
     ]
     if not args.history:
         cmd.append("--since-commit=HEAD")
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    findings = _rows(proc.stdout)
+    findings, unrecognised = _rows(proc.stdout)
 
     if proc.returncode not in (0, 183) and not findings:
-        # 183 is trufflehog's "findings present" code when --fail is used; we
-        # do not pass --fail, so anything non-zero here is a tool error.
+        # 0 = clean, 183 = findings (--fail); anything else is a tool error.
         print(f"trufflehog exited {proc.returncode}: {proc.stderr[-800:]}", file=sys.stderr)
+        return 2
+
+    if unrecognised or (proc.returncode == 183 and not findings):
+        # Never echo the unreadable lines: they may carry the raw match.
+        print(
+            "trufflehog output not recognised -- failing closed: "
+            f"{unrecognised} stdout line(s) were not a finding object, "
+            f"{len(findings)} finding(s) parsed, trufflehog exit {proc.returncode}. "
+            "Check the installed trufflehog version against this wrapper.",
+            file=sys.stderr,
+        )
         return 2
 
     by = collections.Counter((f["detector"], f["verified"]) for f in findings)
