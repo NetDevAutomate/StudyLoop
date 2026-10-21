@@ -12,8 +12,10 @@ from __future__ import annotations
 import ast
 import json
 import os
+import shlex
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from types import ModuleType
 
@@ -350,4 +352,55 @@ def test_ambient_studyloop_env_cannot_reach_real_state(tmp_path: Path) -> None:
         assert leaked == {}, (
             f"[{label}] the suite resolved the caller's ambient paths instead of its "
             f"sandbox: {leaked}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# A path-scoped run must deselect the same opt-in tiers as a workspace run.
+# ---------------------------------------------------------------------------
+
+_OPT_IN_TIERS = (
+    "integration",
+    "e2e",
+    "live_kiro",
+    "live_provider",
+    "live_obsidian",
+    "live_xtiles",
+    "acceptance",
+    "uat",
+)
+
+
+def _addopts_marker_expression(pyproject: Path) -> str | None:
+    """The ``-m`` expression in a pyproject's pytest ``addopts``, if any."""
+    options = tomllib.loads(pyproject.read_text(encoding="utf-8"))["tool"]["pytest"]
+    args = shlex.split(options["ini_options"].get("addopts", ""))
+    for index, arg in enumerate(args):
+        if arg == "-m" and index + 1 < len(args):
+            return args[index + 1]
+        if arg.startswith("-m") and len(arg) > 2:
+            return arg[2:]
+    return None
+
+
+def test_agent_session_tools_default_run_deselects_integration() -> None:
+    """``pytest packages/agent-session-tools/...`` must not run the opt-in tiers.
+
+    pytest takes its configfile from the rootdir it derives from the arguments,
+    so a path under that package reads only its own pyproject. Without a ``-m``
+    filter there, a focused run of test_query_encoders.py ran the
+    integration-marked torch-vs-onnx parity class.
+    """
+    root = _addopts_marker_expression(_WORKSPACE_ROOT / "pyproject.toml")
+    assert root is not None, "the workspace pyproject lost its default -m filter"
+
+    packages = _WORKSPACE_ROOT / "packages"
+    for package in ("agent-session-tools", "studyloop"):
+        expression = _addopts_marker_expression(packages / package / "pyproject.toml")
+        assert expression is not None, f"packages/{package}/pyproject.toml has no -m filter"
+        missing = [tier for tier in _OPT_IN_TIERS if f"not {tier}" not in expression]
+        assert missing == [], f"packages/{package} default run selects: {missing}"
+        assert expression == root, (
+            f"packages/{package}/pyproject.toml deselects {expression!r}, "
+            f"the workspace root deselects {root!r}"
         )
