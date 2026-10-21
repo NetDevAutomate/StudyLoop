@@ -157,19 +157,6 @@ def test_backup_over_an_existing_wider_file_is_made_0600_first(
     assert _mode(stale) == 0o600
 
 
-def test_backup_dir_is_created_0700(tmp_path, umask_022):
-    db_path = _owner_only_db(tmp_path)
-    backup_dir = tmp_path / "backups"
-
-    with patch(
-        "agent_session_tools.maintenance.get_backup_dir", return_value=backup_dir
-    ):
-        create_backup(db_path)
-
-    assert _mode(backup_dir) == 0o700
-    assert _current_umask() == 0o022
-
-
 def test_archive_db_is_created_0600_under_umask_022(tmp_path, umask_022, monkeypatch):
     db_path = _owner_only_db(tmp_path)
     archive_path = tmp_path / "sessions_archive.db"

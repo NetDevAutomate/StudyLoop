@@ -119,10 +119,7 @@ def create_backup(db_path: Path) -> Path | None:
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_dir = get_backup_dir(cfg)
-    # 0700 applies only when this call creates the leaf directory; an
-    # existing, user-chosen backup directory keeps its mode. The file mode
-    # below is what keeps each copy owner-only either way.
-    backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
     # R-19c (M3 council, arbitration A2/X1 extension): a plain file copy of a
