@@ -876,6 +876,146 @@ class TestUndatedSessionsAreNotOld:
 
 
 # ---------------------------------------------------------------------------
+# F-AST-04@sol / F-AST-02@sol: on a current-schema database (lifecycle tables,
+# schema 41+) a permanent delete must leave a tombstone so the next export
+# cannot re-import the session, and neither delete nor archive may leave
+# dependent rows (notes, tags, file references, learner records) orphaned.
+# ---------------------------------------------------------------------------
+
+
+def _current_db(tmp_path: Path) -> Path:
+    from agent_session_tools.export_sessions import init_db
+
+    db_path = tmp_path / "sessions.db"
+    init_db(str(db_path)).close()
+    return db_path
+
+
+def _export(db_path: Path, session_id: str, when: str) -> None:
+    """Write one session + message through the exporters' own write path."""
+    from agent_session_tools.exporters.base import ExportStats, commit_batch
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    commit_batch(
+        conn,
+        [
+            {
+                "id": session_id,
+                "source": "claude_code",
+                "project_path": "/p",
+                "created_at": when,
+                "updated_at": when,
+            }
+        ],
+        [
+            {
+                "id": f"{session_id}-m1",
+                "session_id": session_id,
+                "role": "user",
+                "content": "hello",
+                "timestamp": when,
+            }
+        ],
+        ExportStats(),
+    )
+    conn.close()
+
+
+def _add_note_tag_and_file_reference(db_path: Path, session_id: str) -> None:
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO session_notes (session_id, notes) VALUES (?, ?)",
+        (session_id, "my note"),
+    )
+    conn.execute(
+        "INSERT INTO session_tags (session_id, tag) VALUES (?, ?)", (session_id, "t")
+    )
+    conn.execute(
+        "INSERT INTO file_references (session_id, message_id, file_path, tool_name)"
+        " VALUES (?, ?, ?, ?)",
+        (session_id, f"{session_id}-m1", "/x.py", "Read"),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _orphans(db_path: Path) -> list[tuple]:
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute("PRAGMA foreign_key_check").fetchall()
+    conn.close()
+    return rows
+
+
+class TestCurrentSchemaDelete:
+    def test_delete_writes_a_tombstone_so_the_next_export_cannot_reimport(
+        self, tmp_path
+    ):
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert _session_ids(db_path) == set()
+
+        # The native transcript is still on disk; the next export sees it.
+        _export(db_path, "old-1", _old_iso(100))
+        assert _session_ids(db_path) == set()
+
+    def test_delete_leaves_no_orphaned_dependents(self, tmp_path):
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+        _add_note_tag_and_file_reference(db_path, "old-1")
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _orphans(db_path) == []
+        for table in ("session_notes", "session_tags", "file_references"):
+            assert _count(db_path, table) == 0
+
+    def test_delete_keeps_a_session_that_owns_learner_records(self, tmp_path, capsys):
+        """A tombstone forgets the learner records a session owns; prune keeps
+        such sessions (tiering._anchored_session_ids), and so does delete."""
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+        _export(db_path, "old-2", _old_iso(100))
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO study_sessions (id, session_id, topic, started_at)"
+            " VALUES (?, ?, ?, ?)",
+            ("study-1", "old-1", "sql", _old_iso(100)),
+        )
+        conn.commit()
+        conn.close()
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _session_ids(db_path) == {"old-1"}
+        assert _count(db_path, "study_sessions") == 1
+        assert "1 session(s) that own learner records" in capsys.readouterr().out
+
+
+class TestCurrentSchemaArchive:
+    def test_archive_keeps_sessions_whose_dependents_it_cannot_hold(
+        self, tmp_path, capsys
+    ):
+        db_path = _current_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        _export(db_path, "plain", _old_iso(100))
+        _export(db_path, "noted", _old_iso(100))
+        _add_note_tag_and_file_reference(db_path, "noted")
+
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _orphans(db_path) == []
+        assert _session_ids(db_path) == {"noted"}
+        assert _session_ids(archive_path) == {"plain"}
+        assert _count(db_path, "session_notes") == 1
+        out = capsys.readouterr().out
+        assert "Kept 1 session(s) with rows the archive cannot hold" in out
+        assert "session-maint sync-full" in out
+
+
+# ---------------------------------------------------------------------------
 # _handle_duplicates
 # ---------------------------------------------------------------------------
 

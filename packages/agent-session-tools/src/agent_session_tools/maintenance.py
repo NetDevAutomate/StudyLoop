@@ -178,6 +178,78 @@ def _sessions_older_than(conn: sqlite3.Connection, cutoff: str) -> list[sqlite3.
     ).fetchall()
 
 
+def _has_lifecycle(conn: sqlite3.Connection) -> bool:
+    """True for a current-schema database (tombstones, record ownership)."""
+    return conn.execute("PRAGMA user_version").fetchone()[0] >= 41
+
+
+def _without_learner_anchors(
+    conn: sqlite3.Connection, sessions: list[sqlite3.Row]
+) -> list[sqlite3.Row]:
+    """Drop sessions that own learner records, and say how many were kept.
+
+    A permanent delete writes a tombstone, and a tombstone forgets every
+    learner record its session owns (study sessions, teach-backs, parked
+    topics, notes). Prune never evicts such a session
+    (tiering._anchored_session_ids); an age-based delete keeps it too rather
+    than erase learner progress.
+    """
+    from agent_session_tools.tiering import _anchored_session_ids
+
+    anchored = _anchored_session_ids(conn)
+    kept = sum(1 for s in sessions if s["id"] in anchored)
+    if kept:
+        print(f"ℹ️  Kept {kept} session(s) that own learner records.")
+    return [s for s in sessions if s["id"] not in anchored]
+
+
+def _archivable(
+    conn: sqlite3.Connection, sessions: list[sqlite3.Row]
+) -> list[sqlite3.Row]:
+    """Drop sessions with rows the two-table archive cannot hold (F-AST-02).
+
+    The archive database holds sessions and messages only. Archiving a
+    session that also has notes, tags, file references, evidence, project
+    ownership or learner records deleted it from the source with foreign
+    keys off, orphaning those rows there while the archive never received
+    them. Such a session now stays in the source. Derived rows (embeddings,
+    the FTS index) do not hold a session back: triggers remove them.
+    """
+    from agent_session_tools.tiering import (
+        _DERIVED_TABLES,
+        _anchored_session_ids,
+        _dependent_tables,
+    )
+
+    blocked = _anchored_session_ids(conn)
+    for table, column in _dependent_tables(conn, "sessions"):
+        blocked.update(
+            r[0]
+            for r in conn.execute(
+                f"SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL"
+            )
+        )
+    for table, column in _dependent_tables(conn, "messages"):
+        if table in _DERIVED_TABLES:
+            continue
+        blocked.update(
+            r[0]
+            for r in conn.execute(
+                f"SELECT DISTINCT m.session_id FROM {table} c "
+                f"JOIN messages m ON m.id = c.{column}"
+            )
+        )
+    kept = sum(1 for s in sessions if s["id"] in blocked)
+    if kept:
+        print(
+            f"ℹ️  Kept {kept} session(s) with rows the archive cannot hold (notes, "
+            "tags, file references, evidence or learner records). 'session-maint "
+            "sync-full' then 'session-maint prune' moves whole sessions out of "
+            "the hot database instead."
+        )
+    return [s for s in sessions if s["id"] not in blocked]
+
+
 def _backup_refused(db_path: Path) -> int:
     """Report that a requested backup was not made; the caller returns 1.
 
@@ -390,7 +462,9 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         source_conn = sqlite3.connect(db_path)
         source_conn.row_factory = sqlite3.Row
 
-        old_sessions = _sessions_older_than(source_conn, cutoff_date)
+        old_sessions = _archivable(
+            source_conn, _sessions_older_than(source_conn, cutoff_date)
+        )
 
         if not old_sessions:
             print(f"✅ No sessions older than {days} days found")
@@ -590,6 +664,9 @@ def _delete_old(
         conn.row_factory = sqlite3.Row
 
         old_sessions = _sessions_older_than(conn, cutoff_date)
+        lifecycle = _has_lifecycle(conn)
+        if lifecycle:
+            old_sessions = _without_learner_anchors(conn, old_sessions)
 
         if not old_sessions:
             print(f"✅ No sessions older than {days} days found")
@@ -617,17 +694,37 @@ def _delete_old(
             conn.close()
             return _backup_refused(db_path)
 
-        # Delete messages first (foreign key constraint)
-        print("\n🗑️  Deleting messages...")
-        conn.execute(
-            f"DELETE FROM messages WHERE session_id IN ({placeholders})", session_ids
-        )
+        if lifecycle:
+            # Permanent means permanent (F-AST-04): purge_session writes a
+            # context_tombstones row, which the exporters honour, so the next
+            # export cannot re-import the session from its native transcript.
+            # It also removes every dependent row (notes, tags, file
+            # references, evidence, ownership) that a bare DELETE with foreign
+            # keys off left orphaned (F-AST-02).
+            from agent_session_tools.context.lifecycle import purge_session
 
-        # Delete sessions
-        print("🗑️  Deleting sessions...")
-        conn.execute(f"DELETE FROM sessions WHERE id IN ({placeholders})", session_ids)
-
-        conn.commit()
+            print("\n🗑️  Deleting sessions (tombstoned against re-import)...")
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                for session_id in session_ids:
+                    purge_session(conn, session_id, permanent=True)
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
+        else:
+            # Pre-lifecycle schema: no tombstones exist to write.
+            print("\n🗑️  Deleting messages...")
+            conn.execute(
+                f"DELETE FROM messages WHERE session_id IN ({placeholders})",
+                session_ids,
+            )
+            print("🗑️  Deleting sessions...")
+            conn.execute(
+                f"DELETE FROM sessions WHERE id IN ({placeholders})", session_ids
+            )
+            conn.commit()
         conn.close()
 
         print(f"✅ Deleted {len(old_sessions)} sessions ({message_count} messages)")
