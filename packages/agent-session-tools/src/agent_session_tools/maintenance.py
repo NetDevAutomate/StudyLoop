@@ -153,6 +153,31 @@ def create_backup(db_path: Path) -> Path | None:
     return backup_path
 
 
+# A session's age is its newest known timestamp. updated_at is NULL for every
+# Kiro v1 conversation (exporters/kiro.py) and for any harness that gave none;
+# such a session is of unknown age, never "older than N days", so delete and
+# archive keep it and say so (F-AST-06).
+_SESSION_AGE_SQL = """COALESCE(
+    s.updated_at,
+    s.created_at,
+    (SELECT MAX(m.timestamp) FROM messages m WHERE m.session_id = s.id)
+)"""
+
+
+def _sessions_older_than(conn: sqlite3.Connection, cutoff: str) -> list[sqlite3.Row]:
+    """Sessions whose age is known and before cutoff; report the undated ones."""
+    undated = conn.execute(
+        f"SELECT COUNT(*) FROM sessions s WHERE {_SESSION_AGE_SQL} IS NULL"
+    ).fetchone()[0]
+    if undated:
+        print(f"ℹ️  Kept {undated} session(s) with no timestamp: their age is unknown.")
+    return conn.execute(
+        f"SELECT s.id, s.project_path, s.updated_at FROM sessions s "
+        f"WHERE {_SESSION_AGE_SQL} < ?",
+        (cutoff,),
+    ).fetchall()
+
+
 def _backup_refused(db_path: Path) -> int:
     """Report that a requested backup was not made; the caller returns 1.
 
@@ -365,14 +390,7 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         source_conn = sqlite3.connect(db_path)
         source_conn.row_factory = sqlite3.Row
 
-        # Find old sessions
-        old_sessions = source_conn.execute(
-            """
-            SELECT id, project_path, updated_at FROM sessions
-            WHERE updated_at < ? OR updated_at IS NULL
-        """,
-            (cutoff_date,),
-        ).fetchall()
+        old_sessions = _sessions_older_than(source_conn, cutoff_date)
 
         if not old_sessions:
             print(f"✅ No sessions older than {days} days found")
@@ -571,14 +589,7 @@ def _delete_old(
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
 
-        # Find old sessions
-        old_sessions = conn.execute(
-            """
-            SELECT id, project_path, updated_at FROM sessions
-            WHERE updated_at < ? OR updated_at IS NULL
-        """,
-            (cutoff_date,),
-        ).fetchall()
+        old_sessions = _sessions_older_than(conn, cutoff_date)
 
         if not old_sessions:
             print(f"✅ No sessions older than {days} days found")

@@ -806,6 +806,76 @@ class TestRequestedBackupRefused:
 
 
 # ---------------------------------------------------------------------------
+# F-AST-06@claude: a session with no timestamp is of unknown age, not "older
+# than N days". Kiro v1 conversations are exported with created_at and
+# updated_at both NULL (exporters/kiro.py, the use_v2 branch).
+# ---------------------------------------------------------------------------
+
+
+def _insert_session_dates(
+    db_path: Path, session_id: str, created_at: str | None, updated_at: str | None
+) -> None:
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO sessions (id, source, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (session_id, "kiro", created_at, updated_at),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _session_ids(db_path: Path) -> set[str]:
+    conn = sqlite3.connect(db_path)
+    ids = {r[0] for r in conn.execute("SELECT id FROM sessions")}
+    conn.close()
+    return ids
+
+
+class TestUndatedSessionsAreNotOld:
+    def _seed(self, db_path: Path) -> None:
+        _insert_session_dates(db_path, "undated", None, None)
+        _insert_session_dates(db_path, "created-old", _old_iso(100), None)
+        _insert_session_dates(db_path, "created-recent", _old_iso(1), None)
+        _insert_session_dates(db_path, "message-dated-old", None, None)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO messages (id, session_id, role, content, timestamp)"
+            " VALUES (?, ?, ?, ?, ?)",
+            ("m-old", "message-dated-old", "user", "hi", _old_iso(100)),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_delete_old_keeps_undated_sessions(self, tmp_path, capsys):
+        db_path = _make_db(tmp_path)
+        self._seed(db_path)
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _session_ids(db_path) == {"undated", "created-recent"}
+        assert "1 session(s) with no timestamp" in capsys.readouterr().out
+
+    def test_archive_keeps_undated_sessions(self, tmp_path, capsys):
+        db_path = _make_db(tmp_path)
+        self._seed(db_path)
+
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _session_ids(db_path) == {"undated", "created-recent"}
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        assert _session_ids(archive_path) == {"created-old", "message-dated-old"}
+        assert "1 session(s) with no timestamp" in capsys.readouterr().out
+
+    def test_only_undated_sessions_means_nothing_to_do(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        _insert_session_dates(db_path, "undated", None, None)
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert _archive(db_path, days=30, backup=False) == 0
+        assert _session_ids(db_path) == {"undated"}
+
+
+# ---------------------------------------------------------------------------
 # _handle_duplicates
 # ---------------------------------------------------------------------------
 
