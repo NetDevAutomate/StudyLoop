@@ -361,23 +361,26 @@ def _json_root_object_span(raw: str) -> tuple[int, int] | None:
     return (start, end) if isinstance(value, dict) else None
 
 
-def _json_value_span(
-    raw: str, key: str, object_span: tuple[int, int] | None = None
-) -> tuple[int, int] | None:
-    """Return an arbitrary JSON member value span from one object."""
+def _json_member_spans(
+    raw: str, object_span: tuple[int, int]
+) -> list[tuple[str, int, int, int]] | None:
+    """Every member of one JSON object as ``(name, key_start, value_start, value_end)``.
+
+    Offsets index ``raw``. ``None`` when the object text cannot be walked, so a
+    caller never edits bytes it did not understand.
+    """
     import json
 
-    span = object_span or _json_root_object_span(raw)
-    if span is None:
-        return None
-    start, end = span
+    start, end = object_span
     decoder = json.JSONDecoder()
+    members: list[tuple[str, int, int, int]] = []
     cursor = start + 1
     while cursor < end - 1:
         while cursor < end - 1 and (raw[cursor].isspace() or raw[cursor] == ","):
             cursor += 1
         if cursor >= end - 1:
             break
+        key_start = cursor
         try:
             member_name, key_end = decoder.raw_decode(raw, cursor)
         except json.JSONDecodeError:
@@ -397,9 +400,24 @@ def _json_value_span(
             _, value_end = decoder.raw_decode(raw, value_start)
         except json.JSONDecodeError:
             return None
-        if member_name == key:
-            return value_start, value_end
+        members.append((member_name, key_start, value_start, value_end))
         cursor = value_end
+    return members
+
+
+def _json_value_span(
+    raw: str, key: str, object_span: tuple[int, int] | None = None
+) -> tuple[int, int] | None:
+    """Return an arbitrary JSON member value span from one object."""
+    span = object_span or _json_root_object_span(raw)
+    if span is None:
+        return None
+    members = _json_member_spans(raw, span)
+    if members is None:
+        return None
+    for name, _key_start, value_start, value_end in members:
+        if name == key:
+            return value_start, value_end
     return None
 
 
@@ -557,20 +575,51 @@ def _merge_opencode_mcp_config(path: Path) -> int:
     return _merge_json_mcp_config(path, container_key="mcp", servers=_opencode_mcp_servers())
 
 
+def _remove_json_members(raw: str, container_key: str, names: set[str]) -> str:
+    """Delete ``names`` from the top-level ``container_key`` object, byte-preserving.
+
+    The inverse of :func:`_append_json_members`: a member is cut together with
+    the separator that joined it to its neighbour, so every other member keeps
+    its exact bytes and an install-then-uninstall round trip returns the text
+    install started from. One member per pass, re-walking the text each time.
+    """
+    while True:
+        container = _json_object_span(raw, container_key)
+        if container is None:
+            return raw
+        members = _json_member_spans(raw, container)
+        if members is None:
+            return raw
+        index = next((i for i, member in enumerate(members) if member[0] in names), None)
+        if index is None:
+            return raw
+        _, key_start, _, value_end = members[index]
+        if len(members) == 1:
+            raw = raw[: container[0] + 1] + raw[container[1] - 1 :]
+        elif index > 0:
+            raw = raw[: members[index - 1][3]] + raw[value_end:]
+        else:
+            raw = raw[:key_start] + raw[members[1][1] :]
+
+
 def _remove_json_mcp_entries(path: Path, container_key: str, names: set[str]) -> int:
     """Remove ``names`` from ``path``'s ``container_key`` object, if present.
 
-    Reserialises the file rather than preserving bytes: registration merges
-    preserve bytes because a live config a human tuned may carry adjacent
-    formatting worth keeping, but removal is a rarer, explicit action where a
-    clean rewrite is an acceptable trade for simplicity. Returns 0 (never
-    raises) for a missing, malformed, or already-clean file.
+    Byte-preserving, like the merge: these files belong to the harness and the
+    learner (``~/.claude.json`` carries Claude Code's whole state), so every
+    member StudyLoop does not own keeps its exact bytes -- a reserialising
+    writer would reflow them and escape every non-ASCII character. The edited
+    text is parsed back and must equal the original minus ``names`` before it
+    is written; when it does not, nothing is written and :class:`InstallError`
+    names the file. Returns the number of names removed; 0 for a missing,
+    malformed, or already-clean file.
     """
+    import copy
     import json
 
     try:
         raw = path.read_bytes().decode("utf-8")
-    except (FileNotFoundError, OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError):
         return 0
     try:
         loaded = json.loads(raw)
@@ -584,9 +633,65 @@ def _remove_json_mcp_entries(path: Path, container_key: str, names: set[str]) ->
     present = names & set(container)
     if not present:
         return 0
+    expected = copy.deepcopy(loaded)
     for name in present:
-        del container[name]
-    path.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
+        del expected[container_key][name]
+    updated = _remove_json_members(raw, container_key, present)
+    try:
+        edited_ok = json.loads(updated) == expected
+    except json.JSONDecodeError:
+        edited_ok = False
+    if not edited_ok:
+        raise InstallError(f"Cannot remove StudyLoop MCP servers from {path} without rewriting it")
+    path.write_bytes(updated.encode("utf-8"))
+    return len(present)
+
+
+def _remove_codex_mcp_config(path: Path) -> int:
+    """Remove both StudyLoop servers from Codex's ``config.toml``, byte-preserving.
+
+    Uses the same owned-table remover the merge repairs entries with, then
+    drops the blank-line separators the merge appended before each block, so a
+    config install appended to ends exactly as it began. The edit is checked
+    the same way as :func:`_remove_json_mcp_entries`. Returns the number of
+    servers removed; 0 for a missing, malformed or already-clean file.
+    """
+    import tomllib
+
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return 0
+    try:
+        loaded = tomllib.loads(raw)
+    except tomllib.TOMLDecodeError:
+        return 0
+    current = loaded.get("mcp_servers")
+    if not isinstance(current, dict):
+        return 0
+    present = set(_MCP_SERVERS) & set(current)
+    if not present:
+        return 0
+    updated = _remove_owned_toml(raw, present)
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    updated = updated.rstrip("\r\n") + newline if updated.strip() else ""
+
+    def without_owned(data: dict[str, object]) -> dict[str, object]:
+        servers = data.get("mcp_servers")
+        rest = {key: value for key, value in data.items() if key != "mcp_servers"}
+        if isinstance(servers, dict):
+            kept = {name: value for name, value in servers.items() if name not in present}
+            if kept:
+                rest["mcp_servers"] = kept
+        return rest
+
+    try:
+        edited_ok = without_owned(tomllib.loads(updated)) == without_owned(loaded)
+    except tomllib.TOMLDecodeError:
+        edited_ok = False
+    if not edited_ok:
+        raise InstallError(f"Cannot remove StudyLoop MCP servers from {path} without rewriting it")
+    path.write_bytes(updated.encode("utf-8"))
     return len(present)
 
 
@@ -976,11 +1081,20 @@ def _grok_registration_status() -> bool:
     return _grok_registration_detail()[0]
 
 
-def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
-    """Register both StudyLoop MCP servers in supported harness configs."""
+def register_mcp_servers(
+    tools: list[str] | None = None, *, uninstall: bool = False
+) -> dict[str, int]:
+    """Register both StudyLoop MCP servers in supported harness configs.
+
+    ``uninstall=True`` removes them instead, through
+    :func:`unregister_mcp_servers`: one entry point per installed surface,
+    both directions, as :func:`_link_paths` and :func:`_configure_claude` do.
+    """
     selected = [
         tool for tool in (tools or detect_available_agent_tools()) if tool in _MCP_HARNESSES
     ]
+    if uninstall:
+        return unregister_mcp_servers(selected)
     changed: dict[str, int] = {}
     for tool in selected:
         if tool == "codex":
@@ -997,10 +1111,12 @@ def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
 def unregister_mcp_servers(tools: list[str]) -> dict[str, int]:
     """Remove StudyLoop's owned MCP entries for the given tools.
 
-    Only OpenCode and Grok Build are supported. Claude/Kiro/Codex
-    registration is deliberately never removed here: their configs are
-    user-owned JSON/TOML files ``install_agent_definitions`` already skips
-    rewriting on uninstall, and this function does not change that.
+    Covers every harness :func:`register_mcp_servers` writes. StudyLoop owns
+    the two server NAMES it registers (``session-db``, ``studyloop``) -- the
+    merge already claims them by overwriting a same-named entry -- and removes
+    only those; every other server and every other byte of the file stays
+    (Claude/Kiro/OpenCode JSON and Codex TOML are edited byte-preserving).
+    Grok Build goes through its own CLI. Returns per-tool removal counts.
     """
     changed: dict[str, int] = {}
     for tool in tools:
@@ -1008,6 +1124,12 @@ def unregister_mcp_servers(tools: list[str]) -> dict[str, int]:
             changed[tool] = _remove_json_mcp_entries(
                 _mcp_config_path("opencode"), "mcp", set(_MCP_SERVERS)
             )
+        elif tool in {"claude", "kiro"}:
+            changed[tool] = _remove_json_mcp_entries(
+                _mcp_config_path(tool), "mcpServers", set(_MCP_SERVERS)
+            )
+        elif tool == "codex":
+            changed[tool] = _remove_codex_mcp_config(_mcp_config_path("codex"))
         elif tool == "grok":
             changed[tool] = unregister_grok_mcp_servers()
         else:
@@ -1104,19 +1226,53 @@ def _render_mandate(repo_root: Path, export_flag: str) -> str:
     return template.replace("SESSION_EXPORT_FLAG", export_flag)
 
 
-def install_session_db_mandate(repo_root: Path, tools: list[str] | None = None) -> dict[str, int]:
+def _backup_path(path: Path) -> Path:
+    """``<name>.bak``, or ``<name>.bak.N`` when that is taken: never clobber a backup."""
+    candidate = path.with_name(f"{path.name}.bak")
+    counter = 1
+    while candidate.exists() or candidate.is_symlink():
+        candidate = path.with_name(f"{path.name}.bak.{counter}")
+        counter += 1
+    return candidate
+
+
+def install_session_db_mandate(
+    repo_root: Path, tools: list[str] | None = None, *, uninstall: bool = False
+) -> dict[str, int]:
     """Write the session-export steering mandate into each harness's file.
 
     Idempotent: a file already containing the sentinel is left untouched.
     A file without it is overwritten with the rendered mandate (these
     session-db.md files are StudyLoop-managed, single-purpose). Returns a
     per-tool count of files written.
+
+    ``uninstall=True`` takes each mandate away: a file that is exactly the
+    rendered mandate is deleted; one that carries the sentinel but no longer
+    matches (the learner edited it, or an older release wrote it) is moved to
+    a ``.bak`` beside it -- harnesses load ``*.md``, so it stops steering while
+    its bytes survive. A file without the sentinel is not StudyLoop's and is
+    left alone. Returns a per-tool count of files removed.
     """
     selected = tools or detect_available_agent_tools()
     written: dict[str, int] = {}
     for tool in selected:
         spec = _HARNESS_EXPORT.get(tool)
         if spec is None:
+            continue
+        if uninstall:
+            try:
+                current = spec.steering_path.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                written[tool] = 0
+                continue
+            if _MANDATE_SENTINEL not in current:
+                written[tool] = 0
+                continue
+            if current == _render_mandate(repo_root, spec.export_flag):
+                spec.steering_path.unlink()
+            else:
+                spec.steering_path.rename(_backup_path(spec.steering_path))
+            written[tool] = 1
             continue
         if spec.steering_path.exists() and _MANDATE_SENTINEL in spec.steering_path.read_text(
             encoding="utf-8"
@@ -1131,16 +1287,85 @@ def install_session_db_mandate(repo_root: Path, tools: list[str] | None = None) 
     return written
 
 
-def install_claude_stop_hook() -> int:
+def _remove_owned_hooks(
+    path: Path, *, event: str, sentinel: str, label: str, owned_file: bool = False
+) -> int:
+    """Remove every ``event`` command hook carrying ``sentinel`` from ``path``.
+
+    The inverse of the merges: StudyLoop owns exactly the hooks whose command
+    carries its sentinel (the merges treat such a hook as theirs too). Every
+    other hook and group is kept as it was; a group, the event list and the
+    ``hooks`` object are dropped only when that removal is what emptied them,
+    so a file install appended to is written back as it began. With
+    ``owned_file`` (Grok's ``hooks/studyloop.json``, StudyLoop's by name) a file
+    left with nothing in it is deleted. Returns the number of hooks removed.
+    """
+    import json
+
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return 0
+    except OSError as exc:
+        raise InstallError(f"Cannot read {label} hooks {path}: {exc}") from exc
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise InstallError(f"Cannot remove {label} hook from malformed {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise InstallError(f"Cannot remove {label} hook: {path} is not a JSON object")
+    hooks = data.get("hooks")
+    groups = hooks.get(event) if isinstance(hooks, dict) else None
+    if not isinstance(hooks, dict) or not isinstance(groups, list):
+        return 0
+
+    removed = 0
+    kept_groups: list[object] = []
+    for group in groups:
+        entries = group.get("hooks") if isinstance(group, dict) else None
+        if not isinstance(group, dict) or not isinstance(entries, list):
+            kept_groups.append(group)
+            continue
+        kept = [
+            entry
+            for entry in entries
+            if not (isinstance(entry, dict) and sentinel in str(entry.get("command", "")))
+        ]
+        removed += len(entries) - len(kept)
+        if kept or not entries:
+            if len(kept) != len(entries):
+                group["hooks"] = kept
+            kept_groups.append(group)
+    if not removed:
+        return 0
+    if kept_groups:
+        hooks[event] = kept_groups
+    else:
+        del hooks[event]
+        if not hooks:
+            del data["hooks"]
+    if owned_file and not data:
+        path.unlink()
+    else:
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return removed
+
+
+def install_claude_stop_hook(*, uninstall: bool = False) -> int:
     """Merge the session-export Stop hook into ~/.claude/settings.json.
 
     Read-modify-write that preserves existing hooks; idempotent (a hook
     already containing the sentinel is not duplicated). Returns 1 if a hook
-    was added, else 0.
+    was added, else 0. ``uninstall=True`` removes it again
+    (:func:`_remove_owned_hooks`) and returns the number removed.
     """
     import json
 
     settings_path = _HOME / ".claude/settings.json"
+    if uninstall:
+        return _remove_owned_hooks(
+            settings_path, event="Stop", sentinel=_HOOK_SENTINEL, label="Claude"
+        )
     data: dict = {}
     try:
         raw = settings_path.read_text(encoding="utf-8")
@@ -1238,14 +1463,19 @@ def _merge_session_end_hook(path: Path, *, label: str, sentinel: str, hook: dict
     return 1
 
 
-def install_codex_session_end_hook() -> int:
+def install_codex_session_end_hook(*, uninstall: bool = False) -> int:
     """Merge StudyLoop's SessionEnd hook into ``~/.codex/hooks.json``.
 
     Codex loads global hooks from this file for CLI and app sessions. Existing
     hook groups are preserved; StudyLoop owns only the command carrying its
     sentinel. Codex asks the user to trust new command-hook hashes before the
     first execution — the installer cannot and must not bypass that review.
+    ``uninstall=True`` removes that command again.
     """
+    if uninstall:
+        return _remove_owned_hooks(
+            _codex_hooks_path(), event="SessionEnd", sentinel=_CODEX_HOOK_SENTINEL, label="Codex"
+        )
     return _merge_session_end_hook(
         _codex_hooks_path(),
         label="Codex",
@@ -1273,7 +1503,7 @@ _GROK_HOOK_COMMAND = (
 )
 
 
-def install_grok_session_end_hook() -> int:
+def install_grok_session_end_hook(*, uninstall: bool = False) -> int:
     """Write StudyLoop's SessionEnd hook to ``$GROK_HOME/hooks/studyloop.json``.
 
     Grok Build loads every ``*.json`` under its ``hooks/`` directory as global
@@ -1282,7 +1512,16 @@ def install_grok_session_end_hook() -> int:
     above Grok's 5 s default because a cold ``session-export`` start on a slow
     machine can exceed it, and below the 10 s exit budget Grok gives
     ``SessionEnd`` hooks (a measured warm run here took 0.17 s).
+    ``uninstall=True`` removes the hook, and the file once nothing else is in it.
     """
+    if uninstall:
+        return _remove_owned_hooks(
+            _grok_hooks_path(),
+            event="SessionEnd",
+            sentinel=_GROK_HOOK_SENTINEL,
+            label="Grok",
+            owned_file=True,
+        )
     return _merge_session_end_hook(
         _grok_hooks_path(),
         label="Grok",
@@ -1570,7 +1809,6 @@ def install_agent_definitions(
     # Cross-harness session-memory wiring: query skill links/static native
     # hooks were installed above; add steering mandates and merge the two
     # user-owned JSON hook registries without replacing existing groups.
-    # Skipped on uninstall so user-owned JSON is never destructively rewritten.
     if not uninstall:
         for tool, count in install_session_db_mandate(repo_root, tools=selected).items():
             summary[tool] = summary.get(tool, 0) + count
@@ -1581,6 +1819,24 @@ def install_agent_definitions(
         if "grok" in selected:
             summary["grok"] = summary.get("grok", 0) + install_grok_session_end_hook()
         for tool, count in register_mcp_servers(selected).items():
+            summary[tool] = summary.get(tool, 0) + count
+    else:
+        # The same surfaces in reverse. Each remover takes away only what
+        # carries StudyLoop's sentinel or server name and keeps every other
+        # byte of the learner's files (review F-OPS-02: uninstall used to skip
+        # this block, leaving export hooks and MCP servers live).
+        removed = install_session_db_mandate(repo_root, tools=selected, uninstall=True)
+        for tool, count in removed.items():
+            summary[tool] = summary.get(tool, 0) + count
+        if "claude" in selected:
+            summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook(uninstall=True)
+        if "codex" in selected:
+            summary["codex"] = summary.get("codex", 0) + install_codex_session_end_hook(
+                uninstall=True
+            )
+        if "grok" in selected:
+            summary["grok"] = summary.get("grok", 0) + install_grok_session_end_hook(uninstall=True)
+        for tool, count in register_mcp_servers(selected, uninstall=True).items():
             summary[tool] = summary.get(tool, 0) + count
 
     return summary

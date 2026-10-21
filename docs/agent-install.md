@@ -48,7 +48,7 @@ Then check the result:
 studyloop doctor --category agents
 ```
 
-The installer links StudyLoop-managed definitions (copying the three Kiro agent files, see below) while preserving an existing file as a `.bak` backup when necessary. Use `studyloop install agents --uninstall` to remove what StudyLoop installed.
+The installer links StudyLoop-managed definitions (copying the three Kiro agent files, see below) while preserving an existing file as a `.bak` backup when necessary. Use `studyloop install agents --uninstall` to remove what StudyLoop installed; see [Removing StudyLoop](#removing-studyloop) for exactly what that covers.
 
 ## Start a study session
 
@@ -322,11 +322,37 @@ studyloop doctor --category agents --json
 
 The human-readable output gives repair guidance; JSON is useful when another agent is helping with setup. If a harness appears unavailable, first confirm its binary responds to `--version`, then rerun the installer for that harness.
 
-For a clean removal:
+## Removing StudyLoop
 
 ```bash
 studyloop install agents --uninstall
 ```
+
+It covers every harness it detects, or only those you name with `--tool <name>`; the
+shared `~/.agents/` skill hub is removed in both cases. For each harness it removes:
+
+- the agent definitions, skills and plugin/extension files StudyLoop linked or copied;
+- the session-export steering mandate (`session-db.md`). If you edited it, or an
+  older StudyLoop release wrote it, it is moved to `session-db.md.bak` instead of
+  deleted, so it stops loading but your text is kept;
+- the session-export hook StudyLoop merged into Claude Code's `~/.claude/settings.json`,
+  Codex's `~/.codex/hooks.json` and Grok Build's `$GROK_HOME/hooks/studyloop.json`
+  (that last file is deleted once nothing else is in it). Hooks you added yourself stay;
+- the `session-db` and `studyloop` MCP servers from Claude Code (`~/.claude.json`),
+  Kiro (`~/.kiro/settings/mcp.json`), Codex (`~/.codex/config.toml`), OpenCode
+  (`~/.config/opencode/opencode.json`) and Grok Build (`grok mcp remove`). Every other
+  server and setting in those four files keeps its exact bytes.
+
+It does not:
+
+- restore the `.bak` backups the installer made of files it replaced — rename them back
+  yourself if you want them;
+- remove the `statusLine` entry from `~/.claude/settings.json` when StudyLoop created that
+  file for you; the status-line script it points at is removed, so delete that entry by hand;
+- remove empty containers it leaves behind, such as `"mcpServers": {}`;
+- touch your session database, study data or `~/.config/studyloop/`.
+
+Running it twice is safe: the second run finds nothing to remove.
 
 ## Shared skill hub
 
