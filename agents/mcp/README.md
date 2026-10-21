@@ -17,7 +17,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
 
     The Kiro agent config (`agents/kiro/study-mentor.json`) includes the MCP server automatically. It runs:
     ```bash
-    uvx --from "mcp[cli]" mcp run agents/mcp/study-speak-server.py
+    uvx --from "mcp[cli]>=1.0.0,<2" mcp run agents/mcp/study-speak-server.py
     ```
 
 === "Claude Code / Codex / OpenCode / pi"
@@ -28,7 +28,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
       "mcpServers": {
         "speaker": {
           "command": "uvx",
-          "args": ["--from", "mcp[cli]", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
+          "args": ["--from", "mcp[cli]>=1.0.0,<2", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
         }
       }
     }
@@ -39,14 +39,14 @@ uv tool install "./packages/agent-session-tools[tts]" --force
     Grok Build reads MCP servers from `$GROK_HOME/config.toml` (default
     `~/.grok/config.toml`), not a repo-owned `mcp.json`. Register with the CLI:
     ```bash
-    grok mcp add speaker -- uvx --from "mcp[cli]" mcp run /path/to/studyloop/agents/mcp/study-speak-server.py
+    grok mcp add speaker -- uvx --from "mcp[cli]>=1.0.0,<2" mcp run /path/to/studyloop/agents/mcp/study-speak-server.py
     ```
 
     Or write the entry by hand:
     ```toml
     [mcp_servers.speaker]
     command = "uvx"
-    args = ["--from", "mcp[cli]", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
+    args = ["--from", "mcp[cli]>=1.0.0,<2", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
     ```
 
 **Configuration** — `~/.config/studyloop/config.yaml`:

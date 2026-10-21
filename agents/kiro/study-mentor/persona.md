@@ -82,10 +82,6 @@ studyloop wins                    # Show learning wins
 studyloop progress "<concept>" -t <topic> -c <confidence>
 studyloop teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured
 session-query search "<skill-name>"   # read back prior sessions for a skill
-
-# Cross-machine sync
-studyloop state pull              # Get latest from hub
-studyloop state push              # Push to hub
 ```
 
 ## Study Plan

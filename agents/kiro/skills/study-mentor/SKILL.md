@@ -80,14 +80,6 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --c
 # Progress tracking
 uv run tutor-checkpoint <skill-name> --notes "<notes>"
 session-query search "<skill-name>"   # read back prior checkpoints for a skill
-
-# Cross-machine sync
-studyloop state pull              # Get latest from hub
-studyloop state push              # Push to hub
-
-# Scheduling
-studyloop schedule list           # Show active jobs
-studyloop schedule install        # Install all default jobs
 ```
 
 ## Quiz, Flashcard, and Practice Generation from Obsidian Notes
