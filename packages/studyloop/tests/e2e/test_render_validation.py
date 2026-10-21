@@ -40,6 +40,7 @@ from _layout_assertions import (  # noqa: E402
     assert_stacked_no_overlap,
     assert_within_viewport,
 )
+from _playwright_helpers import server_session  # noqa: E402
 from e2e._env import (  # noqa: E402
     STUDY_TOPIC,
     ConsoleWatch,
@@ -382,9 +383,8 @@ def test_mastery_api_emits_mermaid_source(env) -> None:
     Complements the browser test above — together they prove the whole path
     (server emits valid mermaid, browser renders mermaid to SVG).
     """
-    import requests
-
-    resp = requests.get(
+    http = server_session(env.base_url)
+    resp = http.get(
         f"{env.base_url}/api/mastery/graph",
         params={"topic": STUDY_TOPIC, "format": "mermaid", "limit": 20},
         timeout=30,
@@ -410,9 +410,8 @@ def fake_env(tmp_path_factory):
         yield e
     finally:
         try:
-            import requests
-
-            requests.post(f"{e.base_url}/api/session/end", timeout=10)
+            http = server_session(e.base_url)
+            http.post(f"{e.base_url}/api/session/end", timeout=10)
         except Exception:  # pragma: no cover
             pass
         shutdown(e)
@@ -504,9 +503,8 @@ def test_terminal_paints_agent_bytes(browser: Browser, fake_env) -> None:
         raise
     finally:
         try:
-            import requests
-
-            requests.post(f"{fake_env.base_url}/api/session/end", timeout=10)
+            http = server_session(fake_env.base_url)
+            http.post(f"{fake_env.base_url}/api/session/end", timeout=10)
         except Exception:  # pragma: no cover
             pass
         ctx.close()

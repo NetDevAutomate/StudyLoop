@@ -36,6 +36,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_session  # noqa: E402
 from e2e._env import ConsoleWatch, launch_env, shutdown  # noqa: E402
 
 if TYPE_CHECKING:
@@ -57,9 +58,8 @@ def env(tmp_path_factory):
 
 
 def _health(env) -> dict:
-    import requests
-
-    response = requests.get(f"{env.base_url}/api/tts/health", timeout=20)
+    http = server_session(env.base_url)
+    response = http.get(f"{env.base_url}/api/tts/health", timeout=20)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -101,9 +101,8 @@ def test_only_english_voices_are_ever_offered(env) -> None:
 
 
 def test_a_non_english_voice_is_refused_not_spoken(env) -> None:
-    import requests
-
-    response = requests.post(
+    http = server_session(env.base_url)
+    response = http.post(
         f"{env.base_url}/api/tts/speak",
         json={"text": "This must not be spoken.", "voice": "zf_xiaobei"},
         timeout=30,
@@ -113,9 +112,8 @@ def test_a_non_english_voice_is_refused_not_spoken(env) -> None:
 
 
 def test_an_unsupported_format_is_a_client_error(env) -> None:
-    import requests
-
-    response = requests.post(
+    http = server_session(env.base_url)
+    response = http.post(
         f"{env.base_url}/api/tts/speak",
         json={"text": "hello", "response_format": "aiff"},
         timeout=30,
@@ -134,14 +132,13 @@ def test_speak_returns_playable_audio(env) -> None:
     Both halves matter: an <audio> element refuses to play without the MIME type,
     and a 200 carrying an error page would otherwise look like success.
     """
-    import requests
-
+    http = server_session(env.base_url)
     body = _health(env)
     if not body["available"]:
         pytest.skip("no OpenVox on this host")
 
-    requests.post(f"{env.base_url}/api/tts/warm", timeout=120)
-    response = requests.post(
+    http.post(f"{env.base_url}/api/tts/warm", timeout=120)
+    response = http.post(
         f"{env.base_url}/api/tts/speak",
         json={"text": "Server side speech is working.", "voice": "bf_emma"},
         timeout=180,
@@ -155,12 +152,11 @@ def test_speak_returns_playable_audio(env) -> None:
 
 def test_warm_is_idempotent(env) -> None:
     """Warming twice must not error -- it is called opportunistically."""
-    import requests
-
+    http = server_session(env.base_url)
     if not _health(env)["available"]:
         pytest.skip("no OpenVox on this host")
     for _ in range(2):
-        response = requests.post(f"{env.base_url}/api/tts/warm", timeout=120)
+        response = http.post(f"{env.base_url}/api/tts/warm", timeout=120)
         assert response.status_code == 200, response.text
         assert response.json()["warmed"] is True
 

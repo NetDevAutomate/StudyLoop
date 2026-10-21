@@ -27,6 +27,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_session  # noqa: E402
 from e2e._env import ConsoleWatch, diag, goto_view, launch_env, shutdown  # noqa: E402
 
 if TYPE_CHECKING:
@@ -59,10 +60,9 @@ def test_pomodoro_endpoints_agree_on_the_same_config(env) -> None:
     reads one and the session dashboard reads the other, so a learner could see
     two different "focus" defaults. This pins them together.
     """
-    import requests
-
-    cfg = requests.get(f"{env.base_url}/api/config/pomodoro", timeout=15)
-    setting = requests.get(f"{env.base_url}/api/settings/pomodoro", timeout=15)
+    http = server_session(env.base_url)
+    cfg = http.get(f"{env.base_url}/api/config/pomodoro", timeout=15)
+    setting = http.get(f"{env.base_url}/api/settings/pomodoro", timeout=15)
     assert cfg.status_code == 200, cfg.text
     assert setting.status_code == 200, setting.text
     c, s = cfg.json(), setting.json()
@@ -84,9 +84,8 @@ def test_body_double_timer_uses_the_served_pomodoro_defaults(browser: Browser, e
     nobody is looking, but this test asserts the endpoint the learner's timer
     genuinely depends on.
     """
-    import requests
-
-    expected = requests.get(f"{env.base_url}/api/settings/pomodoro", timeout=15).json()
+    http = server_session(env.base_url)
+    expected = http.get(f"{env.base_url}/api/settings/pomodoro", timeout=15).json()
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     page = ctx.new_page()
     watch = ConsoleWatch(page)
@@ -161,9 +160,8 @@ def test_explorer_search_finds_and_opens_a_lesson(browser: Browser, env) -> None
 
 def test_explorer_search_api_contract(env) -> None:
     """The search endpoint returns structured hits with locatable lesson ids."""
-    import requests
-
-    resp = requests.get(
+    http = server_session(env.base_url)
+    resp = http.get(
         f"{env.base_url}/api/explorer/search", params={"q": "functools", "limit": 5}, timeout=30
     )
     assert resp.status_code == 200, resp.text
@@ -174,7 +172,7 @@ def test_explorer_search_api_contract(env) -> None:
     assert first.get("lesson_id") or first.get("id"), f"hit has no lesson id: {first}"
 
     # A short query must not silently return the whole vault.
-    short = requests.get(f"{env.base_url}/api/explorer/search", params={"q": "a"}, timeout=30)
+    short = http.get(f"{env.base_url}/api/explorer/search", params={"q": "a"}, timeout=30)
     assert short.status_code in (200, 400, 422), short.text
 
 
@@ -195,8 +193,7 @@ def test_session_dashboard_receives_sse_frames(env) -> None:
     """
     import json as _json
 
-    import requests
-
+    http = server_session(env.base_url)
     assert env.session_dir is not None
     (env.session_dir / "session-state.json").write_text(
         _json.dumps(
@@ -210,7 +207,7 @@ def test_session_dashboard_receives_sse_frames(env) -> None:
         encoding="utf-8",
     )
 
-    with requests.get(f"{env.base_url}/api/session/stream", stream=True, timeout=30) as resp:
+    with http.get(f"{env.base_url}/api/session/stream", stream=True, timeout=30) as resp:
         assert resp.status_code == 200, resp.text
         assert "text/event-stream" in resp.headers.get("content-type", ""), (
             f"wrong content type for SSE: {resp.headers.get('content-type')!r}"
@@ -263,8 +260,9 @@ def _reset_parking(base: str) -> None:
 
     import requests
 
+    http = server_session(base)
     with contextlib.suppress(requests.RequestException):
-        requests.post(f"{base}/api/parking/clear", json={"all": True, "hard": True}, timeout=20)
+        http.post(f"{base}/api/parking/clear", json={"all": True, "hard": True}, timeout=20)
 
 
 def test_park_then_demote_rearranges_the_active_three(env) -> None:
@@ -273,14 +271,13 @@ def test_park_then_demote_rearranges_the_active_three(env) -> None:
     The 3-topic rule is the AuDHD guardrail: the test asserts the rearrange
     actually changes which topics are active, not merely that the call is 200.
     """
-    import requests
-
     base = env.base_url
+    http = server_session(base)
     _reset_parking(base)
 
     ids = []
     for n in range(4):
-        resp = requests.post(
+        resp = http.post(
             f"{base}/api/backlog/park",
             json={"question": f"Backlog topic {n}", "tech_area": "python"},
             timeout=20,
@@ -288,15 +285,15 @@ def test_park_then_demote_rearranges_the_active_three(env) -> None:
         assert resp.status_code == 200, resp.text
         ids.append(resp.json()["id"])
 
-    body = requests.get(f"{base}/api/backlog", timeout=20).json()
+    body = http.get(f"{base}/api/backlog", timeout=20).json()
     assert body["active_count"] == body["max_active"], body
     assert body["parking_lot_count"] == 4 - body["max_active"], body
     active_before = [t["id"] for t in body["active"]]
 
-    demoted = requests.post(f"{base}/api/backlog/demote", json={"id": active_before[0]}, timeout=20)
+    demoted = http.post(f"{base}/api/backlog/demote", json={"id": active_before[0]}, timeout=20)
     assert demoted.status_code == 200, demoted.text
 
-    after = requests.get(f"{base}/api/backlog", timeout=20).json()
+    after = http.get(f"{base}/api/backlog", timeout=20).json()
     assert [t["id"] for t in after["active"]] != active_before, (
         "demote returned 200 but the active set is unchanged"
     )
@@ -309,9 +306,8 @@ def test_park_then_demote_rearranges_the_active_three(env) -> None:
 
 def _pending_ids(base: str) -> list[int]:
     """Return every id the backlog still considers pending (active + parked)."""
-    import requests
-
-    body = requests.get(f"{base}/api/backlog", timeout=20).json()
+    http = server_session(base)
+    body = http.get(f"{base}/api/backlog", timeout=20).json()
     return [t["id"] for t in (*body["active"], *body["parking_lot"])]
 
 
@@ -324,33 +320,32 @@ def test_dismiss_and_resolve_clear_a_parked_thought(env) -> None:
     both against a running server: park a thought, dismiss it, and confirm it
     is gone; then park another, resolve it, and confirm the same.
     """
-    import requests
-
     base = env.base_url
+    http = server_session(base)
     _reset_parking(base)
 
-    dismiss_id = requests.post(
+    dismiss_id = http.post(
         f"{base}/api/backlog/park",
         json={"question": "A tangent not worth chasing", "tech_area": "python"},
         timeout=20,
     ).json()["id"]
     assert dismiss_id in _pending_ids(base), "parked thought never became pending"
 
-    dismissed = requests.post(f"{base}/api/backlog/dismiss", json={"id": dismiss_id}, timeout=20)
+    dismissed = http.post(f"{base}/api/backlog/dismiss", json={"id": dismiss_id}, timeout=20)
     assert dismissed.status_code == 200, dismissed.text
     assert dismissed.json() == {"ok": True}, dismissed.text
     assert dismiss_id not in _pending_ids(base), (
         "dismiss returned 200 but the thought is still pending in the backlog"
     )
 
-    resolve_id = requests.post(
+    resolve_id = http.post(
         f"{base}/api/backlog/park",
         json={"question": "A tangent I eventually covered", "tech_area": "python"},
         timeout=20,
     ).json()["id"]
     assert resolve_id in _pending_ids(base), "parked thought never became pending"
 
-    resolved = requests.post(f"{base}/api/backlog/resolve", json={"id": resolve_id}, timeout=20)
+    resolved = http.post(f"{base}/api/backlog/resolve", json={"id": resolve_id}, timeout=20)
     assert resolved.status_code == 200, resolved.text
     assert resolved.json() == {"ok": True}, resolved.text
     assert resolve_id not in _pending_ids(base), (
@@ -371,9 +366,8 @@ def test_artefacts_index_responds_structurally(env) -> None:
     A vault with no generated artefacts is the common case on a fresh install;
     the endpoint must degrade to an empty listing rather than an error page.
     """
-    import requests
-
-    resp = requests.get(f"{env.base_url}/api/artefacts/Python_Deep_Dive", timeout=20)
+    http = server_session(env.base_url)
+    resp = http.get(f"{env.base_url}/api/artefacts/Python_Deep_Dive", timeout=20)
     assert resp.status_code in (200, 404), resp.text
     if resp.status_code == 200:
         body = resp.json()
@@ -395,9 +389,8 @@ def test_launch_target_serves_inert_state_full_stack(env) -> None:
     spec forbids any write handler at this route: a POST must be rejected by
     routing itself, not by a handler that declines politely.
     """
-    import requests
-
-    resp = requests.get(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
+    http = server_session(env.base_url)
+    resp = http.get(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
     assert resp.status_code == 200, resp.text
     assert resp.headers.get("Cache-Control") == "no-store"
     body = resp.json()
@@ -413,7 +406,7 @@ def test_launch_target_serves_inert_state_full_stack(env) -> None:
     assert body["enabled"] is False
     assert body["href"] is None
 
-    mutation = requests.post(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
+    mutation = http.post(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
     assert mutation.status_code == 405, mutation.text
 
 
@@ -433,11 +426,10 @@ def test_retrieval_health_reports_a_real_warm_state(env) -> None:
     model, so any of the five states is a legitimate answer; what is asserted is
     that the state is one of them and that the unhappy ones explain themselves.
     """
-    import requests
-
+    http = server_session(env.base_url)
     from agent_session_tools.retrieval import WarmState
 
-    resp = requests.get(f"{env.base_url}/api/retrieval/health", timeout=15)
+    resp = http.get(f"{env.base_url}/api/retrieval/health", timeout=15)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert set(body) == {"state", "model", "elapsed", "detail"}

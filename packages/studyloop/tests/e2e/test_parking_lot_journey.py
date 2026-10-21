@@ -42,6 +42,7 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _playwright_helpers import server_session  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 from e2e._env import TestWorld as E2ETestWorld  # noqa: E402
@@ -254,39 +255,38 @@ def clean_board(running_server: RunningServer) -> str:
     "Done" would otherwise leak their shape into later phases. Resetting both
     keeps each phase independently meaningful.
     """
-    import requests
-
     base_url = running_server.base_url
-    requests.post(
+    http = server_session(base_url)
+    http.post(
         f"{base_url}/api/parking/clear",
         json={"all": True, "hard": True},
         timeout=10,
     )
 
-    existing = requests.get(f"{base_url}/api/parking/columns", timeout=10).json()["columns"]
+    existing = http.get(f"{base_url}/api/parking/columns", timeout=10).json()["columns"]
     wanted = dict(DEFAULT_COLUMNS)
     # Drop user-added columns; restore any renamed default back to its name.
     for col in existing:
         if col["key"] not in wanted:
-            requests.delete(f"{base_url}/api/parking/columns/{col['key']}", timeout=10)
+            http.delete(f"{base_url}/api/parking/columns/{col['key']}", timeout=10)
     present = {
         c["key"]: c["name"]
-        for c in requests.get(f"{base_url}/api/parking/columns", timeout=10).json()["columns"]
+        for c in http.get(f"{base_url}/api/parking/columns", timeout=10).json()["columns"]
     }
     for key, name in DEFAULT_COLUMNS:
         if key not in present:
-            created = requests.post(
+            created = http.post(
                 f"{base_url}/api/parking/columns", json={"name": name}, timeout=10
             ).json()["column"]
             # A recreated default may get a de-duplicated key; normalise below.
             present[created["key"]] = created["name"]
         elif present[key] != name:
-            requests.patch(
+            http.patch(
                 f"{base_url}/api/parking/columns/{key}",
                 json={"name": name},
                 timeout=10,
             )
-    requests.post(
+    http.post(
         f"{base_url}/api/parking/columns/reorder",
         json={"keys": [k for k, _ in DEFAULT_COLUMNS]},
         timeout=10,
@@ -307,11 +307,10 @@ def _open_panel(page: Page) -> None:
 
 def _seed(server: str, *questions: str) -> list[int]:
     """Create cards through the real API (stands in for agent-side parking)."""
-    import requests
-
+    http = server_session(server)
     ids = []
     for q in questions:
-        resp = requests.post(f"{server}/api/parking/item", json={"question": q}, timeout=10)
+        resp = http.post(f"{server}/api/parking/item", json={"question": q}, timeout=10)
         assert resp.status_code == 201, resp.text
         ids.append(resp.json()["id"])
     return ids
@@ -596,8 +595,7 @@ def test_rendered_markdown_follows_the_active_theme(page: Page, clean_board: str
 
 def test_kanban_move_and_user_created_column_persist(page: Page, clean_board: str) -> None:
     """Phase 6: arrange cards across columns — including one the user creates."""
-    import requests
-
+    http = server_session(clean_board)
     try:
         _seed(clean_board, "Move me with the keyboard")
         page.goto(f"{clean_board}/")
@@ -627,7 +625,7 @@ def test_kanban_move_and_user_created_column_persist(page: Page, clean_board: st
         )
 
         # --- Persisted server-side, not just optimistic UI ---
-        board = requests.get(f"{clean_board}/api/parking/board", timeout=10).json()
+        board = http.get(f"{clean_board}/api/parking/board", timeout=10).json()
         by_key = {c["key"]: c for c in board["columns"]}
         assert "blocked" in by_key, "user-created column not persisted"
         assert [i["question"] for i in by_key["next"]["items"]] == ["Move me with the keyboard"]
@@ -664,8 +662,7 @@ def test_drag_and_drop_moves_a_card(page: Page, clean_board: str) -> None:
     scroll-and-drag adds nothing to what this test is pinning: that a pointer
     drag re-columns a card and persists it).
     """
-    import requests
-
+    http = server_session(clean_board)
     try:
         _seed(clean_board, "Drag me")
         page.goto(f"{clean_board}/")
@@ -705,7 +702,7 @@ def test_drag_and_drop_moves_a_card(page: Page, clean_board: str) -> None:
             }""",
             timeout=8000,
         )
-        board = requests.get(f"{clean_board}/api/parking/board", timeout=10).json()
+        board = http.get(f"{clean_board}/api/parking/board", timeout=10).json()
         by_key = {c["key"]: c for c in board["columns"]}
         assert [i["question"] for i in by_key["next"]["items"]] == ["Drag me"]
         assert by_key["inbox"]["items"] == []
@@ -718,8 +715,6 @@ def test_column_can_be_renamed_and_removed_without_losing_cards(
     page: Page, clean_board: str
 ) -> None:
     """Phase 6c: the board is the user's — rename and remove columns safely."""
-    import requests
-
     try:
         _seed(clean_board, "Keep me safe")
         page.goto(f"{clean_board}/")
@@ -750,7 +745,9 @@ def test_column_can_be_renamed_and_removed_without_losing_cards(
             timeout=8000,
         )
 
-        board = requests.get(f"{clean_board}/api/parking/board", timeout=10).json()
+        board = (
+            server_session(clean_board).get(f"{clean_board}/api/parking/board", timeout=10).json()
+        )
         assert board["total"] == 1, "removing a column lost a card"
         names = {c["name"] for c in board["columns"]}
         assert "Brain Dump" in names
@@ -795,8 +792,7 @@ def test_clear_user_selected_subset(page: Page, clean_board: str) -> None:
     of four) precisely to prove no fixed rule (oldest N, whole column) is being
     applied under the hood.
     """
-    import requests
-
+    http = server_session(clean_board)
     try:
         _seed(clean_board, "Alpha", "Beta", "Gamma", "Delta")
         page.goto(f"{clean_board}/")
@@ -830,7 +826,7 @@ def test_clear_user_selected_subset(page: Page, clean_board: str) -> None:
         }
         assert titles == {"Beta", "Delta"}
 
-        board = requests.get(f"{clean_board}/api/parking/board", timeout=10).json()
+        board = http.get(f"{clean_board}/api/parking/board", timeout=10).json()
         assert board["total"] == 2
     except Exception:
         _diag(page, "parking-clear-subset")
@@ -839,8 +835,7 @@ def test_clear_user_selected_subset(page: Page, clean_board: str) -> None:
 
 def test_clear_all_and_undo(page: Page, clean_board: str) -> None:
     """Phase 7c: clear ALL, then undo — a soft clear is recoverable."""
-    import requests
-
+    http = server_session(clean_board)
     try:
         _seed(clean_board, "One", "Two", "Three")
         page.goto(f"{clean_board}/")
@@ -852,7 +847,7 @@ def test_clear_all_and_undo(page: Page, clean_board: str) -> None:
 
         page.locator("#parking-clear-all").click()
         page.wait_for_selector("#parking-empty", state="visible", timeout=8000)
-        assert requests.get(f"{clean_board}/api/parking/board", timeout=10).json()["total"] == 0
+        assert http.get(f"{clean_board}/api/parking/board", timeout=10).json()["total"] == 0
         # Clear-all disables itself once the board is empty.
         assert page.locator("#parking-clear-all").is_disabled()
 
@@ -879,9 +874,7 @@ def test_clearing_a_card_with_notes_preserves_the_note_on_undo(
     parked thought worth keeping.
     """
     try:
-        import requests
-
-        resp = requests.post(
+        resp = server_session(clean_board).post(
             f"{clean_board}/api/parking/item",
             json={"question": "With a note", "notes": RICH_NOTE},
             timeout=10,
@@ -922,8 +915,7 @@ def test_full_representative_parking_workflow(page: Page, clean_board: str) -> N
     undo. The per-phase tests above pin each behaviour; this proves they
     compose without stepping on each other.
     """
-    import requests
-
+    http = server_session(clean_board)
     try:
         page.goto(f"{clean_board}/#today")
         page.wait_for_function("() => !!window.Alpine", timeout=10000)
@@ -1005,7 +997,7 @@ def test_full_representative_parking_workflow(page: Page, clean_board: str) -> N
             timeout=8000,
         )
 
-        board = requests.get(f"{clean_board}/api/parking/board", timeout=10).json()
+        board = http.get(f"{clean_board}/api/parking/board", timeout=10).json()
         written_up = [
             i
             for c in board["columns"]
