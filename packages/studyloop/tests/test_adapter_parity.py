@@ -256,3 +256,18 @@ def test_every_adapter_quotes_its_binary(
     argv = shlex.split(adapter.launch_cmd(tmp_path / "persona file.md", resume))
 
     assert argv[0] == f"/opt/my tools/{adapter.binary}"
+
+
+def test_agent_launcher_reexports_the_kiro_launch_instead_of_redefining() -> None:
+    """``agent_launcher`` kept its own body of the Kiro launch builder, and it had
+    already drifted from the adapter's (it lacked the F-CLI-23 quoting). One
+    body, re-exported, cannot drift (review F-CLI-20).
+
+    The launcher's other copies (``_opencode_mcp``, ``_mcp_command``) are dead
+    too but are still imported by ``test_agent_launcher.py``; they are recorded
+    as found-not-fixed rather than deleted under that file.
+    """
+    from studyloop import agent_launcher
+    from studyloop.adapters import kiro
+
+    assert agent_launcher._kiro_launch is kiro._kiro_launch
