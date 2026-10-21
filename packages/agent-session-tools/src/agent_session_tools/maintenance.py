@@ -6,6 +6,7 @@ schema inspection, and maintenance operations.
 """
 
 import logging
+import os
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -75,6 +76,24 @@ db_option = typer.Option("-d", "--db", help="Database path (default: from config
 no_backup_option = typer.Option("--no-backup", help="Skip backup creation")
 
 
+def _create_owner_only(path: Path) -> None:
+    """Create path as an owner-only (0600) file before SQLite opens it.
+
+    The session database is 0600 (export_sessions.init_db) and every copy of
+    it must be too (F-AST-14). Letting sqlite3.connect create the file uses
+    the process umask (0644 under the usual 022), and a chmod afterwards
+    leaves the copy readable while SQLite writes it. Creating the file here
+    with mode 0600 means SQLite writes every byte into an owner-only file;
+    fchmod also tightens a file that already existed at this path. The
+    process umask is not changed.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+    finally:
+        os.close(fd)
+
+
 def create_backup(db_path: Path) -> Path | None:
     """Create a timestamped backup of the database, with rotation.
 
@@ -100,7 +119,10 @@ def create_backup(db_path: Path) -> Path | None:
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_dir = get_backup_dir(cfg)
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    # 0700 applies only when this call creates the leaf directory; an
+    # existing, user-chosen backup directory keeps its mode. The file mode
+    # below is what keeps each copy owner-only either way.
+    backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
     # R-19c (M3 council, arbitration A2/X1 extension): a plain file copy of a
@@ -112,6 +134,7 @@ def create_backup(db_path: Path) -> Path | None:
     # a `cp -p` of the same database at the same instant).
     source_conn = sqlite3.connect(db_path)
     try:
+        _create_owner_only(backup_path)
         dest_conn = sqlite3.connect(backup_path)
         try:
             source_conn.backup(dest_conn)
@@ -352,6 +375,7 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         # Create archive database if needed
         if not archive_path.exists():
             print(f"\n📦 Creating archive database: {archive_path}")
+            _create_owner_only(archive_path)
             archive_conn = sqlite3.connect(archive_path)
 
             # Create tables manually (proper schema — must match live schema after all migrations)
