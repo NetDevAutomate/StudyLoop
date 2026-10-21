@@ -25,7 +25,7 @@ from studyloop.adapters._strategies import cli_flag_setup as _claude_setup
 from studyloop.adapters.claude import _claude_launch
 from studyloop.adapters.codex import _codex_launch, _codex_setup
 from studyloop.adapters.grok import _grok_launch, _grok_setup
-from studyloop.adapters.kiro import KIRO_AGENT_NAME
+from studyloop.adapters.kiro import KIRO_AGENT_NAME, _kiro_launch
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
 from studyloop.adapters.registry import (
     get_all_adapters,
@@ -136,14 +136,6 @@ def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:  # type: ig
     return _kiro_module._kiro_setup(
         canonical_content, _session_dir, agents_dir=_self.KIRO_AGENTS_DIR
     )
-
-
-def _kiro_launch(_persona_path: Path, resume: bool) -> str:  # type: ignore[misc]
-    """Build Kiro launch command."""
-    binary = shutil.which("kiro-cli") or shutil.which("kiro") or "kiro-cli"
-    if resume:
-        return f"{binary} chat --agent {KIRO_AGENT_NAME} --resume"
-    return f"{binary} chat --agent {KIRO_AGENT_NAME}"
 
 
 def _kiro_teardown(_session_dir: Path) -> None:  # type: ignore[misc]

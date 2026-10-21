@@ -7,6 +7,7 @@ the session directory; launch just invokes the codex binary there.
 
 from __future__ import annotations
 
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -24,10 +25,17 @@ def _codex_setup(canonical_content: str, session_dir: Path) -> Path:
 
 
 def _codex_launch(_persona_path: Path, resume: bool) -> str:
-    """Build Codex launch command. Codex reads AGENTS.md from cwd."""
-    binary = shutil.which("codex") or "codex"
+    """Build Codex launch command. Codex reads AGENTS.md from cwd.
+
+    Resume is the ``resume`` SUBCOMMAND: Codex has no ``--resume`` flag and
+    exits on one with ``unexpected argument '--resume'`` (codex-cli 0.160.1).
+    ``--last`` takes the most recent session for the working directory
+    without opening the interactive picker.
+    """
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("codex") or "codex")
     if resume:
-        return f"{binary} --resume"
+        return f"{binary} resume --last"
     return binary
 
 

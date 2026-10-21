@@ -17,6 +17,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from agent_session_tools.export_sessions import SOURCE_CHOICES
 from agent_session_tools.exporters import EXPORTERS
 from studyloop import installers
@@ -226,3 +228,46 @@ def test_opencode_permission_block_is_exactly_as_recorded() -> None:
             "*": "ask",
         },
     }, permission
+
+
+# ---------------------------------------------------------------------------
+# Launch commands are shell text: every built-in adapter quotes its binary
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("resume", [False, True])
+@pytest.mark.parametrize("harness", sorted(EXPECTED_HARNESSES))
+def test_every_adapter_quotes_its_binary(
+    harness: str, resume: bool, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The launch string runs under ``/bin/sh -c`` (web/routes/session/_transport.py)
+    and is typed into a tmux pane, so a binary path with a space -- a home
+    directory with one, an app bundle -- must arrive as ONE word. Only Claude
+    quoted it (R-35); the other five split it in two (review F-CLI-23).
+    """
+    import shlex
+    import shutil
+
+    from studyloop.adapters.registry import get_all_adapters
+
+    monkeypatch.setattr(shutil, "which", lambda name: f"/opt/my tools/{name}")
+    adapter = get_all_adapters()[harness]
+
+    argv = shlex.split(adapter.launch_cmd(tmp_path / "persona file.md", resume))
+
+    assert argv[0] == f"/opt/my tools/{adapter.binary}"
+
+
+def test_agent_launcher_reexports_the_kiro_launch_instead_of_redefining() -> None:
+    """``agent_launcher`` kept its own body of the Kiro launch builder, and it had
+    already drifted from the adapter's (it lacked the F-CLI-23 quoting). One
+    body, re-exported, cannot drift (review F-CLI-20).
+
+    The launcher's other copies (``_opencode_mcp``, ``_mcp_command``) are dead
+    too but are still imported by ``test_agent_launcher.py``; they are recorded
+    as found-not-fixed rather than deleted under that file.
+    """
+    from studyloop import agent_launcher
+    from studyloop.adapters import kiro
+
+    assert agent_launcher._kiro_launch is kiro._kiro_launch
