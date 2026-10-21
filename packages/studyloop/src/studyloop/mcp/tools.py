@@ -419,7 +419,9 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         Queries study_sessions, study_progress, and teach_back_scores
         to give a comprehensive view of the student's learning journey
-        on a specific topic.
+        on a specific topic. ``struggles`` lists the study terms that keep
+        recurring in the learner's own questions, limited to terms that
+        contain ``topic`` (so ``python`` matches the ``python`` term).
 
         Args:
             topic: Topic name to search for.
@@ -450,9 +452,10 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         # Last studied date
         last = last_studied([topic.lower()])
 
-        # Struggles
+        # Struggles -- struggle_topics() rows are {"topic", "mentions"}, keyed by
+        # the study term they count; they carry no "course" (F-LRN-21).
         struggles = struggle_topics(days=days)
-        topic_struggles = [s for s in struggles if topic.lower() in s.get("course", "").lower()]
+        topic_struggles = [s for s in struggles if topic.lower() in s.get("topic", "").lower()]
 
         # Wins (confident/mastered concepts)
         wins = get_wins(days=days)

@@ -387,3 +387,92 @@ class TestExplorerReadTools:
     def test_search_short_query_returns_empty(self, vault_settings) -> None:
         with patch("studyloop.mcp.tools.load_settings", return_value=vault_settings):
             assert _get_tool("search_lessons")("x") == {"results": []}
+
+
+class TestGetStudyHistoryStruggles:
+    """F-LRN-21: ``struggles`` is fed by the REAL ``struggle_topics()`` producer.
+
+    ``struggle_topics()`` rows are keyed by the study term they count
+    (``{"topic", "mentions"}``) and carry no ``course``, so the tool's
+    per-topic filter must read the key the producer actually emits.
+    """
+
+    @pytest.fixture()
+    def history_db(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        """A migrated sessions DB with three python and three sql user questions."""
+        import sqlite3
+        from datetime import UTC, datetime, timedelta
+        from importlib.resources import files
+
+        from agent_session_tools.context.scope import ScopePolicy, apply_policy
+        from agent_session_tools.migrations import migrate
+
+        monkeypatch.delenv("SESSION_CONTEXT_SCOPE", raising=False)
+        db = tmp_path / "sessions.db"
+        conn = sqlite3.connect(db)
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.row_factory = sqlite3.Row
+        conn.executescript(files("agent_session_tools").joinpath("schema.sql").read_text())
+        migrate(conn)
+        now = datetime.now(UTC)
+        questions = [
+            ("py1", "why does python slicing copy the list?"),
+            ("py2", "is a python closure late-binding?"),
+            ("py3", "when does python call __del__?"),
+            ("sq1", "why does my sql join duplicate rows?"),
+            ("sq2", "is sql NULL equal to NULL?"),
+            ("sq3", "when does sql use an index?"),
+        ]
+        for index, (sid, question) in enumerate(questions):
+            stamp = (now - timedelta(minutes=10 - index)).isoformat()
+            conn.execute(
+                "INSERT INTO sessions(id,source,project_path,created_at,updated_at) "
+                "VALUES (?,?,?,?,?)",
+                (sid, "kiro_cli", "/history/personal", stamp, stamp),
+            )
+            conn.execute(
+                "INSERT INTO messages(id,session_id,role,content,seq,timestamp) "
+                "VALUES (?,?,?,?,?,?)",
+                (sid + "-u", sid, "user", question, 0, stamp),
+            )
+        conn.commit()
+        settings = {
+            "memory": {
+                "default_scope": "personal",
+                "projects": {
+                    "personal": {"scope": "personal", "roots": ["/history/personal"]},
+                },
+            }
+        }
+        config = tmp_path / "memory.yaml"
+        config.write_text(json.dumps(settings))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+        monkeypatch.setenv("STUDYLOOP_DB", str(db))
+        apply_policy(conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False)
+        conn.close()
+        return db
+
+    def test_get_study_history_returns_struggles_from_struggle_topics(
+        self, history_db: Path
+    ) -> None:
+        from studyloop.history import struggle_topics
+
+        # The producer itself sees the seeded struggle -- the tool must pass it on.
+        assert {"topic": "python", "mentions": 3} in struggle_topics(days=30)
+
+        result = _get_tool("get_study_history")(topic="python")
+
+        assert len(result["struggles"]) >= 1
+        assert {"topic": "python", "mentions": 3} in result["struggles"]
+
+    def test_get_study_history_excludes_other_topics_struggles(self, history_db: Path) -> None:
+        from studyloop.history import struggle_topics
+
+        produced = {row["topic"] for row in struggle_topics(days=30)}
+        assert {"python", "sql"} <= produced
+
+        result = _get_tool("get_study_history")(topic="Python")
+
+        topics = [row["topic"] for row in result["struggles"]]
+        # Not "fixed" by handing back everyone's struggles: python only, sql excluded.
+        assert topics == ["python"]
