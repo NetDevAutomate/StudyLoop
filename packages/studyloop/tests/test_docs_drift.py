@@ -257,6 +257,10 @@ def _validate_example(example: str, root: click.Group, root_ctx: click.Context) 
                 current_ctx = click.Context(sub, parent=current_ctx, info_name=token)
                 current = sub
                 continue
+            if not any(isinstance(param, click.Argument) for param in current.params):
+                # F-XCUT-11: a group that declares no arguments cannot take this
+                # token as a positional; Click answers "No such command" here.
+                problems.append(f"{token!r} is not a subcommand of {current.name!r}")
             still_descending = False
         # else: positional argument, not validated beyond this point.
     return problems
@@ -339,6 +343,26 @@ def test_studyloop_example_resolves(location: str, example: str) -> None:
     ctx = click.Context(root, info_name="studyloop")
     problems = _validate_example(example, root, ctx)
     assert not problems, f"{location}: {example!r} -> {problems}"
+
+
+@pytest.mark.parametrize(
+    "example",
+    ["studyloop sesion start", "studyloop session strat", "studyloop recap yesterday"],
+)
+def test_validator_rejects_unknown_subcommand(example: str) -> None:
+    """F-XCUT-11: a renamed or removed command is the commonest drift, and Click
+    itself answers "No such command" for it. The validator used to take any
+    unknown token under a group as a positional and report nothing."""
+    root = _load_cli_group()
+    ctx = click.Context(root, info_name="studyloop")
+    assert _validate_example(example, root, ctx) != []
+
+
+def test_validator_still_accepts_positionals_after_a_leaf_command() -> None:
+    root = _load_cli_group()
+    for example in ("studyloop study Python --energy 6", "studyloop plan show my-plan"):
+        ctx = click.Context(root, info_name="studyloop")
+        assert _validate_example(example, root, ctx) == [], example
 
 
 # ---------------------------------------------------------------------------
