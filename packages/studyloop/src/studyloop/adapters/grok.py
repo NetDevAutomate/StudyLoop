@@ -20,6 +20,7 @@ other Grok permission (``ui.yolo``, tool approval, hooks trust) is touched.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import time
 import tomllib
@@ -107,7 +108,8 @@ def _grok_setup(canonical_content: str, session_dir: Path) -> Path:
 
 def _grok_launch(_persona_path: Path, resume: bool) -> str:
     """Build the Grok Build launch command. Grok reads AGENTS.md from cwd."""
-    binary = shutil.which("grok") or "grok"
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("grok") or "grok")
     if resume:
         return f"{binary} --resume"
     return binary

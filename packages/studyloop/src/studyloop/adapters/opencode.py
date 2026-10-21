@@ -12,6 +12,7 @@ installers.py registers globally for the other harnesses.
 
 from __future__ import annotations
 
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -49,7 +50,8 @@ def _opencode_setup(canonical_content: str, session_dir: Path) -> Path:
 
 def _opencode_launch(_persona_path: Path, resume: bool) -> str:
     """Build OpenCode launch command."""
-    binary = shutil.which("opencode") or "opencode"
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("opencode") or "opencode")
     if resume:
         return f"{binary} --agent study-mentor -c"
     return f"{binary} --agent study-mentor"

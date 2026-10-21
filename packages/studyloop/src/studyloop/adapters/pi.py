@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,8 @@ def _pi_setup(canonical_content: str, session_dir: Path) -> Path:
 
 def _pi_launch(_persona_path: Path, resume: bool) -> str:
     """Build an extension-independent launch without choosing a user model."""
-    binary = shutil.which("pi") or "pi"
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("pi") or "pi")
     base = f"{binary} --no-extensions"
     return f"{base} --continue" if resume else base
 

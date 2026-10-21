@@ -7,6 +7,7 @@ the session directory; launch just invokes the codex binary there.
 
 from __future__ import annotations
 
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -31,7 +32,8 @@ def _codex_launch(_persona_path: Path, resume: bool) -> str:
     ``--last`` takes the most recent session for the working directory
     without opening the interactive picker.
     """
-    binary = shutil.which("codex") or "codex"
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("codex") or "codex")
     if resume:
         return f"{binary} resume --last"
     return binary

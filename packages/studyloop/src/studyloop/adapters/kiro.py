@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shlex
 import shutil
 import tempfile
 from pathlib import Path
@@ -157,7 +158,8 @@ def _kiro_setup(
 
 def _kiro_launch(_persona_path: Path, resume: bool) -> str:
     """Build Kiro launch command."""
-    binary = shutil.which("kiro-cli") or shutil.which("kiro") or "kiro-cli"
+    # Quoted: the launch string runs under `/bin/sh -c` and in a tmux pane (F-CLI-23).
+    binary = shlex.quote(shutil.which("kiro-cli") or shutil.which("kiro") or "kiro-cli")
     if resume:
         return f"{binary} chat --agent {KIRO_AGENT_NAME} --resume"
     return f"{binary} chat --agent {KIRO_AGENT_NAME}"
