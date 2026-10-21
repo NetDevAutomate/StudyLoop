@@ -554,6 +554,19 @@ export function liveAgentConsole(origin = 'study') {
         }));
       },
 
+      /* True when a 403 is the RequestBoundaryMiddleware refusing a request
+         for lack of the current server cookie (`code: server_secret_required`
+         in app.py). Any other 403 — or a body that is not JSON — is not. Reads
+         a clone so the caller can still consume the body. */
+      async _isStaleServerSecret(res) {
+        try {
+          const body = await (res.clone ? res.clone() : res).json();
+          return !!body && body.code === 'server_secret_required';
+        } catch {
+          return false;
+        }
+      },
+
       /* The socket closed with no 'stopped' frame. Two very different things
          look identical from here: the server is gone (a restarted `studyloop
          web` — the PTY/ACP session lived inside it, so the session is gone
@@ -572,12 +585,23 @@ export function liveAgentConsole(origin = 'study') {
            The first answer ends the loop, so a quick restart pays only for the
            attempts it needed. */
         const delays = [0, 1000, 2000, 4000, 8000, 16000];
+        /* A restarted server mints a new server secret (F-WEB-20), so this
+           tab's cookie no longer opens /api/*: the probe gets 403
+           `server_secret_required`. That IS an answer — the server is back —
+           so GET / once for the new cookie and retry, instead of spending
+           every attempt on the same 403 and never announcing the ending. */
+        let cookieRefreshed = false;
         for (const delay of delays) {
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (this._ws !== ws) return;
           let state;
           try {
-            const res = await fetch('/api/session/state', { cache: 'no-store' });
+            let res = await fetch('/api/session/state', { cache: 'no-store' });
+            if (res.status === 403 && !cookieRefreshed && await this._isStaleServerSecret(res)) {
+              cookieRefreshed = true;
+              await fetch('/', { cache: 'no-store' });
+              res = await fetch('/api/session/state', { cache: 'no-store' });
+            }
             if (!res.ok) continue;
             state = await res.json();
           } catch { continue; }                 /* unreachable: try again */
