@@ -444,6 +444,35 @@ def test_pem_body_holding_an_aws_key_shape_is_one_private_key_redaction() -> Non
     assert [f["type"] for f in result.findings] == ["private_key"]
 
 
+def test_prose_mentioning_private_key_is_untouched() -> None:
+    """False-positive guard: the widened PEM match must not eat prose."""
+    prose = (
+        "Never paste a PRIVATE KEY into chat. A key file opens with BEGIN "
+        "RSA PRIVATE KEY between two runs of five dashes and closes with "
+        "END RSA PRIVATE KEY; rotate the private key if it leaks, and set "
+        "private_key_path in the config."
+    )
+    result = Scrubber().scrub(prose)
+    assert result.text == prose
+    assert result.findings == []
+
+
+def test_prose_beside_an_armour_line_on_the_same_line_survives() -> None:
+    """A bare armour line is redacted; the words around it are not body."""
+    text = (
+        "The first line reads "
+        + _pem_marker("BEGIN", "RSA")
+        + " and nothing follows it.\nThe last line reads "
+        + _pem_marker("END", "RSA")
+        + " in the file."
+    )
+    result = Scrubber().scrub(text)
+    assert "PRIVATE KEY" not in result.text
+    assert result.text.startswith("The first line reads [PRIVATE_KEY-")
+    assert "] and nothing follows it.\nThe last line reads [PRIVATE_KEY-" in result.text
+    assert result.text.endswith("] in the file.")
+
+
 class TestScrubberDeterministicPlaceholders:
     def test_same_secret_same_placeholder(self):
         s = Scrubber()
