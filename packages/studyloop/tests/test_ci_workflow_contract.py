@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -364,3 +365,39 @@ def test_ci_runs_every_commit_gate_secret_hook() -> None:
         for hook in repo.get("hooks", [])
     }
     assert set(SECRET_HOOK_IDS) <= configured, "CI must run hooks the commit gate defines"
+
+
+# --- Removed orphans stay removed (ledger 13, F-OPS-13/14@sol) ---------------
+
+
+def _tracked_mentions(needle: str) -> list[str]:
+    """Tracked files that mention ``needle``, excluding this contract file."""
+    proc = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "grep",
+            "-I",
+            "-l",
+            "-F",
+            "-e",
+            needle,
+            "--",
+            ".",
+            f":!{Path(__file__).resolve().relative_to(REPO_ROOT)}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode in (0, 1), proc.stderr  # 1 = no match; anything else is git failing
+    return proc.stdout.split()
+
+
+def test_removed_orphan_workflow_script_stays_removed() -> None:
+    """``scripts/gen_quality_workflow.js`` was referenced by nothing (no recipe,
+    workflow, doc or script) and carried a shell-injection heredoc and fixed
+    shared ``/tmp`` paths. Deleted, it must not drift back."""
+    assert not (REPO_ROOT / "scripts" / "gen_quality_workflow.js").exists()
+    assert _tracked_mentions("gen_quality_workflow") == []
