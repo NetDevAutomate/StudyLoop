@@ -153,6 +153,22 @@ def create_backup(db_path: Path) -> Path | None:
     return backup_path
 
 
+def _backup_refused(db_path: Path) -> int:
+    """Report that a requested backup was not made; the caller returns 1.
+
+    create_backup returns None when it refuses (the backup_max_mb size
+    guard). A command whose backup was requested then changes nothing, the
+    same rule sync.py's pull follows (F-AST-03).
+    """
+    print(
+        "❌ The requested backup was not made (see above), so nothing was "
+        "changed. Snapshot the database ('session-maint snapshot') and re-run "
+        "with --no-backup."
+    )
+    logger.error("requested backup of %s was refused; operation aborted", db_path)
+    return 1
+
+
 def _vacuum(db_path: Path, backup: bool = True) -> int:
     """Optimize database and reclaim unused space."""
     print(f"\n{'=' * 50}")
@@ -167,8 +183,8 @@ def _vacuum(db_path: Path, backup: bool = True) -> int:
     initial_size = db_path.stat().st_size / (1024 * 1024)
     print(f"Initial size: {initial_size:.2f} MB")
 
-    if backup:
-        create_backup(db_path)
+    if backup and create_backup(db_path) is None:
+        return _backup_refused(db_path)
 
     try:
         conn = sqlite3.connect(db_path)
@@ -291,8 +307,8 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
         print(f"❌ Database not found: {db_path}")
         return 1
 
-    if backup:
-        create_backup(db_path)
+    if backup and create_backup(db_path) is None:
+        return _backup_refused(db_path)
 
     try:
         from agent_session_tools.tiering import fts_integrity, repair_fts
@@ -366,8 +382,9 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         print(f"Found {len(old_sessions)} sessions to archive")
         print(f"Cutoff date: {cutoff_date}")
 
-        if backup:
-            create_backup(db_path)
+        if backup and create_backup(db_path) is None:
+            source_conn.close()
+            return _backup_refused(db_path)
 
         # Create archive database if needed
         if not archive_path.exists():
@@ -585,8 +602,9 @@ def _delete_old(
             conn.close()
             return 1
 
-        if backup:
-            create_backup(db_path)
+        if backup and create_backup(db_path) is None:
+            conn.close()
+            return _backup_refused(db_path)
 
         # Delete messages first (foreign key constraint)
         print("\n🗑️  Deleting messages...")

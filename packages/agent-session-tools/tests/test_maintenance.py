@@ -734,6 +734,78 @@ class TestDeleteOldUtcCutoff:
 
 
 # ---------------------------------------------------------------------------
+# F-AST-03@sol: create_backup returns None when it refuses (the backup_max_mb
+# size guard). A command whose backup was requested must then change nothing,
+# as sync.py's pull already does ("refusing to import without a backup").
+# ---------------------------------------------------------------------------
+
+
+def _old_iso(days_ago: int = 100) -> str:
+    return (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+
+
+class TestRequestedBackupRefused:
+    def _db_with_old_session(self, tmp_path: Path) -> Path:
+        db_path = _make_db(tmp_path)
+        _insert_session(db_path, "old-1", _old_iso())
+        _insert_message(db_path, "m-1", "old-1")
+        return db_path
+
+    def test_delete_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        with patch(
+            "agent_session_tools.maintenance.create_backup", return_value=None
+        ) as mock_backup:
+            rc = _delete_old(db_path, days=30, confirm=True, backup=True)
+        mock_backup.assert_called_once_with(db_path)
+        assert rc == 1
+        assert _count(db_path, "sessions") == 1
+        assert _count(db_path, "messages") == 1
+
+    def test_archive_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        with patch(
+            "agent_session_tools.maintenance.create_backup", return_value=None
+        ) as mock_backup:
+            rc = _archive(db_path, days=30, backup=True)
+        mock_backup.assert_called_once_with(db_path)
+        assert rc == 1
+        assert _count(db_path, "sessions") == 1
+        assert _count(db_path, "messages") == 1
+        assert not archive_path.exists()
+
+    def test_vacuum_changes_nothing(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        conn = sqlite3.connect(db_path)
+        conn.executemany(
+            "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
+            [(f"m-{i}", "s", "user", "x" * 4000) for i in range(200)],
+        )
+        conn.commit()
+        conn.execute("DELETE FROM messages")
+        conn.commit()
+        conn.close()
+        size_with_free_pages = db_path.stat().st_size
+
+        with patch("agent_session_tools.maintenance.create_backup", return_value=None):
+            rc = _vacuum(db_path, backup=True)
+        assert rc == 1
+        assert db_path.stat().st_size == size_with_free_pages
+        # Control: the same database does shrink when no backup is requested.
+        assert _vacuum(db_path, backup=False) == 0
+        assert db_path.stat().st_size < size_with_free_pages
+
+    def test_reindex_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        assert _count(db_path, "messages_fts") == 0  # drifted: never indexed
+        with patch("agent_session_tools.maintenance.create_backup", return_value=None):
+            rc = _reindex(db_path, backup=True)
+        assert rc == 1
+        assert _count(db_path, "messages_fts") == 0
+
+
+# ---------------------------------------------------------------------------
 # _handle_duplicates
 # ---------------------------------------------------------------------------
 
