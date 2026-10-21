@@ -86,9 +86,27 @@ os.environ["TERM"] = "dumb"
 #
 # Individual tests may still point these at their own tmp_path; the default
 # below only guarantees that *nothing* lands in the real user directories.
+#
+# Hard-assign, not ``setdefault``: a learner who followed the setup guide's
+# ``export STUDYLOOP_CONFIG=...`` (or exported STUDYLOOP_DB at their real
+# sessions.db) would otherwise run the suite against their own files. A test's
+# own ``monkeypatch.setenv`` still wins for that test and unwinds back to these.
+#
+# Once per process, recorded by pid, with the same marker the workspace-root
+# conftest.py uses: in a workspace run that file has already claimed all three
+# and this block leaves them alone. Under ``--import-mode=importlib`` a test
+# module's ``from conftest import ...`` executes this file a SECOND time, and
+# re-pointing the sandbox then would move it out from under code that already
+# bound the first one (``studyloop.settings._CONFIG_PATH``, below). When that
+# import sits inside a test function (test_readiness_scaling.py), it would also
+# overwrite the test's own monkeypatched values behind monkeypatch's back. A
+# child process inherits the marker with its parent's pid, so it redirects again.
+_SANDBOX_OWNER_ENV = "_STUDYLOOP_SUITE_SANDBOX_PID"
+_CLAIM_SANDBOX = os.environ.get(_SANDBOX_OWNER_ENV) != str(os.getpid())
 _TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-state-"))
-os.environ.setdefault("STUDYLOOP_STATE_DIR", str(_TEST_STATE_ROOT / "state"))
-os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
+if _CLAIM_SANDBOX:
+    os.environ["STUDYLOOP_STATE_DIR"] = str(_TEST_STATE_ROOT / "state")
+    os.environ["STUDYLOOP_DB"] = str(_TEST_STATE_ROOT / "sessions.db")
 # STUDYLOOP_CONFIG must ALSO be set here, at import time, for the same reason
 # as the two above -- plus one this suite learned the hard way on 2026-09-05:
 # ``studyloop.settings`` binds ``_CONFIG_PATH`` from the environment AT MODULE
@@ -100,7 +118,9 @@ os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
 # the import-time constant itself point at the throwaway tree, so even a test
 # that delenvs the variable or a legacy call site that skips the lazy resolver
 # cannot reach the real file.
-os.environ.setdefault("STUDYLOOP_CONFIG", str(_TEST_STATE_ROOT / "config.yaml"))
+if _CLAIM_SANDBOX:
+    os.environ["STUDYLOOP_CONFIG"] = str(_TEST_STATE_ROOT / "config.yaml")
+    os.environ[_SANDBOX_OWNER_ENV] = str(os.getpid())
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
