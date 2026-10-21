@@ -15,6 +15,7 @@ transport is a stub.
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 import sys
 from pathlib import Path
@@ -62,13 +63,15 @@ def client() -> TestClient:
     return TestClient(create_app())
 
 
-def _start_live_session(tmp_path: Path) -> tuple[str, StubTransport]:
+def _start_live_session(
+    tmp_path: Path, transport: StubTransport | None = None
+) -> tuple[str, StubTransport]:
     """A live web session as ``_start.py`` leaves it: DB row, slot, state file."""
     from studyloop.history import start_study_session
 
     study_id = start_study_session(_TOPIC, "medium")
     assert study_id, "the seeded sessions.db refused to start a study session"
-    transport = StubTransport()
+    live: StubTransport = StubTransport() if transport is None else transport
     config = SessionConfig(
         study_session_id=study_id,
         agent="claude",
@@ -78,11 +81,11 @@ def _start_live_session(tmp_path: Path) -> tuple[str, StubTransport]:
         cols=80,
         rows=24,
     )
-    run_async(active.acquire(config, lambda: transport))
+    run_async(active.acquire(config, lambda: live))
     session_state.write_session_state(
         {"study_session_id": study_id, "agent": "claude", "topic": _TOPIC, "transport": "pty"}
     )
-    return study_id, transport
+    return study_id, live
 
 
 def _record_evidence() -> None:
@@ -161,3 +164,114 @@ def test_end_with_persistence_failure_keeps_source_files(
     assert current is not None and current.study_session_id == study_id
     assert transport.end_calls == 0
     assert _stored_row(db, study_id)["ended_at"] is None
+
+
+class _GatedEndTransport(StubTransport):
+    """A transport whose ``end()`` blocks until the test opens the gate.
+
+    ``active.release()`` awaits ``transport.end()`` before it clears the IPC
+    files, so holding it open freezes the first end request at exactly the
+    point where a second request can still read the old state file.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.end_entered = asyncio.Event()
+        self.gate = asyncio.Event()
+
+    async def end(self) -> None:
+        self.end_entered.set()
+        await self.gate.wait()
+        await super().end()
+
+
+def _spy(monkeypatch: pytest.MonkeyPatch, name: str) -> list[dict]:
+    """Record each call to ``studyloop.history.<name>`` and run the real writer."""
+    from studyloop import history
+
+    real = getattr(history, name)
+    calls: list[dict] = []
+
+    def _recording(*args: object, **kwargs: object) -> object:
+        calls.append({"args": args, **kwargs})
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(history, name, _recording)
+    return calls
+
+
+@pytest.mark.asyncio
+async def test_repeated_end_does_not_duplicate_persisted_evidence(
+    db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second End that lands while the first is still releasing changes nothing.
+
+    The first request has persisted, marked the state ``mode=ended`` and
+    deleted the topics file, but its release is still awaiting the agent. A
+    second request reading the state then must not persist again: that would
+    overwrite the stored summary with "No topics recorded" and store every
+    progress report twice.
+    """
+    import httpx
+
+    transport = _GatedEndTransport()
+    study_id, _ = _start_live_session(tmp_path, transport)
+    _record_evidence()
+    ends = _spy(monkeypatch, "end_study_session")
+    progress = _spy(monkeypatch, "record_progress")
+
+    app = create_app()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as ac:
+        first = asyncio.create_task(ac.post("/api/session/end"))
+        await asyncio.wait_for(transport.end_entered.wait(), timeout=5)
+        second = await asyncio.wait_for(ac.post("/api/session/end"), timeout=5)
+        transport.gate.set()
+        first_resp = await asyncio.wait_for(first, timeout=5)
+        third = await ac.post("/api/session/end")
+
+    assert first_resp.status_code == 200, first_resp.text
+    assert second.status_code in (200, 404), second.text
+    assert third.status_code == 404, third.text
+    assert len(ends) == 1, f"end_study_session ran {len(ends)} times"
+    assert sorted(c["topic"] for c in progress) == ["Closures", "GIL"]
+    row = _stored_row(db, study_id)
+    assert "Closures" in (row["notes"] or "")
+    assert _PARKED in (row["notes"] or "")
+    assert (row["win_count"], row["struggle_count"]) == (1, 1)
+    assert transport.end_calls == 1
+
+
+def test_retry_after_a_failed_end_persists_the_evidence_once(
+    client: TestClient, db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The retry the 503 invites stores each progress report exactly once.
+
+    Pins why a failed save skips study_progress: every record_progress call
+    stores a new report, so recording it on the failed attempt and again on the
+    retry would double the learner's history.
+    """
+    from studyloop import history
+
+    study_id, transport = _start_live_session(tmp_path)
+    _record_evidence()
+    progress = _spy(monkeypatch, "record_progress")
+    real_end = history.end_study_session
+
+    def _locked(*_args: object, **_kwargs: object) -> bool:
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(history, "end_study_session", _locked)
+    assert client.post("/api/session/end").status_code == 503
+    assert progress == []
+
+    monkeypatch.setattr(history, "end_study_session", real_end)
+    resp = client.post("/api/session/end")
+
+    assert resp.status_code == 200, resp.text
+    assert sorted(c["topic"] for c in progress) == ["Closures", "GIL"]
+    row = _stored_row(db, study_id)
+    assert (row["win_count"], row["struggle_count"]) == (1, 1)
+    assert row["ended_at"] is not None
+    assert transport.end_calls == 1

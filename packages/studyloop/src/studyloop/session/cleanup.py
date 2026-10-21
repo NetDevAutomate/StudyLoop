@@ -302,14 +302,25 @@ def end_session_common(
         raise_if_not_persisted=raise_if_not_persisted,
     )
     _signal_dashboard_ended()
+    teardown_session(state)
+
+    return topic
+
+
+def teardown_session(state: dict) -> None:
+    """The teardown half of :func:`end_session_common`, with no persistence.
+
+    For a session another end path has already persisted (its state says
+    ``mode=ended``): agent teardown, background processes, the session's own
+    tmux session and the transient IPC files. Every step is idempotent, so
+    running it after a full end changes nothing.
+    """
     _teardown_agent(state)
     _kill_background_processes(state)
     _cleanup_tmux_and_files(
         session_name=state.get("tmux_session"),
         persona_file=state.get("persona_file"),
     )
-
-    return topic
 
 
 def auto_clean_zombies() -> None:
