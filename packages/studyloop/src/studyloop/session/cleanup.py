@@ -281,13 +281,41 @@ def end_session_common(
     The caller controls user-facing output and error handling -- this function
     only does the work.
     """
-    from studyloop.session_state import parse_parking_file, parse_topics_file
-
     study_id = state.get("study_session_id")
     topic = state.get("topic", "unknown")
 
     if not study_id:
         return None
+
+    persist_session_end(
+        state,
+        auto_persist=auto_persist,
+        raise_if_not_persisted=raise_if_not_persisted,
+    )
+    teardown_session(state)
+
+    return topic
+
+
+def persist_session_end(
+    state: dict,
+    *,
+    auto_persist: bool = True,
+    raise_if_not_persisted: bool = True,
+) -> None:
+    """The persistence half of :func:`end_session_common`, with no teardown.
+
+    Reads the topics and parking files, writes the backlog, flashcards, the
+    ``study_sessions`` end record and study_progress, then marks the state
+    ``mode=ended`` -- the marker other end paths read as "already saved".
+    Deletes nothing. Same ``raise_if_not_persisted`` contract as
+    :func:`end_session_common`. A state without a session id is a no-op.
+    """
+    from studyloop.session_state import parse_parking_file, parse_topics_file
+
+    study_id = state.get("study_session_id")
+    if not study_id:
+        return
 
     # Capture session context as notes
     topic_entries = parse_topics_file()
@@ -302,9 +330,6 @@ def end_session_common(
         raise_if_not_persisted=raise_if_not_persisted,
     )
     _signal_dashboard_ended()
-    teardown_session(state)
-
-    return topic
 
 
 def teardown_session(state: dict) -> None:

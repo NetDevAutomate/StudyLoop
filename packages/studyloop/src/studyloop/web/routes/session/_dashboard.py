@@ -318,9 +318,11 @@ async def end_session() -> JSONResponse:
     # ending the session now must not leave that timer armed, or it fires later
     # against a slot that has already moved on. _grace.release_now is the
     # documented path for "end arrived during the grace window" and leaves no
-    # orphan timer behind. The bare release() after it is idempotent and covers
-    # a CLI tmux flow (studyloop study) that never touched active.py.
-    await _grace.release_now(str(session_id), reason="ended-by-user")
+    # orphan timer behind. persist=False: the session was saved just above, and
+    # the ended marker that would otherwise tell _grace so is best effort. The
+    # bare release() after it is idempotent and covers a CLI tmux flow
+    # (studyloop study) that never touched active.py.
+    await _grace.release_now(str(session_id), reason="ended-by-user", persist=False)
     await session_active.release()
 
     return JSONResponse(

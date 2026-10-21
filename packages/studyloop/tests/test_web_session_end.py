@@ -275,3 +275,101 @@ def test_retry_after_a_failed_end_persists_the_evidence_once(
     assert (row["win_count"], row["struggle_count"]) == (1, 1)
     assert row["ended_at"] is not None
     assert transport.end_calls == 1
+
+
+# ---------------------------------------------------------------------------
+# F-WEB-02@claude: every other way a web session ends
+# ---------------------------------------------------------------------------
+
+
+class _LiveTransport(StubTransport):
+    """Stub with the duck-typed liveness probe the reaper and grace timer poll."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.alive = True
+
+    def is_running(self) -> bool:
+        return self.alive
+
+
+async def _until_released(timeout: float = 5.0) -> None:
+    deadline = asyncio.get_running_loop().time() + timeout
+    while await active.current() is not None:
+        if asyncio.get_running_loop().time() > deadline:
+            raise AssertionError("the session was never released")
+        await asyncio.sleep(0.02)
+
+
+async def _stop_or_agent_exit(sid: str, _transport: _LiveTransport) -> None:
+    # _ws.py's finally on a Stopped event or the learner's Stop frame.
+    await _grace.release_now(sid, reason="session ended")
+
+
+async def _grace_expiry(sid: str, _transport: _LiveTransport) -> None:
+    _grace.schedule_release(sid, grace=0.01)
+    await _until_released()
+
+
+async def _reaper_sees_agent_gone(sid: str, transport: _LiveTransport) -> None:
+    transport.alive = False
+    assert await _grace.reap_once() == "agent_exited"
+
+
+async def _server_shutdown(_sid: str, _transport: _LiveTransport) -> None:
+    await _grace.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "release",
+    [_stop_or_agent_exit, _grace_expiry, _reaper_sees_agent_gone, _server_shutdown],
+    ids=["stop-or-agent-exit", "grace-expiry", "reaper-agent-exited", "server-shutdown"],
+)
+async def test_web_release_paths_end_the_study_session_row(
+    release, db: Path, tmp_path: Path
+) -> None:
+    """Stop, agent exit, grace expiry, the reaper and shutdown save the session too.
+
+    Each of these goes through ``_grace._release_if_current`` alone, which
+    released the slot (unlinking the topics and parking files) and never
+    touched the database, so the study_sessions row stayed open with no notes
+    and the evidence was gone for good.
+    """
+    transport = _LiveTransport()
+    study_id, _ = _start_live_session(tmp_path, transport)
+    _record_evidence()
+
+    await release(study_id, transport)
+
+    assert await active.current() is None
+    row = _stored_row(db, study_id)
+    assert row["ended_at"] is not None, "the study_sessions row was left open"
+    notes = row["notes"] or ""
+    assert "Closures" in notes
+    assert _PARKED in notes
+    assert (row["win_count"], row["struggle_count"]) == (1, 1)
+
+
+def test_browser_end_persists_once_even_without_the_ended_marker(
+    client: TestClient, db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The End route's own release must not save the session a second time.
+
+    The route persists, then releases through ``_grace``. Writing ``mode=ended``
+    is best effort, so the release cannot rely on it to know the session was
+    saved: re-persisting would read the topics file the first save deleted and
+    overwrite the summary with "No topics recorded".
+    """
+    from studyloop.session import cleanup
+
+    study_id, _ = _start_live_session(tmp_path)
+    _record_evidence()
+    ends = _spy(monkeypatch, "end_study_session")
+    monkeypatch.setattr(cleanup, "_signal_dashboard_ended", lambda: None)
+
+    resp = client.post("/api/session/end")
+
+    assert resp.status_code == 200, resp.text
+    assert len(ends) == 1, f"end_study_session ran {len(ends)} times"
+    assert "Closures" in (_stored_row(db, study_id)["notes"] or "")
