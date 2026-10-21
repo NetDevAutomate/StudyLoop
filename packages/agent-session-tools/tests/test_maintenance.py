@@ -495,6 +495,43 @@ class TestArchive:
         archive_conn.close()
         assert count == 2
 
+    def test_archive_twice_appends_second_batch(self, tmp_path):
+        """F-AST-05@claude: the second run re-inserted every archived
+        message into messages_fts with its existing rowid, which FTS5
+        refuses, so archiving worked once per machine."""
+        db_path = _make_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        _insert_session(db_path, "old-1", self._old_date(200))
+        _insert_message(db_path, "m-1", "old-1", content="first batch")
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        _insert_session(db_path, "old-2", self._old_date(150))
+        _insert_message(db_path, "m-2", "old-2", content="second batch")
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _count(archive_path, "sessions") == 2
+        assert _count(archive_path, "messages") == 2
+        assert _count(archive_path, "messages_fts") == 2
+        conn = sqlite3.connect(archive_path)
+        hits = conn.execute(
+            "SELECT session_id FROM messages_fts WHERE messages_fts MATCH 'batch'"
+            " ORDER BY session_id"
+        ).fetchall()
+        conn.close()
+        assert hits == [("old-1",), ("old-2",)]
+        assert _count(db_path, "sessions") == 0
+
+    def test_archiving_the_same_session_again_leaves_one_fts_entry(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        for _ in range(2):
+            _insert_session(db_path, "old-1", self._old_date(200))
+            _insert_message(db_path, "m-1", "old-1", content="re-imported")
+            assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _count(archive_path, "messages") == 1
+        assert _count(archive_path, "messages_fts") == 1
+
     def test_archive_preserves_all_columns(self, tmp_path):
         """Archive must not silently drop columns added by later migrations.
 
@@ -694,6 +731,288 @@ class TestDeleteOldUtcCutoff:
         assert "s-out" not in remaining, (
             f"a session 1 minute outside the UTC cutoff must be deleted under TZ={tz}"
         )
+
+
+# ---------------------------------------------------------------------------
+# F-AST-03@sol: create_backup returns None when it refuses (the backup_max_mb
+# size guard). A command whose backup was requested must then change nothing,
+# as sync.py's pull already does ("refusing to import without a backup").
+# ---------------------------------------------------------------------------
+
+
+def _old_iso(days_ago: int = 100) -> str:
+    return (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+
+
+class TestRequestedBackupRefused:
+    def _db_with_old_session(self, tmp_path: Path) -> Path:
+        db_path = _make_db(tmp_path)
+        _insert_session(db_path, "old-1", _old_iso())
+        _insert_message(db_path, "m-1", "old-1")
+        return db_path
+
+    def test_delete_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        with patch(
+            "agent_session_tools.maintenance.create_backup", return_value=None
+        ) as mock_backup:
+            rc = _delete_old(db_path, days=30, confirm=True, backup=True)
+        mock_backup.assert_called_once_with(db_path)
+        assert rc == 1
+        assert _count(db_path, "sessions") == 1
+        assert _count(db_path, "messages") == 1
+
+    def test_archive_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        with patch(
+            "agent_session_tools.maintenance.create_backup", return_value=None
+        ) as mock_backup:
+            rc = _archive(db_path, days=30, backup=True)
+        mock_backup.assert_called_once_with(db_path)
+        assert rc == 1
+        assert _count(db_path, "sessions") == 1
+        assert _count(db_path, "messages") == 1
+        assert not archive_path.exists()
+
+    def test_vacuum_changes_nothing(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        conn = sqlite3.connect(db_path)
+        conn.executemany(
+            "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
+            [(f"m-{i}", "s", "user", "x" * 4000) for i in range(200)],
+        )
+        conn.commit()
+        conn.execute("DELETE FROM messages")
+        conn.commit()
+        conn.close()
+        size_with_free_pages = db_path.stat().st_size
+
+        with patch("agent_session_tools.maintenance.create_backup", return_value=None):
+            rc = _vacuum(db_path, backup=True)
+        assert rc == 1
+        assert db_path.stat().st_size == size_with_free_pages
+        # Control: the same database does shrink when no backup is requested.
+        assert _vacuum(db_path, backup=False) == 0
+        assert db_path.stat().st_size < size_with_free_pages
+
+    def test_reindex_changes_nothing(self, tmp_path):
+        db_path = self._db_with_old_session(tmp_path)
+        assert _count(db_path, "messages_fts") == 0  # drifted: never indexed
+        with patch("agent_session_tools.maintenance.create_backup", return_value=None):
+            rc = _reindex(db_path, backup=True)
+        assert rc == 1
+        assert _count(db_path, "messages_fts") == 0
+
+
+# ---------------------------------------------------------------------------
+# F-AST-06@claude: a session with no timestamp is of unknown age, not "older
+# than N days". Kiro v1 conversations are exported with created_at and
+# updated_at both NULL (exporters/kiro.py, the use_v2 branch).
+# ---------------------------------------------------------------------------
+
+
+def _insert_session_dates(
+    db_path: Path, session_id: str, created_at: str | None, updated_at: str | None
+) -> None:
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO sessions (id, source, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (session_id, "kiro", created_at, updated_at),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _session_ids(db_path: Path) -> set[str]:
+    conn = sqlite3.connect(db_path)
+    ids = {r[0] for r in conn.execute("SELECT id FROM sessions")}
+    conn.close()
+    return ids
+
+
+class TestUndatedSessionsAreNotOld:
+    def _seed(self, db_path: Path) -> None:
+        _insert_session_dates(db_path, "undated", None, None)
+        _insert_session_dates(db_path, "created-old", _old_iso(100), None)
+        _insert_session_dates(db_path, "created-recent", _old_iso(1), None)
+        _insert_session_dates(db_path, "message-dated-old", None, None)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO messages (id, session_id, role, content, timestamp)"
+            " VALUES (?, ?, ?, ?, ?)",
+            ("m-old", "message-dated-old", "user", "hi", _old_iso(100)),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_delete_old_keeps_undated_sessions(self, tmp_path, capsys):
+        db_path = _make_db(tmp_path)
+        self._seed(db_path)
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _session_ids(db_path) == {"undated", "created-recent"}
+        assert "1 session(s) with no timestamp" in capsys.readouterr().out
+
+    def test_archive_keeps_undated_sessions(self, tmp_path, capsys):
+        db_path = _make_db(tmp_path)
+        self._seed(db_path)
+
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _session_ids(db_path) == {"undated", "created-recent"}
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        assert _session_ids(archive_path) == {"created-old", "message-dated-old"}
+        assert "1 session(s) with no timestamp" in capsys.readouterr().out
+
+    def test_only_undated_sessions_means_nothing_to_do(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        _insert_session_dates(db_path, "undated", None, None)
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert _archive(db_path, days=30, backup=False) == 0
+        assert _session_ids(db_path) == {"undated"}
+
+
+# ---------------------------------------------------------------------------
+# F-AST-04@sol / F-AST-02@sol: on a current-schema database (lifecycle tables,
+# schema 41+) a permanent delete must leave a tombstone so the next export
+# cannot re-import the session, and neither delete nor archive may leave
+# dependent rows (notes, tags, file references, learner records) orphaned.
+# ---------------------------------------------------------------------------
+
+
+def _current_db(tmp_path: Path) -> Path:
+    from agent_session_tools.export_sessions import init_db
+
+    db_path = tmp_path / "sessions.db"
+    init_db(str(db_path)).close()
+    return db_path
+
+
+def _export(db_path: Path, session_id: str, when: str) -> None:
+    """Write one session + message through the exporters' own write path."""
+    from agent_session_tools.exporters.base import ExportStats, commit_batch
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    commit_batch(
+        conn,
+        [
+            {
+                "id": session_id,
+                "source": "claude_code",
+                "project_path": "/p",
+                "created_at": when,
+                "updated_at": when,
+            }
+        ],
+        [
+            {
+                "id": f"{session_id}-m1",
+                "session_id": session_id,
+                "role": "user",
+                "content": "hello",
+                "timestamp": when,
+            }
+        ],
+        ExportStats(),
+    )
+    conn.close()
+
+
+def _add_note_tag_and_file_reference(db_path: Path, session_id: str) -> None:
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO session_notes (session_id, notes) VALUES (?, ?)",
+        (session_id, "my note"),
+    )
+    conn.execute(
+        "INSERT INTO session_tags (session_id, tag) VALUES (?, ?)", (session_id, "t")
+    )
+    conn.execute(
+        "INSERT INTO file_references (session_id, message_id, file_path, tool_name)"
+        " VALUES (?, ?, ?, ?)",
+        (session_id, f"{session_id}-m1", "/x.py", "Read"),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _orphans(db_path: Path) -> list[tuple]:
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute("PRAGMA foreign_key_check").fetchall()
+    conn.close()
+    return rows
+
+
+class TestCurrentSchemaDelete:
+    def test_delete_writes_a_tombstone_so_the_next_export_cannot_reimport(
+        self, tmp_path
+    ):
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert _session_ids(db_path) == set()
+
+        # The native transcript is still on disk; the next export sees it.
+        _export(db_path, "old-1", _old_iso(100))
+        assert _session_ids(db_path) == set()
+
+    def test_delete_leaves_no_orphaned_dependents(self, tmp_path):
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+        _add_note_tag_and_file_reference(db_path, "old-1")
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _orphans(db_path) == []
+        for table in ("session_notes", "session_tags", "file_references"):
+            assert _count(db_path, table) == 0
+
+    def test_delete_keeps_a_session_that_owns_learner_records(self, tmp_path, capsys):
+        """A tombstone forgets the learner records a session owns; prune keeps
+        such sessions (tiering._anchored_session_ids), and so does delete."""
+        db_path = _current_db(tmp_path)
+        _export(db_path, "old-1", _old_iso(100))
+        _export(db_path, "old-2", _old_iso(100))
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO study_sessions (id, session_id, topic, started_at)"
+            " VALUES (?, ?, ?, ?)",
+            ("study-1", "old-1", "sql", _old_iso(100)),
+        )
+        conn.commit()
+        conn.close()
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+        assert _session_ids(db_path) == {"old-1"}
+        assert _count(db_path, "study_sessions") == 1
+        assert "1 session(s) that own learner records" in capsys.readouterr().out
+
+
+class TestCurrentSchemaArchive:
+    def test_archive_keeps_sessions_whose_dependents_it_cannot_hold(
+        self, tmp_path, capsys
+    ):
+        db_path = _current_db(tmp_path)
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+        _export(db_path, "plain", _old_iso(100))
+        _export(db_path, "noted", _old_iso(100))
+        _add_note_tag_and_file_reference(db_path, "noted")
+
+        assert _archive(db_path, days=30, backup=False) == 0
+
+        assert _orphans(db_path) == []
+        assert _session_ids(db_path) == {"noted"}
+        assert _session_ids(archive_path) == {"plain"}
+        assert _count(db_path, "session_notes") == 1
+        out = capsys.readouterr().out
+        assert "Kept 1 session(s) with rows the archive cannot hold" in out
+        assert "session-maint sync-full" in out
 
 
 # ---------------------------------------------------------------------------
