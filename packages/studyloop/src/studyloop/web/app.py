@@ -215,6 +215,53 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
+class RequestBoundaryMiddleware:
+    """Refuse a request before routing when its ``Host`` is not one this server
+    answers to (``ws_origin.host_allowed``).
+
+    DNS rebinding (F-WEB-03, 2026-10-21 review): a page on attacker.example
+    re-resolves its own name to 127.0.0.1 and becomes same-origin with the
+    dashboard, every ``/api/*`` route and the terminal WebSocket. The browser
+    still sends ``Host: attacker.example``, so checking Host here, ahead of every
+    route, middleware and Basic-auth check, is what closes it. HTTP gets 400;
+    a WebSocket is closed with 1008 before accept, which the client sees as a
+    refused upgrade.
+
+    Wraps the finished FastAPI app (inside ``SecurityHeadersMiddleware``, so a
+    refusal still carries the security headers) and forwards attribute access
+    to it the same way, so ``create_app().state`` and friends keep working.
+    """
+
+    def __init__(self, app) -> None:  # type: ignore[no-untyped-def]
+        self.app = app
+
+    def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
+        return getattr(self.app, name)
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        if scope["type"] not in {"http", "websocket"}:
+            await self.app(scope, receive, send)
+            return
+
+        from starlette.datastructures import Headers
+
+        from studyloop.web.ws_origin import host_allowed, is_in_process_test_scope
+
+        host = Headers(scope=scope).get("host", "")
+        if not host_allowed(host, in_process_test=is_in_process_test_scope(scope)):
+            await _refuse(scope, receive, send, status=400, detail="Invalid host header")
+            return
+        await self.app(scope, receive, send)
+
+
+async def _refuse(scope, receive, send, *, status: int, detail: str) -> None:  # type: ignore[no-untyped-def]
+    """Answer a refused request: an HTTP status, or a pre-accept 1008 close."""
+    if scope["type"] == "websocket":
+        await send({"type": "websocket.close", "code": 1008})
+        return
+    await JSONResponse(status_code=status, content={"detail": detail})(scope, receive, send)
+
+
 def create_app(
     study_dirs: list[str] | None = None,
     username: str = "study",
@@ -399,4 +446,8 @@ def create_app(
     # instance, so it remains a drop-in replacement for every caller that
     # holds onto create_app()'s return value -- but it is not actually a
     # FastAPI subclass, hence the ignore below.
-    return SecurityHeadersMiddleware(app)  # type: ignore[return-value]
+    #
+    # RequestBoundaryMiddleware sits directly inside it: the first layer that
+    # judges a request, ahead of routing and every add_middleware() layer
+    # (Basic auth included), with only the header decorator outside it.
+    return SecurityHeadersMiddleware(RequestBoundaryMiddleware(app))  # type: ignore[return-value]
