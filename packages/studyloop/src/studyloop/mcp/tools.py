@@ -592,6 +592,12 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         learns, or has an insight about a concept — especially after 2+ rounds
         without breakthrough (status='struggling').
 
+        ``logged`` covers the session-topics.md entry. For the learning-signal
+        statuses a failed study_progress write adds ``progress``:
+        ``"not saved: <reason>"`` -- tell the learner it was not saved for
+        spaced repetition. No ``progress`` field means the row was written
+        (or, for ``parked``, that none was due).
+
         Args:
             topic: The concept or topic the user is engaging with.
             status: One of 'learning', 'struggling', 'insight', 'win', 'parked'.
@@ -606,24 +612,35 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         time_str = datetime.now().strftime("%H:%M")
         append_topic(time_str, topic, status, note)
+        result = {"logged": "true", "topic": topic, "status": status}
 
         confidence = confidence_map.get(status)
         if confidence is not None:
+            # The session-topics entry above stands even if this second write
+            # fails, but the response must say so: record_progress returns False
+            # for a missing database/table and raises on a lock (F-LRN-10).
             try:
-                record_progress(
+                saved = record_progress(
                     topic=topic,
                     concept=topic,
                     confidence=confidence,
                     notes=note or None,
                 )
-            except Exception:
+            except Exception as exc:
                 logger.exception(
                     "log_topic: record_progress failed for topic=%r status=%r — continuing",
                     topic,
                     status,
                 )
+                result["progress"] = f"not saved: {exc} -- run `studyloop doctor`"
+            else:
+                if not saved:
+                    result["progress"] = (
+                        "not saved: the sessions database or its study_progress table "
+                        "is missing -- run `studyloop doctor`"
+                    )
 
-        return {"logged": "true", "topic": topic, "status": status}
+        return result
 
     # ── Review loop + lifecycle parity ───────────────────────────
 

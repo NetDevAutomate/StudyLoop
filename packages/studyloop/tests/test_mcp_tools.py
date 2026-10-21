@@ -490,3 +490,50 @@ class TestLogStruggleTruthfulness:
             pytest.raises(ToolError, match="not recorded"),
         ):
             _get_tool("log_struggle")(question="why ROWS not RANGE?", topic_tag="sql")
+
+
+class TestLogTopicTruthfulness:
+    """F-LRN-10: ``log_topic`` says when the study_progress write did not land.
+
+    The session-topics.md entry is written first and a progress failure does
+    not fail the tool (``test_mcp_log_topic.py`` locks that isolation and the
+    exact success response), so a failed second write is reported in a
+    ``progress`` field instead of being dropped.
+    """
+
+    def test_log_topic_reports_progress_not_saved_when_writer_returns_false(self) -> None:
+        with (
+            patch("studyloop.session_state.append_topic"),
+            patch("studyloop.history.record_progress", return_value=False),
+        ):
+            result = _get_tool("log_topic")("window frames", "struggling", "ROWS vs RANGE")
+
+        assert result["logged"] == "true"
+        assert result.get("progress", "<absent>").startswith("not saved")
+
+    def test_log_topic_reports_progress_failure_when_writer_raises(self) -> None:
+        import sqlite3
+
+        with (
+            patch("studyloop.session_state.append_topic"),
+            patch(
+                "studyloop.history.record_progress",
+                side_effect=sqlite3.OperationalError("database is locked"),
+            ),
+        ):
+            result = _get_tool("log_topic")("window frames", "learning")
+
+        assert result["logged"] == "true"
+        progress = result.get("progress", "<absent>")
+        assert progress.startswith("not saved")
+        assert "database is locked" in progress
+
+    def test_log_topic_success_response_is_unchanged(self) -> None:
+        with (
+            patch("studyloop.session_state.append_topic"),
+            patch("studyloop.history.record_progress", return_value=True),
+        ):
+            result = _get_tool("log_topic")("window frames", "win")
+
+        # No "progress" field means the study_progress row was written.
+        assert result == {"logged": "true", "topic": "window frames", "status": "win"}
