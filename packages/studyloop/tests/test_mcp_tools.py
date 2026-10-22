@@ -497,21 +497,23 @@ class TestLogTopicTruthfulness:
 
     The session-topics.md entry is written first and a progress failure does
     not fail the tool (``test_mcp_log_topic.py`` locks that isolation and the
-    exact success response), so a failed second write is reported in a
-    ``progress`` field instead of being dropped.
+    exact success response), so a failed second write is reported as a typed
+    partial result (D9.3): ``logged: "partial"`` with ``failed`` naming the
+    write that did not land and ``reason`` saying why.
     """
 
-    def test_log_topic_reports_progress_not_saved_when_writer_returns_false(self) -> None:
+    def test_log_topic_reports_partial_when_writer_returns_false(self) -> None:
         with (
             patch("studyloop.session_state.append_topic"),
             patch("studyloop.history.record_progress", return_value=False),
         ):
             result = _get_tool("log_topic")("window frames", "struggling", "ROWS vs RANGE")
 
-        assert result["logged"] == "true"
-        assert result.get("progress", "<absent>").startswith("not saved")
+        assert result["logged"] == "partial"
+        assert result["failed"] == "study_progress"
+        assert "progress" not in result
 
-    def test_log_topic_reports_progress_failure_when_writer_raises(self) -> None:
+    def test_log_topic_reports_partial_when_writer_raises(self) -> None:
         import sqlite3
 
         with (
@@ -523,10 +525,9 @@ class TestLogTopicTruthfulness:
         ):
             result = _get_tool("log_topic")("window frames", "learning")
 
-        assert result["logged"] == "true"
-        progress = result.get("progress", "<absent>")
-        assert progress.startswith("not saved")
-        assert "database is locked" in progress
+        assert result["logged"] == "partial"
+        assert result["failed"] == "study_progress"
+        assert "database is locked" in result["reason"]
 
     def test_log_topic_success_response_is_unchanged(self) -> None:
         with (

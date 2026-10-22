@@ -212,5 +212,74 @@ class TestLogTopicDbFailureIsolation:
             # Should NOT raise
             result = tool("generators", "struggling", "hard concept")
 
-        assert result["logged"] == "true"
+        # D9.3: the topic entry landed but the progress row did not, so the
+        # call is a typed partial result, not ``logged: "true"``.
+        assert result["logged"] == "partial"
         mock_append.assert_called_once()
+
+
+class TestLogTopicPartialResult:
+    """D9.3: a failed study_progress write is a typed partial result.
+
+    ``append_topic`` (a file append) and ``record_progress`` (SQLite) are two
+    independent writes, so when the second fails the first has already landed.
+    Raising would report "nothing happened" and invite a retry that duplicates
+    the session-topics entry; ``logged: "true"`` would report success. The
+    response says ``partial`` and names the write that failed. The real
+    ``append_topic`` runs here, against a tmp session-topics.md, to prove the
+    entry lands in every case.
+    """
+
+    @pytest.fixture
+    def topics_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        import studyloop.session_state as session_state
+
+        session_dir = tmp_path / "topics-session"
+        topics = session_dir / "session-topics.md"
+        monkeypatch.setattr(session_state, "SESSION_DIR", session_dir)
+        monkeypatch.setattr(session_state, "TOPICS_FILE", topics)
+        return topics
+
+    @staticmethod
+    def _entries(topics: Path, topic: str) -> list[str]:
+        return [line for line in topics.read_text().splitlines() if f"] {topic} |" in line]
+
+    def test_raising_progress_write_returns_partial_naming_study_progress(
+        self, topics_file: Path
+    ) -> None:
+        import sqlite3
+
+        with patch(
+            "studyloop.history.record_progress",
+            side_effect=sqlite3.OperationalError("database is locked"),
+        ):
+            result = _get_tool("log_topic")("window frames", "struggling", "ROWS vs RANGE")
+
+        assert set(result) == {"logged", "topic", "status", "failed", "reason"}
+        assert result["logged"] == "partial"
+        assert result["topic"] == "window frames"
+        assert result["status"] == "struggling"
+        assert result["failed"] == "study_progress"
+        assert "database is locked" in result["reason"]
+        assert len(self._entries(topics_file, "window frames")) == 1
+
+    def test_unsaved_progress_write_returns_partial_naming_study_progress(
+        self, topics_file: Path
+    ) -> None:
+        # record_progress's documented failure value: False for a missing
+        # database or study_progress table.
+        with patch("studyloop.history.record_progress", return_value=False):
+            result = _get_tool("log_topic")("window frames", "learning")
+
+        assert set(result) == {"logged", "topic", "status", "failed", "reason"}
+        assert result["logged"] == "partial"
+        assert result["failed"] == "study_progress"
+        assert "study_progress" in result["reason"]
+        assert len(self._entries(topics_file, "window frames")) == 1
+
+    def test_success_shape_is_unchanged_and_entry_lands(self, topics_file: Path) -> None:
+        with patch("studyloop.history.record_progress", return_value=True):
+            result = _get_tool("log_topic")("window frames", "win")
+
+        assert result == {"logged": "true", "topic": "window frames", "status": "win"}
+        assert len(self._entries(topics_file, "window frames")) == 1
