@@ -8,6 +8,7 @@ schema inspection, and maintenance operations.
 import logging
 import os
 import sqlite3
+import stat
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -151,6 +152,110 @@ def create_backup(db_path: Path) -> Path | None:
     logger.info(f"Backup created: {backup_path}")
     print(f"✅ Backup created: {backup_path}")
     return backup_path
+
+
+def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
+    """Every local copy of the record, or index derived from it, the config names.
+
+    Maintenance backups (``<hot stem>_backup_*.db`` in ``database.backup_dir``),
+    snapshots (``<full stem>_snapshot_*.db`` in ``database.snapshot_dir``, or
+    ``backup_dir`` when unset) and the vector sidecars (``<stem>.vec.db`` beside
+    the hot and the full database, with their WAL/SHM/journal companions). The
+    globs are non-recursive and the names are the ones this package writes, so
+    nothing outside those directories, and nothing else inside them, is listed.
+    """
+    from agent_session_tools.embedding_store import sidecar_path
+    from agent_session_tools.tiering import get_full_db_path
+
+    db_cfg = cfg["database"]
+    hot = Path(db_cfg["path"])
+    full = get_full_db_path(cfg)
+    backup_dir = Path(db_cfg["backup_dir"])
+    snapshot_dir = Path(db_cfg.get("snapshot_dir") or backup_dir)
+
+    found: list[tuple[str, Path]] = []
+    if backup_dir.is_dir():
+        found += [
+            ("backup", p) for p in sorted(backup_dir.glob(f"{hot.stem}_backup_*.db"))
+        ]
+    if full is not None and snapshot_dir.is_dir():
+        found += [
+            ("snapshot", p)
+            for p in sorted(snapshot_dir.glob(f"{full.stem}_snapshot_*.db"))
+        ]
+    for db in (hot, full):
+        if db is None:
+            continue
+        sidecar = sidecar_path(db)
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            companion = sidecar.with_name(sidecar.name + suffix)
+            if companion.is_symlink() or companion.exists():
+                found.append(("sidecar", companion))
+    return found
+
+
+def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
+    """Chmod pre-existing copies of the record to 0600 and report counts (D#2).
+
+    Snapshots, backups and sidecars are created owner-only since 92186d77 /
+    R-19c; copies made before that keep the mode the umask gave them (0644
+    under 022). Only the files ``_owner_only_candidates`` lists are touched. A
+    symlink is skipped and named: a chmod through it would change a file that
+    may live outside the configured directories.
+    """
+    import shlex
+
+    from agent_session_tools.config_loader import get_endpoints
+
+    verb = "Would tighten" if dry_run else "Tightened"
+    print(f"\n{'=' * 50}")
+    print(
+        f"🔐 FIX PERMISSIONS (copies of the record -> 0600){' — DRY RUN' if dry_run else ''}"
+    )
+    print(f"{'=' * 50}")
+
+    tightened: list[Path] = []
+    already = 0
+    symlinks: list[Path] = []
+    for kind, path in _owner_only_candidates(cfg):
+        if path.is_symlink():
+            symlinks.append(path)
+            print(f"⚠️  Skipped {kind} {path}: a symlink (its target is not swept)")
+            continue
+        if not path.is_file():
+            continue
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode == 0o600:
+            already += 1
+            continue
+        print(f"{'🔍' if dry_run else '🔧'} {kind} {path}: {mode:04o} -> 0600")
+        if not dry_run:
+            os.chmod(path, 0o600)
+            logger.info("fix-perms: %s %s %04o -> 0600", kind, path, mode)
+        tightened.append(path)
+
+    if not cfg["database"].get("full_db_path"):
+        print(
+            "ℹ️  database.full_db_path is not configured: no snapshots or full-tier "
+            "sidecar to sweep."
+        )
+    summary = f"✅ {verb} {len(tightened)} file(s) to 0600; {already} already 0600"
+    if symlinks:
+        summary += f"; skipped {len(symlinks)} symlink(s)"
+    print(summary + ".")
+
+    for name, endpoint in sorted(get_endpoints(cfg).items()):
+        # The remote copy session-sync seeded takes the remote umask; this
+        # command reaches local files only, so say what to run there.
+        ip = endpoint.get("ip_address", {}).get("primary_ip") or "<host>"
+        paths = [endpoint.get("path", ""), endpoint.get("full_path", "")]
+        for remote_path in filter(None, paths):
+            print(
+                f"ℹ️  Remote copy on '{name}' is not reached from here; run: "
+                f"ssh {endpoint.get('username', '<user>')}@{ip} chmod 600 "
+                f"{shlex.quote(remote_path)}"
+            )
+    return 0
 
 
 # A session's age is its newest known timestamp. updated_at is NULL for every
@@ -1170,6 +1275,25 @@ def fts_check(
         raise typer.Exit(0 if after.healthy else 1)
     finally:
         conn.close()
+
+
+@app.command("fix-perms")
+def fix_perms(
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="List the files that would change; chmod none"),
+    ] = False,
+) -> None:
+    """Make existing snapshot, backup and sidecar files owner-only (0600).
+
+    Copies of the session record made before they were created owner-only
+    keep the mode the umask gave them. Sweeps only the files the config
+    names: <stem>_backup_*.db in database.backup_dir, <stem>_snapshot_*.db in
+    database.snapshot_dir (or backup_dir), and the <stem>.vec.db sidecar
+    beside the hot and the full database. Reports counts; never creates,
+    moves or follows a symlink.
+    """
+    raise typer.Exit(_fix_perms(_get_config(), dry_run=dry_run))
 
 
 @app.command()
