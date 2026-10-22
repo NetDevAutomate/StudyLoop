@@ -276,9 +276,18 @@ def _isolate_real_studyloop_config_dir(
 #
 # The variable never selects a PROVIDER (ADR-0010 forbids that): with
 # ``provider: none`` an isolated vault path is still never written to.
-
+#
+# Hard-assign, not ``setdefault``, for the reason the three state variables
+# above are: an exported value would otherwise survive until the first per-test
+# fixture ran, so collection-time and session-scoped code saw the caller's
+# vault. Once per process, under its own pid marker rather than
+# ``_SANDBOX_OWNER_ENV``: in a workspace run the root conftest has already
+# claimed that marker, and it does not set this variable.
+_VAULT_OWNER_ENV = "_STUDYLOOP_SUITE_VAULT_PID"
 _TEST_VAULT_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-vault-"))
-os.environ.setdefault(_vault_isolation.VAULT_ENV, str(_TEST_VAULT_ROOT / "vault"))
+if os.environ.get(_VAULT_OWNER_ENV) != str(os.getpid()):
+    os.environ[_vault_isolation.VAULT_ENV] = str(_TEST_VAULT_ROOT / "vault")
+    os.environ[_VAULT_OWNER_ENV] = str(os.getpid())
 
 
 @pytest.fixture(autouse=True)

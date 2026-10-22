@@ -197,6 +197,14 @@ def pytest_collection_finish(session):
         "STUDYLOOP_STATE_DIR": Path(get_state_dir()),
         "STUDYLOOP_CONFIG": Path(get_config_path()),
     }
+    # Only the studyloop package conftest isolates the second-brain vault (no
+    # agent-session-tools code reads it), so the vault is probed only where
+    # that conftest is loaded.
+    probe_vault = os.environ.get("SUITE_ISOLATION_PROBE_VAULT") == "1"
+    if probe_vault:
+        from studyloop.settings import load_settings
+
+        resolved["STUDYLOOP_SECOND_BRAIN_VAULT"] = Path(load_settings().second_brain.vault_path)
     Path(os.environ["SUITE_ISOLATION_PROBE_REPORT"]).write_text(
         json.dumps({name: str(path) for name, path in resolved.items()})
     )
@@ -206,6 +214,7 @@ def pytest_collection_finish(session):
         home / ".config" / "studyloop",
         home / ".local" / "share" / "studyloop",
         home / ".studyloop",
+        home / "Obsidian",
     ]
     for name, path in resolved.items():
         target = path.expanduser().resolve()
@@ -224,6 +233,10 @@ def pytest_collection_finish(session):
     config = resolved["STUDYLOOP_CONFIG"]
     config.parent.mkdir(parents=True, exist_ok=True)
     config.write_text("# suite-isolation probe\\n")
+    if probe_vault:
+        vault = resolved["STUDYLOOP_SECOND_BRAIN_VAULT"]
+        vault.mkdir(parents=True, exist_ok=True)
+        (vault / "suite-isolation-probe.md").write_text("probe\\n")
 '''
 
 _SQLITE_HEADER = b"SQLite format 3\x00"
@@ -252,6 +265,11 @@ def test_ambient_studyloop_env_cannot_reach_real_state(tmp_path: Path) -> None:
     studyloop package alone, and the workspace root over agent-session-tools
     alone. The probe plugin above then writes through the resolvers; the decoys
     must come out byte-identical and must never have been opened as a database.
+
+    ``STUDYLOOP_SECOND_BRAIN_VAULT`` gets the same decoy treatment wherever the
+    studyloop package conftest loads: a vault holds notes the learner wrote by
+    hand, and an import-time ``setdefault`` kept an exported value until the
+    first per-test fixture ran, so collection and session-scoped code saw it.
     """
     ambient = tmp_path / "ambient-learner"
     ambient.mkdir()
@@ -262,6 +280,9 @@ def test_ambient_studyloop_env_cannot_reach_real_state(tmp_path: Path) -> None:
     (decoy_state / "sentinel.txt").write_bytes(b"ambient learner state\n")
     decoy_config = ambient / "config.yaml"
     decoy_config.write_bytes(b"# ambient learner config\n")
+    decoy_vault = ambient / "vault"
+    (decoy_vault / "Study").mkdir(parents=True)
+    (decoy_vault / "Study" / "note.md").write_bytes(b"a note the learner wrote\n")
     before = _tree_bytes(ambient)
 
     probe_dir = tmp_path / "probe"
@@ -277,12 +298,12 @@ def test_ambient_studyloop_env_cannot_reach_real_state(tmp_path: Path) -> None:
         "--rootdir",
         str(_WORKSPACE_ROOT),
     ]
-    # label -> (pytest arguments, expected exit code)
-    invocations: dict[str, tuple[list[str], int]] = {
+    # label -> (pytest arguments, expected exit code, probe the vault)
+    invocations: dict[str, tuple[list[str], int, bool]] = {
         # Root conftest, then this package's conftest.
-        "workspace": ([*workspace_config, trivial_test], 0),
+        "workspace": ([*workspace_config, trivial_test], 0, True),
         # packages/studyloop/pyproject.toml: this package's conftest alone.
-        "package-scoped": ([trivial_test], 0),
+        "package-scoped": ([trivial_test], 0, True),
         # Root conftest plus the agent-session-tools conftest, which redirects
         # per test but sets nothing at import time: the root conftest is the
         # only import-time guard here. Collect only and select nothing (exit 5),
@@ -296,16 +317,19 @@ def test_ambient_studyloop_env_cannot_reach_real_state(tmp_path: Path) -> None:
                 str(_WORKSPACE_ROOT / "packages" / "agent-session-tools" / "tests"),
             ],
             5,
+            False,
         ),
     }
 
-    for label, (pytest_args, expected_exit) in invocations.items():
+    for label, (pytest_args, expected_exit, probe_vault) in invocations.items():
         report = tmp_path / f"probe-report-{label}.json"
         env = {
             **os.environ,
             "STUDYLOOP_DB": str(decoy_db),
             "STUDYLOOP_STATE_DIR": str(decoy_state),
             "STUDYLOOP_CONFIG": str(decoy_config),
+            "STUDYLOOP_SECOND_BRAIN_VAULT": str(decoy_vault),
+            "SUITE_ISOLATION_PROBE_VAULT": "1" if probe_vault else "0",
             "SUITE_ISOLATION_PROBE_REPORT": str(report),
             "PYTHONPATH": os.pathsep.join(
                 p for p in (str(probe_dir), os.environ.get("PYTHONPATH", "")) if p
