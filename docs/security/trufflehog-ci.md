@@ -67,3 +67,22 @@ uv run --group dev python scripts/security/trufflehog_redacted.py --base origin/
 
 This scans the same `base..head` range through the redacting wrapper. It is stricter than CI,
 because it also fails on `unverified` results.
+
+## History triage (one-time, 2026-10-22)
+
+Running `trufflehog_redacted.py --history` on `main` at `6db996b3` reports 13 findings, so it
+exits 1. None is `verified`. Each one was identified by detector, file, line and the structure
+of the match. The values themselves were never printed. **None is a credential**, and none needs
+rotating. The PR-scoped step does not look at history, so these findings do not affect it.
+
+| Detector | Where (file:line at the finding's commit) | Count | Disposition |
+|---|---|---|---|
+| PhraseAccessToken | `docs/architecture/session-memory/receipts/paraphrase-census.json:3`, `paraphrase-census-v2.json:3` | 4 (2 files × 2 commits) | **False positive.** The value is the receipt's `store_sha256`: 64 lowercase hex, a content digest. The detector fired on the keyword "phrase" inside "paraphrase". |
+| URI | `packages/studyloop/tests/test_second_brain_config.py:195` | 1 | **Test fixture.** The `unsafe-userinfo` case of a parametrised test that must *reject* credentials in an xTiles URL. The username and password are placeholder words. Verification ran and failed. |
+| URI | `docs/superpowers/plans/2026-09-04-second-brain-launcher.md:137` | 1 | **Documentation example.** The plan's sketch of the same rejection test. The username and password are placeholder words. |
+| MongoDB | `packages/agent-session-tools/tests/test_scrubber.py:104` (now `:117`) | 2 (plain, and base64-decoded in an earlier commit) | **Test fixture.** The positive-match string in `test_connection_string_mongodb`, which checks that the scrubber's connection-string pattern fires. The username is a placeholder and the password is two dictionary words, on a synthetic host. Verification could not connect, so the state is `unknown`. |
+| Postgres | `packages/studyloop/src/studyloop/session/child_env.py:34` at `2515d50f` | 1 | **Code-comment example.** A comment explaining why `DATABASE_URL` is withheld from agent children. Its username, password and host are placeholder words (the host is literally `host`). The text is gone from HEAD. |
+| Box | `…/web/static/vendor/js/ghostty-web-0.4.0.js:1`, `ghostty-web-0.4.0.umd.js:1`, `phonemizer-1.2.1.js:1` | 4 | **False positive in vendored third-party bundles.** These are 32-character runs inside base64 data blobs in minified JS. None of them is at HEAD. |
+
+The review brief called two of these findings "non-vendored". By file, nine are non-vendored, at
+six sites. All 13 were triaged here.
