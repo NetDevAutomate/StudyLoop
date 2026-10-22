@@ -77,7 +77,7 @@ def format_web_access_lines(info: WebAccessInfo) -> list[str]:
             lines.append("  LAN:   unable to detect LAN IP; use this device's network IP")
         lines.append(f"  [dim]Listening on {info.bind_url}[/dim]")
     else:
-        lines.append("  [dim]Use --lan to expose to network[/dim]")
+        lines.append("  [dim]Use --bind ADDRESS to reach it from another device[/dim]")
     return lines
 
 

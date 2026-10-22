@@ -75,6 +75,102 @@ def _validated_bind_address(value: str) -> str:
     return str(address)
 
 
+#: Where every local consumer of the dashboard dials: ``modules/hop.py`` for the
+#: ``studyloop drill`` practice_check hop, the launcher's readiness poll, the
+#: browser this machine opens. IPv4 loopback specifically; ``::1`` is not it.
+LOOPBACK = "127.0.0.1"
+
+
+def listen_addresses(host: str) -> tuple[str, ...]:
+    """The addresses ``studyloop web`` listens on for a validated bind *host*.
+
+    A loopback address, or the deprecated wildcard (which already includes
+    loopback), is one listener. Any other address is two: that address AND
+    :data:`LOOPBACK` (review-4 item 3, ADR-0019 consequences), so a server
+    bound to a tailnet address still answers ``studyloop drill`` and the other
+    local consumers that assume loopback. Host and Origin checks (ADR-0014) are
+    made per request against its own ``Host`` header, so they hold unchanged on
+    both listeners.
+    """
+    import ipaddress
+
+    address = ipaddress.ip_address(host)
+    if address.is_loopback or address.is_unspecified:
+        return (host,)
+    return (host, LOOPBACK)
+
+
+def listen_sockets(hosts: tuple[str, ...], port: int) -> list[socket.socket]:
+    """Bound (not yet listening) TCP sockets for *hosts* on the one *port*.
+
+    What ``uvicorn.Config.bind_socket`` does for one address, for several, and
+    atomically: if any bind fails, every socket already bound is closed before
+    the ``OSError`` propagates, so the server never comes up half-reachable.
+    """
+    bound: list[socket.socket] = []
+    try:
+        for host in hosts:
+            family = socket.AF_INET6 if ":" in host else socket.AF_INET
+            sock = socket.socket(family, socket.SOCK_STREAM)
+            bound.append(sock)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, port))
+            sock.set_inheritable(True)
+    except OSError:
+        for sock in bound:
+            sock.close()
+        raise
+    return bound
+
+
+def _answers(host: str, port: int) -> bool:
+    """Whether something accepts a TCP connection on *host*:*port* (one-second bound)."""
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
+def _show_url() -> None:
+    """``studyloop web --show-url``: re-print the launcher's sign-in URL (review-4 item 4).
+
+    The launcher prints it once, before tmux attaches; a closed tab lost it. The
+    token and the bound host sit in the owner-only session state beside the
+    practice_check capability (same file, same threat model), and the address is
+    printed only when something answers on the recorded port -- a dead server's
+    token is nobody's credential and is not handed out.
+    """
+    from studyloop.session_state import read_session_state
+    from studyloop.web.ws_origin import BOOTSTRAP_QUERY
+
+    state = read_session_state()
+    port = state.get("web_port")
+    token = state.get("web_sign_in_token")
+    host = str(state.get("web_bind_host") or LOOPBACK)
+    none_up = (
+        "No studyloop web server is running for this session. Start one with "
+        "`studyloop study --web` (or `--bind ADDRESS`), or run `studyloop web` by hand."
+    )
+    try:
+        port_number = int(port) if port else 0
+    except (TypeError, ValueError):
+        port_number = 0
+    if not port_number:
+        raise click.ClickException(none_up)
+    if not _answers(LOOPBACK, port_number):
+        raise click.ClickException(none_up)
+    if not token:
+        raise click.ClickException(
+            f"A server answers on port {port_number} but this session recorded no sign-in "
+            "token for it: it was started by hand (`studyloop web`), and its sign-in URL was "
+            "printed where it started."
+        )
+    netloc = f"[{host}]:{port_number}" if ":" in host else f"{host}:{port_number}"
+    # soft_wrap: a sign-in URL folded across two lines cannot be copied or clicked.
+    console.print(f"http://{netloc}/session?{BOOTSTRAP_QUERY}={token}", soft_wrap=True)
+
+
 #: Printed by the deprecated ``--lan`` (D7), the same five caveats the setup
 #: guide's second-device section carries.
 _LAN_CAVEATS = (
@@ -120,12 +216,20 @@ _LAN_CAVEATS = (
     default=False,
     help="Developer experiment mode: swap xterm.js for an alternative renderer.",
 )
+@click.option(
+    "--show-url",
+    is_flag=True,
+    default=False,
+    help="Print the sign-in address of the dashboard your study session started (token "
+    "included) and exit; for when the tab was closed. Starts nothing.",
+)
 def web(
     port: int,
     bind_address: str | None,
     lan: bool,
     password: str,
     dev: bool,
+    show_url: bool,
 ) -> None:
     """Launch the study PWA in your browser.
 
@@ -135,6 +239,9 @@ def web(
 
     Requires: uv pip install 'studyloop[web]'
     """
+    if show_url:
+        _show_url()
+        return
     # R-10b: Click's envvar= support has already read STUDYLOOP_WEB_PASSWORD
     # into `password` above (that is the whole point of it — see the option's
     # help text and session/orchestrator.py::start_web_background, which sets
@@ -280,10 +387,18 @@ def web(
         for line in format_web_access_lines(access_info):
             console.print(line, soft_wrap=True)
     else:
-        # --bind <address>: the one address served is the one to open, on this
-        # machine and on the other device alike; loopback is not listening.
+        # --bind <address>: the bound address is the one the other device opens;
+        # loopback is served too (item 3) so this machine's own tools and browser
+        # keep reaching the server the way they always have.
         console.print("[bold]Study PWA[/bold]")
         console.print(f"  Address: {access_info.local_url}", soft_wrap=True)
+        loopback_url = build_web_access_info(
+            bind_host=LOOPBACK,
+            port=port,
+            lan_enabled=False,
+            path=f"/?{BOOTSTRAP_QUERY}={server_secret}",
+        ).local_url
+        console.print(f"  Local:   {loopback_url}", soft_wrap=True)
     console.print(
         "  [dim]Open that address to sign a browser in; the token is new each time "
         "studyloop web starts.[/dim]"
@@ -332,4 +447,19 @@ def web(
         log_level="warning",
         loop="asyncio",
     )
-    _StudyLoopServer(config).run()
+    # A non-loopback --bind listens on that address AND on loopback (item 3), so
+    # the sockets are bound here and handed to uvicorn rather than letting it
+    # bind config.host alone. One listener keeps uvicorn's own bind path.
+    hosts = listen_addresses(host)
+    if len(hosts) == 1:
+        _StudyLoopServer(config).run()
+        return
+    try:
+        sockets = listen_sockets(hosts, port)
+    except OSError as exc:
+        raise click.ClickException(
+            f"Could not listen on port {port} at {' and '.join(hosts)}: {exc.strerror or exc}. "
+            "Is another studyloop web (or your study session's dashboard) already running "
+            "on it? Pick another with --port."
+        ) from None
+    _StudyLoopServer(config).run(sockets=sockets)
