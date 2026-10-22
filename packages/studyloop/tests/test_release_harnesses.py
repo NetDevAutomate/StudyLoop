@@ -50,15 +50,44 @@ def test_release_registry_contains_only_supported_builtins() -> None:
         reset_registry()
 
 
-def test_pi_adapter_uses_project_context_and_native_resume(tmp_path) -> None:
+def test_pi_adapter_uses_project_context_and_native_resume(tmp_path, monkeypatch) -> None:
+    import shlex
+
+    import studyloop.installers as installers
     from studyloop.adapters.pi import ADAPTER
 
+    monkeypatch.setattr(installers, "_HOME", tmp_path / "home")  # no export extension installed
     persona = ADAPTER.setup("# StudyLoop mentor", tmp_path)
 
     assert persona == tmp_path / "AGENTS.md"
     assert persona.read_text(encoding="utf-8") == "# StudyLoop mentor"
-    assert ADAPTER.launch_cmd(persona, False).endswith("pi --no-extensions")
-    assert ADAPTER.launch_cmd(persona, True).endswith("pi --no-extensions --continue")
+    assert shlex.split(ADAPTER.launch_cmd(persona, False))[1:] == ["--no-extensions"]
+    assert shlex.split(ADAPTER.launch_cmd(persona, True))[1:] == ["--no-extensions", "--continue"]
+
+
+def test_pi_adapter_loads_only_the_installed_export_extension(tmp_path, monkeypatch) -> None:
+    """Council pass 3, D3 (V1): ``--no-extensions`` keeps the learner's own pi
+    extensions out of a mentor session, and ``-e <path>`` -- which pi documents
+    as still working under ``--no-extensions`` -- loads StudyLoop's export
+    extension alone, so the session reaches the database without depending on
+    the model obeying the mandate. The path is the one the installer writes,
+    and a HOME with a space in it still splits back to that exact path."""
+    import shlex
+
+    import studyloop.installers as installers
+    from studyloop.adapters.pi import ADAPTER
+
+    monkeypatch.setattr(installers, "_HOME", tmp_path / "learner home")
+    extension = installers._pi_hook_path()
+    extension.parent.mkdir(parents=True)
+    extension.write_text("// export extension\n", encoding="utf-8")
+    persona = ADAPTER.setup("# StudyLoop mentor", tmp_path)
+
+    fresh = shlex.split(ADAPTER.launch_cmd(persona, False))
+    resumed = shlex.split(ADAPTER.launch_cmd(persona, True))
+
+    assert fresh[1:] == ["--no-extensions", "-e", str(extension)]
+    assert resumed[1:] == ["--no-extensions", "-e", str(extension), "--continue"]
 
 
 def test_pi_adapter_is_a_complete_release_adapter() -> None:

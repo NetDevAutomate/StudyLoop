@@ -225,17 +225,23 @@ There is **no `_AGENT_CHOICES` literal**. It is derived:
 `_AGENT_CHOICES = RELEASE_HARNESSES` (`installers.py:141`), so the installable set
 follows `harnesses.py` and cannot drift from the supported six.
 
-### Launch path — mentor sessions run with extensions off
+### Launch path — mentor sessions load StudyLoop's extension and no other
 
 The pi launch adapter (`packages/studyloop/src/studyloop/adapters/pi.py`) writes
 the mentor persona as `AGENTS.md` in the session directory and launches
-`pi --no-extensions`, resuming with `pi --no-extensions --continue` (`:24-25`,
-locked by `packages/studyloop/tests/test_release_harnesses.py:58-59`).
+`pi --no-extensions -e <installed export extension>`, resuming with the same
+command plus `--continue`. The `-e` path is the one the installer writes
+(`installers._pi_hook_path()`, `~/.pi/agent/extensions/studyloop-session-export.ts`);
+pi documents that explicit `-e` paths still load under `--no-extensions`
+(`pi --help`). Locked by `packages/studyloop/tests/test_release_harnesses.py`
+(`test_pi_adapter_uses_project_context_and_native_resume`,
+`test_pi_adapter_loads_only_the_installed_export_extension`).
 
-Consequence worth stating plainly: in a StudyLoop-launched **mentor** session the
-installed `session_shutdown` extension does not load, so the export there depends
-on the agent following the mandate. The extension covers the learner's **own** pi
-sessions, which are the ones StudyLoop does not launch.
+So in a StudyLoop-launched **mentor** session the export extension IS loaded, while
+the learner's own pi extensions stay off (council pass 3, D3). When the extension
+is not installed, the launch falls back to plain `pi --no-extensions` and the
+export depends on the agent following the mandate; the mandate is the fallback,
+not the primary path.
 
 ---
 
