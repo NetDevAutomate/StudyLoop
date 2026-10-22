@@ -65,6 +65,7 @@ def _render(
     *,
     state: dict[str, Any] | None = None,
     stdin: dict[str, Any] | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run the status line against a temporary HOME, never the real one."""
     home = tmp_path / "home"
@@ -77,7 +78,7 @@ def _render(
         input=json.dumps(payload) + "\n",
         capture_output=True,
         text=True,
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin", **(env or {})},
         cwd=tmp_path,
         timeout=10,
         check=False,
@@ -200,3 +201,40 @@ def test_live_session_still_shows_topic_and_energy(bash: str, tmp_path: Path) ->
     assert result.returncode == 0, result.stderr
     assert "Live topic" in result.stdout
     assert "High" in result.stdout
+
+
+def test_state_file_follows_studyloop_session_dir(bash: str, tmp_path: Path) -> None:
+    """``session_state.SESSION_DIR`` honours ``STUDYLOOP_SESSION_DIR``; so must the line.
+
+    The default-location file is planted as a decoy: reading it would show
+    the wrong session's topic.
+    """
+    session_dir = tmp_path / "custom session dir"
+    session_dir.mkdir()
+    (session_dir / "session-state.json").write_text(
+        json.dumps({"energy_label": "low", "topic": "From session dir"})
+    )
+
+    result = _render(
+        bash,
+        tmp_path,
+        state={"energy_label": "high", "topic": "Default-location decoy"},
+        env={"STUDYLOOP_SESSION_DIR": str(session_dir)},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "From session dir" in result.stdout, result.stdout
+    assert "Default-location decoy" not in result.stdout
+    assert "Low" in result.stdout
+
+
+def test_empty_studyloop_session_dir_falls_back_to_the_default(bash: str, tmp_path: Path) -> None:
+    result = _render(
+        bash,
+        tmp_path,
+        state={"energy_label": "high", "topic": "Default location"},
+        env={"STUDYLOOP_SESSION_DIR": ""},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Default location" in result.stdout

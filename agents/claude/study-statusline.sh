@@ -22,7 +22,10 @@ RESET=$'\033[0m'
 # numbers, text loses its control characters, NUL included) and writes the
 # fields NUL-terminated; bash reads them with `read -r -d ''`. No value is
 # ever parsed as shell code.
-STATE_FILE="${HOME}/.config/studyloop/session-state.json"
+# The same location session_state.SESSION_DIR resolves: $STUDYLOOP_SESSION_DIR
+# when set, else ~/.config/studyloop. An empty value falls back to the default
+# rather than to the current directory.
+STATE_FILE="${STUDYLOOP_SESSION_DIR:-${HOME}/.config/studyloop}/session-state.json"
 
 # Defaults, kept when python3 is missing or its output is not all 6 fields.
 CTX_PCT=0
