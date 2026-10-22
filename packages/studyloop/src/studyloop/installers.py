@@ -15,7 +15,7 @@ from studyloop.harnesses import RELEASE_HARNESSES
 from studyloop.settings import generate_default_config, get_config_path, load_settings
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping, Sequence
 
 
 class InstallError(RuntimeError):
@@ -430,34 +430,160 @@ def _json_object_span(raw: str, key: str) -> tuple[int, int] | None:
     return span
 
 
+def _json_array_element_spans(raw: str, span: tuple[int, int]) -> list[tuple[int, int]] | None:
+    """Every element of one JSON array as ``(start, end)`` offsets into ``raw``.
+
+    The array analogue of :func:`_json_member_spans`; ``None`` when the text
+    cannot be walked.
+    """
+    start, end = span
+    if raw[start] != "[":
+        return None
+    decoder = json.JSONDecoder()
+    elements: list[tuple[int, int]] = []
+    cursor = start + 1
+    while cursor < end - 1:
+        while cursor < end - 1 and (raw[cursor].isspace() or raw[cursor] == ","):
+            cursor += 1
+        if cursor >= end - 1:
+            break
+        try:
+            _, value_end = decoder.raw_decode(raw, cursor)
+        except json.JSONDecodeError:
+            return None
+        elements.append((cursor, value_end))
+        cursor = value_end
+    return elements
+
+
+def _json_children(raw: str, span: tuple[int, int]) -> list[tuple[int, int]] | None:
+    """``(start, end)`` of each child of one container, in document order.
+
+    A member runs from its key to the end of its value; an element is the
+    element. This is the unit a byte-preserving cut removes.
+    """
+    if raw[span[0]] == "{":
+        members = _json_member_spans(raw, span)
+        return None if members is None else [(key_start, end) for _, key_start, _, end in members]
+    if raw[span[0]] == "[":
+        return _json_array_element_spans(raw, span)
+    return None
+
+
+def _json_path_span(raw: str, path: Sequence[str | int]) -> tuple[int, int] | None:
+    """The value span at ``path`` from the root object.
+
+    A ``str`` step names an object member, an ``int`` step indexes an array.
+    ``None`` when any step is missing or the text cannot be walked -- the
+    caller then refuses the edit rather than guessing.
+    """
+    span = _json_root_object_span(raw)
+    for step in path:
+        if span is None:
+            return None
+        if isinstance(step, str):
+            span = _json_value_span(raw, step, span) if raw[span[0]] == "{" else None
+        else:
+            elements = _json_array_element_spans(raw, span) if raw[span[0]] == "[" else None
+            span = elements[step] if elements is not None and 0 <= step < len(elements) else None
+    return span
+
+
+def _json_cut_child(raw: str, parent: Sequence[str | int], child: str | int) -> str | None:
+    """Remove one member (``str``) or element (``int``) from the container at ``parent``.
+
+    The child is cut together with the separator that joined it to its
+    neighbour, so every other byte stays: the shape :func:`_remove_json_members`
+    established, generalised to any depth and to arrays. ``None`` when the
+    text cannot be walked or the child is not there.
+    """
+    container = _json_path_span(raw, parent)
+    if container is None:
+        return None
+    children = _json_children(raw, container)
+    if children is None:
+        return None
+    if isinstance(child, str):
+        members = _json_member_spans(raw, container) or []
+        index = next((i for i, member in enumerate(members) if member[0] == child), None)
+    else:
+        index = child if 0 <= child < len(children) else None
+    if index is None:
+        return None
+    child_start, child_end = children[index]
+    if len(children) == 1:
+        return raw[: container[0] + 1] + raw[container[1] - 1 :]
+    if index > 0:
+        return raw[: children[index - 1][1]] + raw[child_end:]
+    return raw[:child_start] + raw[children[1][0] :]
+
+
+def _append_json_children(
+    raw: str, span: tuple[int, int], items: Sequence[tuple[str | None, object]]
+) -> str:
+    """Append members (``(name, value)``) or elements (``(None, value)``) to one container.
+
+    Every existing byte stays, including the whitespace before the closing
+    bracket, so a later cut of what was appended returns the text exactly.
+    New items follow the container's own layout: one-line containers get
+    ``, `` separators; multi-line ones get a new line per item indented like
+    the last existing child, with nested lines stepped by the file's own
+    indentation; an empty container is opened like ``json.dumps`` would,
+    relative to the line it starts on.
+    """
+    start, end = span
+    close = end - 1
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    children = _json_children(raw, span) or []
+
+    def render(name: str | None, value: object, indent: str, unit: str) -> str:
+        text = json.dumps(value, indent=unit).replace("\n", newline + indent)
+        return text if name is None else f"{json.dumps(name)}: {text}"
+
+    if children:
+        last_start, last_end = children[-1]
+        line_start = raw.rfind("\n", 0, last_start) + 1
+        indent = raw[line_start:last_start]
+        if indent and not indent.isspace():
+            # The last child shares its line with the opening bracket or an
+            # earlier child: a one-line container.
+            rendered = ", ".join(
+                f"{json.dumps(n)}: {json.dumps(v)}" if n is not None else json.dumps(v)
+                for n, v in items
+            )
+            return raw[:last_end] + ", " + rendered + raw[last_end:]
+        # The file's own indentation unit (spaces or tabs): what the last
+        # child has beyond the closing bracket's own indentation.
+        close_line_start = raw.rfind("\n", 0, close) + 1
+        closing_indent = raw[close_line_start:close]
+        if closing_indent and not closing_indent.isspace():
+            closing_indent = ""
+        unit = indent[len(closing_indent) :] if indent.startswith(closing_indent) else ""
+        rendered = ("," + newline).join(
+            indent + render(n, v, indent, unit or "  ") for n, v in items
+        )
+        return raw[:last_end] + "," + newline + rendered + raw[last_end:]
+
+    line_start = raw.rfind("\n", 0, start) + 1
+    base = raw[line_start:start]
+    base_indent = base[: len(base) - len(base.lstrip())]
+    indent = base_indent + "  "
+    rendered = ("," + newline).join(indent + render(n, v, indent, "  ") for n, v in items)
+    return raw[: start + 1] + newline + rendered + newline + base_indent + raw[close:]
+
+
 def _append_json_members(
     raw: str,
     span: tuple[int, int],
     members: Mapping[str, object],
 ) -> str:
     """Append object members while retaining every existing member byte."""
-    import json
+    return _append_json_children(raw, span, list(members.items()))
 
-    start, end = span
-    close = end - 1
-    content_end = close
-    while content_end > start + 1 and raw[content_end - 1].isspace():
-        content_end -= 1
-    existing = raw[start + 1 : content_end].strip()
-    line_start = raw.rfind("\n", 0, close) + 1
-    closing_indent = raw[line_start:close]
-    if not closing_indent.isspace():
-        closing_indent = "  "
-    entry_indent = closing_indent + "  "
-    newline = "\r\n" if "\r\n" in raw else "\n"
-    rendered: list[str] = []
-    for name, value in members.items():
-        value_text = json.dumps(value, indent=2)
-        value_text = value_text.replace("\n", newline + entry_indent)
-        rendered.append(f"{entry_indent}{json.dumps(name)}: {value_text}")
-    separator = "," if existing else ""
-    insertion = separator + newline + ("," + newline).join(rendered) + newline + closing_indent
-    return raw[:content_end] + insertion + raw[close:]
+
+def _append_json_elements(raw: str, span: tuple[int, int], values: Sequence[object]) -> str:
+    """Append array elements while retaining every existing byte."""
+    return _append_json_children(raw, span, [(None, value) for value in values])
 
 
 def _merge_json_mcp_config(
@@ -1300,14 +1426,21 @@ def _remove_owned_hooks(
     so a file install appended to is written back as it began. With
     ``owned_file`` (Grok's ``hooks/studyloop.json``, StudyLoop's by name) a file
     left with nothing in it is deleted. Returns the number of hooks removed.
+
+    Byte-preserving like :func:`_remove_json_mcp_entries` and
+    :func:`_remove_claude_statusline`: each owned hook is cut with the
+    separator that joined it, every other byte stays, and the edit is parsed
+    back and must equal the original minus the owned hooks before it is
+    written -- otherwise nothing is written and :class:`InstallError` names
+    the file.
     """
-    import json
+    import copy
 
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes().decode("utf-8")
     except FileNotFoundError:
         return 0
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise InstallError(f"Cannot read {label} hooks {path}: {exc}") from exc
     try:
         data = json.loads(raw)
@@ -1320,93 +1453,188 @@ def _remove_owned_hooks(
     if not isinstance(hooks, dict) or not isinstance(groups, list):
         return 0
 
-    removed = 0
-    kept_groups: list[object] = []
-    for group in groups:
+    # The plan, on the parsed tree: which entries are ours, and which groups
+    # go with them because ours were all they held.
+    owned: list[tuple[int, int]] = []
+    dropped_groups: list[int] = []
+    for i, group in enumerate(groups):
         entries = group.get("hooks") if isinstance(group, dict) else None
         if not isinstance(group, dict) or not isinstance(entries, list):
-            kept_groups.append(group)
             continue
-        kept = [
-            entry
-            for entry in entries
-            if not (isinstance(entry, dict) and sentinel in str(entry.get("command", "")))
+        mine = [
+            j
+            for j, entry in enumerate(entries)
+            if isinstance(entry, dict) and sentinel in str(entry.get("command", ""))
         ]
-        removed += len(entries) - len(kept)
-        if kept or not entries:
-            if len(kept) != len(entries):
-                group["hooks"] = kept
-            kept_groups.append(group)
-    if not removed:
+        owned += [(i, j) for j in mine]
+        if mine and len(mine) == len(entries):
+            dropped_groups.append(i)
+    if not owned:
         return 0
+
+    expected = copy.deepcopy(data)
+    kept_groups = [
+        group if i not in dropped_groups else None
+        for i, group in enumerate(expected["hooks"][event])
+    ]
+    for i, j in sorted(owned, reverse=True):
+        if i not in dropped_groups:
+            del expected["hooks"][event][i]["hooks"][j]
+    kept_groups = [group for group in kept_groups if group is not None]
     if kept_groups:
-        hooks[event] = kept_groups
+        expected["hooks"][event] = kept_groups
     else:
-        del hooks[event]
-        if not hooks:
-            del data["hooks"]
-    if owned_file and not data:
+        del expected["hooks"][event]
+        if not expected["hooks"]:
+            del expected["hooks"]
+
+    # The edits, deepest and last first so every earlier offset stays valid;
+    # the path is re-walked on the edited text each time.
+    updated: str | None = raw
+    if "hooks" not in expected:
+        updated = _json_cut_child(updated, (), "hooks")
+    elif event not in expected["hooks"]:
+        updated = _json_cut_child(updated, ("hooks",), event)
+    else:
+        for i, j in sorted(owned, reverse=True):
+            if updated is not None and i not in dropped_groups:
+                updated = _json_cut_child(updated, ("hooks", event, i, "hooks"), j)
+        for i in sorted(dropped_groups, reverse=True):
+            if updated is not None:
+                updated = _json_cut_child(updated, ("hooks", event), i)
+    try:
+        edited_ok = updated is not None and json.loads(updated) == expected
+    except json.JSONDecodeError:
+        edited_ok = False
+    if updated is None or not edited_ok:
+        raise InstallError(f"Cannot remove {label} hook from {path} without rewriting it")
+    if owned_file and not expected:
         path.unlink()
     else:
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return removed
+        path.write_bytes(updated.encode("utf-8"))
+    return len(owned)
+
+
+def _merge_hook_group(
+    path: Path,
+    *,
+    label: str,
+    event: str,
+    sentinel: str,
+    group: dict[str, object],
+    refresh: Callable[[str], str | None] | None = None,
+) -> int:
+    """Merge one ``event`` hook group into a ``{"hooks": {...}}`` JSON file.
+
+    Idempotent: a command already carrying ``sentinel`` is not duplicated.
+    With ``refresh``, an existing owned command is handed to it and, when it
+    returns a replacement, rewritten in place (a legacy form brought up to
+    the canonical one). Returns 1 when the file changed, else 0; ``label``
+    names the harness in error messages.
+
+    Byte-preserving, the mirror image of :func:`_remove_owned_hooks`: the file
+    is the learner's (``~/.claude/settings.json`` carries every Claude Code
+    setting), so the group is INSERTED as bytes -- into the event list, or
+    with a new ``hooks``/event member when the file has none -- and every
+    other byte stays. The edit is parsed back and must equal the original
+    plus the group before it is written. A file that does not exist is
+    created; one that cannot be read as a JSON object is never edited.
+    """
+    import copy
+
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"hooks": {event: [group]}}, indent=2) + "\n", encoding="utf-8")
+        return 1
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InstallError(f"Cannot read {label} hooks {path}: {exc}") from exc
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise InstallError(f"Cannot merge {label} hook into malformed {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise InstallError(f"Cannot merge {label} hook: {path} is not a JSON object")
+    hooks = data.get("hooks", {})
+    if not isinstance(hooks, dict):
+        raise InstallError(f"Cannot merge {label} hook: {path} hooks is not an object")
+    groups = hooks.get(event, [])
+    if not isinstance(groups, list):
+        raise InstallError(f"Cannot merge {label} hook: {path} hooks.{event} is not a list")
+
+    expected = copy.deepcopy(data)
+    updated: str | None = None
+    found = False
+    for i, existing in enumerate(groups):
+        entries = existing.get("hooks") if isinstance(existing, dict) else None
+        if not isinstance(entries, list):
+            continue
+        for j, entry in enumerate(entries):
+            if not isinstance(entry, dict) or sentinel not in str(entry.get("command", "")):
+                continue
+            replacement = refresh(str(entry.get("command", ""))) if refresh else None
+            if replacement is None:
+                return 0
+            found = True
+            expected["hooks"][event][i]["hooks"][j]["command"] = replacement
+            span = _json_path_span(raw, ("hooks", event, i, "hooks", j, "command"))
+            if span is not None:
+                updated = raw[: span[0]] + json.dumps(replacement) + raw[span[1] :]
+            break
+        if found:
+            break
+    if not found:
+        expected.setdefault("hooks", {}).setdefault(event, []).append(copy.deepcopy(group))
+        root = _json_root_object_span(raw)
+        if root is None:
+            updated = None
+        elif "hooks" not in data:
+            updated = _append_json_members(raw, root, {"hooks": {event: [group]}})
+        elif event not in hooks:
+            span = _json_path_span(raw, ("hooks",))
+            updated = None if span is None else _append_json_members(raw, span, {event: [group]})
+        else:
+            span = _json_path_span(raw, ("hooks", event))
+            updated = None if span is None else _append_json_elements(raw, span, [group])
+    try:
+        edited_ok = updated is not None and json.loads(updated) == expected
+    except json.JSONDecodeError:
+        edited_ok = False
+    if updated is None or not edited_ok:
+        raise InstallError(f"Cannot merge {label} hook into {path} without rewriting it")
+    path.write_bytes(updated.encode("utf-8"))
+    return 1
 
 
 def install_claude_stop_hook(*, uninstall: bool = False) -> int:
     """Merge the session-export Stop hook into ~/.claude/settings.json.
 
-    Read-modify-write that preserves existing hooks; idempotent (a hook
-    already containing the sentinel is not duplicated). Returns 1 if a hook
-    was added, else 0. ``uninstall=True`` removes it again
-    (:func:`_remove_owned_hooks`) and returns the number removed.
+    Byte-preserving read-modify-write (:func:`_merge_hook_group`) that keeps
+    every existing hook and every other byte of the learner's file;
+    idempotent (a hook already containing the sentinel is not duplicated).
+    An existing session-export hook in a legacy form (a PATH lookup, or output
+    discarded with ``|| true``) is rewritten in place to the canonical
+    command. Returns 1 if the file changed, else 0. ``uninstall=True``
+    removes the hook again (:func:`_remove_owned_hooks`) and returns the
+    number removed.
     """
-    import json
-
     settings_path = _HOME / ".claude/settings.json"
     if uninstall:
         return _remove_owned_hooks(
             settings_path, event="Stop", sentinel=_HOOK_SENTINEL, label="Claude"
         )
-    data: dict = {}
-    try:
-        raw = settings_path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        settings_path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise InstallError(f"Cannot read Claude settings {settings_path}: {exc}") from exc
-    else:
-        try:
-            loaded = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise InstallError(
-                f"Cannot merge Claude hook into malformed {settings_path}: {exc}"
-            ) from exc
-        if not isinstance(loaded, dict):
-            raise InstallError(f"Cannot merge Claude hook: {settings_path} is not a JSON object")
-        data = loaded
-
-    hooks = data.setdefault("hooks", {})
-    if not isinstance(hooks, dict):
-        raise InstallError(f"Cannot merge Claude hook: {settings_path} hooks is not an object")
-    stop = hooks.setdefault("Stop", [])
-    if not isinstance(stop, list):
-        raise InstallError(f"Cannot merge Claude hook: {settings_path} hooks.Stop is not a list")
-
-    # Idempotency: an existing session-export Stop hook is kept if it is already
-    # the canonical command, and rewritten in place if it is a legacy form (a
-    # PATH lookup, or output discarded with ``|| true``).
     canonical = export_hook_command("--claude-only")
-    for group in stop:
-        for h in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
-            if _HOOK_SENTINEL in str(h.get("command", "")):
-                if hook_command_is_canonical(str(h.get("command", "")), "--claude-only"):
-                    return 0
-                h["command"] = canonical
-                settings_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-                return 1
 
-    stop.append(
-        {
+    def refresh(command: str) -> str | None:
+        return None if hook_command_is_canonical(command, "--claude-only") else canonical
+
+    return _merge_hook_group(
+        settings_path,
+        label="Claude",
+        event="Stop",
+        sentinel=_HOOK_SENTINEL,
+        group={
             "matcher": "",
             "hooks": [
                 {
@@ -1416,52 +1644,20 @@ def install_claude_stop_hook(*, uninstall: bool = False) -> int:
                     "async": True,
                 }
             ],
-        }
+        },
+        refresh=refresh,
     )
-    settings_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return 1
 
 
 def _merge_session_end_hook(path: Path, *, label: str, sentinel: str, hook: dict) -> int:
     """Merge one ``SessionEnd`` command hook into a ``{"hooks": {...}}`` JSON file.
 
-    Read-modify-write that preserves every existing group; idempotent (a
-    command already carrying ``sentinel`` is not duplicated). Returns 1 if the
-    hook was added, else 0. ``label`` names the harness in error messages.
+    :func:`_merge_hook_group` for the Codex and Grok registries: byte-preserving,
+    idempotent on ``sentinel``. Returns 1 if the hook was added, else 0.
     """
-    import json
-
-    data: dict = {}
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise InstallError(f"Cannot read {label} hooks {path}: {exc}") from exc
-    else:
-        try:
-            loaded = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise InstallError(f"Cannot merge {label} hook into malformed {path}: {exc}") from exc
-        if not isinstance(loaded, dict):
-            raise InstallError(f"Cannot merge {label} hook: {path} is not a JSON object")
-        data = loaded
-
-    hooks = data.setdefault("hooks", {})
-    if not isinstance(hooks, dict):
-        raise InstallError(f"Cannot merge {label} hook: {path} hooks is not an object")
-    groups = hooks.setdefault("SessionEnd", [])
-    if not isinstance(groups, list):
-        raise InstallError(f"Cannot merge {label} hook: {path} hooks.SessionEnd is not a list")
-
-    for group in groups:
-        for existing in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
-            if sentinel in str(existing.get("command", "")):
-                return 0
-
-    groups.append({"hooks": [hook]})
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return 1
+    return _merge_hook_group(
+        path, label=label, event="SessionEnd", sentinel=sentinel, group={"hooks": [hook]}
+    )
 
 
 def install_codex_session_end_hook(*, uninstall: bool = False) -> int:

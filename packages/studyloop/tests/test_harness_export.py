@@ -123,6 +123,138 @@ class TestClaudeStopHook:
         assert len(data["hooks"]["Stop"]) == 1
 
 
+class TestHookWritersPreserveBytes:
+    """Lane B #2: the hook merges and the remover edit bytes, never reserialise.
+
+    ``~/.claude/settings.json`` and ``~/.codex/hooks.json`` belong to the
+    learner. Each case plants a hand-formatted file (4-space indent, one-line
+    groups, a non-ASCII value) and checks that install leaves every planted
+    line in place and that uninstall gives the exact bytes back. The planted
+    shapes cover each branch of the writer: no ``hooks`` member, ``hooks``
+    with no event list, an event list with a learner's group, and a legacy
+    StudyLoop command to rewrite in place.
+    """
+
+    NO_HOOKS = '{\n    "theme": "caf\u00e9",\n    "model": "opus"\n}\n'
+    HOOKS_NO_STOP = (
+        '{\n    "theme": "caf\u00e9",\n    "hooks": {\n        "PreToolUse": []\n    }\n}\n'
+    )
+    LEARNER_GROUP = (
+        '{"matcher": "", "hooks": [{"type": "command", "command": "say \u00abfertig\u00bb"}]}'
+    )
+    STOP_WITH_LEARNER_GROUP = (
+        "{\n"
+        '    "theme": "caf\u00e9",\n'
+        '    "hooks": {\n'
+        '        "Stop": [\n'
+        f"            {LEARNER_GROUP}\n"
+        "        ]\n"
+        "    }\n"
+        "}\n"
+    )
+
+    def _plant(self, home: Path, text: str) -> Path:
+        path = home / ".claude/settings.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    @staticmethod
+    def _assert_every_planted_line_survives(planted: str, text: str) -> None:
+        """Each planted line is still in ``text`` -- at most with a ``,`` appended,
+        which is what joining a new sibling after it costs. Brackets are skipped:
+        they are structure, not the learner's content."""
+        survivors = {line.rstrip(",") for line in text.splitlines()}
+        for line in planted.splitlines():
+            if line.strip() in ("{", "}", "},", "[", "]", "],"):
+                continue
+            assert line.rstrip(",") in survivors, f"reflowed or escaped: {line!r}"
+
+    @pytest.mark.parametrize(
+        "planted",
+        [NO_HOOKS, HOOKS_NO_STOP, STOP_WITH_LEARNER_GROUP],
+        ids=["no-hooks", "hooks-no-stop", "stop-with-learner-group"],
+    )
+    def test_install_keeps_every_planted_line_and_uninstall_restores_the_bytes(
+        self, home: Path, planted: str
+    ):
+        path = self._plant(home, planted)
+
+        assert installers.install_claude_stop_hook() == 1
+
+        text = path.read_text(encoding="utf-8")
+        self._assert_every_planted_line_survives(planted, text)
+        data = json.loads(text)
+        commands = [h["command"] for g in data["hooks"]["Stop"] for h in g["hooks"]]
+        assert sum("session-export --claude-only" in c for c in commands) == 1
+        assert installers.install_claude_stop_hook() == 0
+        assert path.read_text(encoding="utf-8") == text
+
+        assert installers.install_claude_stop_hook(uninstall=True) == 1
+
+        assert path.read_text(encoding="utf-8") == planted
+
+    def test_a_legacy_command_is_rewritten_in_place_without_reflowing(self, home: Path):
+        legacy = "/Users/someone/.local/bin/session-export --claude-only >/dev/null 2>&1 || true"
+        planted = (
+            "{\n"
+            '    "theme": "caf\u00e9",\n'
+            '    "hooks": {\n'
+            '        "Stop": [\n'
+            f"            {self.LEARNER_GROUP},\n"
+            '            {"matcher": "", "hooks": [{"type": "command", "command": LEGACY}]}\n'
+            "        ]\n"
+            "    }\n"
+            "}\n"
+        ).replace("LEGACY", json.dumps(legacy))
+        path = self._plant(home, planted)
+
+        assert installers.install_claude_stop_hook() == 1
+
+        # Only the command's string value changes, JSON-encoded as the file
+        # holds it (the canonical line contains quotes of its own).
+        canonical = json.dumps(installers.export_hook_command("--claude-only"))
+        assert path.read_text(encoding="utf-8") == planted.replace(json.dumps(legacy), canonical)
+        assert installers.install_claude_stop_hook() == 0
+
+    def test_removal_refuses_an_edit_it_cannot_verify(self, home: Path):
+        """Duplicate ``hooks`` keys: JSON keeps the last, the byte walk finds the first."""
+        ours = installers.export_hook_command("--claude-only")
+        mine = {"hooks": {"Stop": [{"matcher": "", "hooks": [{"command": "mine"}]}]}}
+        theirs = {"hooks": {"Stop": [{"matcher": "", "hooks": [{"command": ours}]}]}}
+        planted = json.dumps(mine)[:-1] + ", " + json.dumps(theirs)[1:] + "\n"
+        path = self._plant(home, planted)
+
+        with pytest.raises(installers.InstallError, match="without rewriting"):
+            installers.install_claude_stop_hook(uninstall=True)
+
+        assert path.read_text(encoding="utf-8") == planted
+
+    def test_codex_merge_and_removal_preserve_a_hand_formatted_hooks_file(self, home: Path):
+        group = (
+            '{"hooks": [{"type": "command", "command": "say \u00abfertig\u00bb", "timeout": 5}]}'
+        )
+        planted = (
+            "{\n"
+            '    "hooks": {\n'
+            '        "SessionEnd": [\n'
+            f"            {group}\n"
+            "        ]\n"
+            "    }\n"
+            "}\n"
+        )
+        path = home / ".codex/hooks.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(planted, encoding="utf-8")
+
+        assert installers.install_codex_session_end_hook() == 1
+        self._assert_every_planted_line_survives(planted, path.read_text(encoding="utf-8"))
+        assert installers.install_codex_session_end_hook() == 0
+
+        assert installers.install_codex_session_end_hook(uninstall=True) == 1
+        assert path.read_text(encoding="utf-8") == planted
+
+
 # ---------------------------------------------------------------------------
 # install_codex_session_end_hook
 # ---------------------------------------------------------------------------
