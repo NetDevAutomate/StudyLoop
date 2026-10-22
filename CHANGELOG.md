@@ -494,13 +494,6 @@ experience may change before `1.0.0`.
   connection URL now reads *The server did not return a connection for this
   session*.
 
-### Removed
-
-- The `database.archive_path` setting. Nothing ever read it: `session-maint
-  archive` always wrote its file beside the everyday database
-  (`<name>_archive.db`), whatever the setting said. A `config.yaml` that still
-  has the line keeps loading; the line can be deleted.
-
 ### Security
 
 - The web dashboard gives its cookie only to a browser that opens the sign-in address
@@ -516,6 +509,13 @@ experience may change before `1.0.0`.
 - A browser page served from another port on this machine can no longer open the
   dashboard's WebSockets: a loopback origin is accepted only on the server's own port.
   `STUDYLOOP_ALLOWED_ORIGINS` remains the explicit allow-list for anything else.
+
+### Removed
+
+- The `database.archive_path` setting. Nothing ever read it: `session-maint
+  archive` always wrote its file beside the everyday database
+  (`<name>_archive.db`), whatever the setting said. A `config.yaml` that still
+  has the line keeps loading; the line can be deleted.
 
 ## [0.5.0] - 2026-09-21
 
