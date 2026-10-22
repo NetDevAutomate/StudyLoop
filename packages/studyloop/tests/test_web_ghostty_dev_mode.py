@@ -362,7 +362,7 @@ def ghostty_pty_server():
         if _PASS:
             creds = base64.b64encode(f"{_USER}:{_PASS}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        # The server cookie `/` sets is required on /api (F-WEB-20).
+        # The cookie the token sign-in issued is required on /api (F-WEB-20, ADR-0014).
         server_opener(
             f"http://127.0.0.1:{WEB_GHOSTTY_PTY_PORT}", basic_auth=(_USER, _PASS) if _PASS else None
         ).open(req, timeout=2)

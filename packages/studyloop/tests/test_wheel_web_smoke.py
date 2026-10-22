@@ -143,7 +143,7 @@ def web_app(web_venv: Path, tmp_path_factory: pytest.TempPathFactory):
         deadline = time.monotonic() + 60
         while True:
             try:
-                # An /api route: it needs the server cookie that `/` sets.
+                # An /api route: it needs the cookie the token sign-in issues (ADR-0014).
                 opener = server_opener(base_url, timeout=5)
                 with opener.open(base_url + LAUNCH_TARGET_PATH, timeout=5):
                     break

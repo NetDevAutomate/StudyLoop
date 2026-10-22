@@ -293,7 +293,7 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
     # --- WS: bytes out (banner), bytes in (input), echo back ---
     # The WS guard rejects requests with no Origin (non-browser clients);
     # send the same localhost Origin a browser would, plus the server cookie
-    # that `/` sets. NOTE the ordering:
+    # the token sign-in issued (ADR-0014; `/` alone sets none). NOTE the ordering:
     # /api/session/end must be called while the WS is still OPEN — a WS
     # disconnect triggers active.release() which clears the session state,
     # after which end returns 404 (that's the real product semantics; the
