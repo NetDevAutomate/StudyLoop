@@ -228,14 +228,14 @@ class RequestBoundaryMiddleware:
     a WebSocket is closed with 1008 before accept, which the client sees as a
     refused upgrade.
 
-    Server secret (F-WEB-20): ``studyloop web`` mints one per process. ``GET /``
-    sets it as an HttpOnly, SameSite=Strict cookie; ``/api/*`` (HTTP 403) and
-    both WebSockets (1008) require it. SameSite=Strict keeps the browser from
-    attaching it to any cross-site request, which closes cross-site form posts
-    and socket opens. It does NOT stop a local process that loads ``/`` first
-    and replays the cookie: that needs the secret delivered out of band (see
-    the lane-3 log of the 2026-10-21 review). Empty secret, the ``create_app``
-    default, turns this half off.
+    Server secret (F-WEB-20): ``studyloop web`` mints one per process. ``/api/*``
+    (HTTP 403) and both WebSockets (1008) require it as the HttpOnly,
+    SameSite=Strict ``studyloop_auth`` cookie. SameSite=Strict keeps the browser
+    from attaching it to any cross-site request, which closes cross-site form
+    posts and socket opens. The cookie is handed out only by
+    ``BootstrapTokenMiddleware``, to a browser that presents the secret itself
+    (D2, council pass 3): before that, any local process that loaded ``/`` was
+    given it. Empty secret, the ``create_app`` default, turns this half off.
 
     Wraps the finished FastAPI app (inside ``SecurityHeadersMiddleware``, so a
     refusal still carries the security headers) and forwards attribute access
@@ -257,7 +257,6 @@ class RequestBoundaryMiddleware:
         from starlette.datastructures import Headers
 
         from studyloop.web.ws_origin import (
-            AUTH_COOKIE,
             host_allowed,
             is_in_process_test_scope,
             requires_server_secret,
@@ -272,36 +271,191 @@ class RequestBoundaryMiddleware:
             return
 
         secret = self._server_secret
-        if secret:
-            path = scope.get("path", "")
-            if requires_server_secret(path) and not server_secret_presented(
-                headers.get("cookie", ""), secret
-            ):
-                await _refuse(
-                    scope,
-                    receive,
-                    send,
-                    status=403,
-                    detail="This request lacks the StudyLoop server cookie. Reload the page.",
-                    code="server_secret_required",
-                )
-                return
-            if scope["type"] == "http" and path == "/" and scope.get("method") == "GET":
-                cookie = f"{AUTH_COOKIE}={secret}; HttpOnly; SameSite=Strict; Path=/"
-                send = _with_cookie_on_success(send, cookie)
+        if (
+            secret
+            and requires_server_secret(scope.get("path", ""))
+            and not server_secret_presented(headers.get("cookie", ""), secret)
+        ):
+            await _refuse(
+                scope,
+                receive,
+                send,
+                status=403,
+                detail="This request lacks the StudyLoop server cookie. Reload the page.",
+                code="server_secret_required",
+            )
+            return
 
         await self.app(scope, receive, send)
 
 
-def _with_cookie_on_success(send, cookie: str):  # type: ignore[no-untyped-def]
-    """Wrap *send* so a 200 response also sets *cookie* (a 401 from Basic auth does not)."""
+#: The pages a browser opens to sign in: ``/`` (the printed URL) and ``/session``
+#: (the URL the launcher opens).
+_FRONT_DOOR_PATHS = frozenset({"/", "/session"})
 
-    async def send_with_cookie(message) -> None:  # type: ignore[no-untyped-def]
-        if message["type"] == "http.response.start" and message.get("status") == 200:
-            MutableHeaders(scope=message).append("set-cookie", cookie)
-        await send(message)
+#: The sign-in form carries one token; anything far larger is not a sign-in.
+_MAX_SIGN_IN_FORM_BYTES = 4096
 
-    return send_with_cookie
+_SIGN_IN_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StudyLoop - sign in with the access token</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 34rem; margin: 3rem auto;
+         padding: 0 1rem; line-height: 1.5; color: #1f2933; background: #fbfbf8; }}
+  h1 {{ font-size: 1.4rem; }}
+  label {{ display: block; font-weight: 600; margin-top: 1.25rem; }}
+  input {{ width: 100%; box-sizing: border-box; font-size: 1rem; padding: 0.5rem;
+          margin-top: 0.25rem; }}
+  button {{ margin-top: 0.75rem; font-size: 1rem; padding: 0.5rem 1rem; }}
+  .error {{ border-left: 4px solid #b42318; padding: 0.25rem 0.75rem; background: #fdecea; }}
+</style>
+</head>
+<body>
+<main>
+<h1>StudyLoop needs its access token</h1>
+{error}
+<p>Open StudyLoop from the terminal or launcher that started it: the address it printed or
+opened carries the token. If <code>studyloop web</code> was restarted, a tab opened before the
+restart has lost its access; reopen it from the new address.</p>
+<form method="post" action="/">
+<label for="token">Access token (or the whole address)</label>
+<input id="token" name="token" type="password" autocomplete="off" autocapitalize="off"
+       spellcheck="false" required>
+<button type="submit">Open StudyLoop</button>
+</form>
+</main>
+</body>
+</html>
+"""
+
+
+def _sign_in_page(*, status: int, error: str = "") -> Response:
+    """The page asking for the token. Never echoes what the client presented."""
+    error_html = f'<p class="error" role="alert">{error}</p>' if error else ""
+    return HTMLResponse(
+        _SIGN_IN_PAGE.format(error=error_html),
+        status_code=status,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+def _token_from_paste(value: str) -> str:
+    """The token in what a learner pasted: the token alone, or the printed address."""
+    from urllib.parse import parse_qsl
+
+    from studyloop.web.ws_origin import BOOTSTRAP_QUERY
+
+    value = value.strip().split("#", 1)[0]
+    query = value.split("?", 1)[1] if "?" in value else value
+    tokens = [v for k, v in parse_qsl(query) if k == BOOTSTRAP_QUERY]
+    return tokens[0] if len(tokens) == 1 else value
+
+
+class BootstrapTokenMiddleware:
+    """Hand the server cookie only to a browser that presents the server secret
+    (D2, council pass 3, Jupyter's token model).
+
+    ``GET /`` and ``GET /session`` with ``?token=<secret>`` set the HttpOnly,
+    SameSite=Strict cookie and answer 303 to the same path without the token, so
+    it does not stay in the address bar; a wrong token is 403 with no cookie.
+    ``GET /`` from a browser without the cookie gets a small page asking for the
+    token, whose form posts it to ``POST /``, the same acceptance. Every answer
+    here is ``Cache-Control: no-store``. Everything else passes through: the
+    cookie gate on ``/api/*`` and the WebSockets is ``RequestBoundaryMiddleware``'s.
+
+    Registered inside Basic auth, so on a ``--lan``/``--bind`` server the
+    password is still asked for first and the token never stands in for it.
+    Empty secret (in-process ``create_app``) makes this a pass-through.
+    """
+
+    def __init__(self, app, *, server_secret: str = "") -> None:  # type: ignore[no-untyped-def]
+        self.app = app
+        self._server_secret = server_secret
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        path = scope.get("path", "")
+        if not self._server_secret or scope["type"] != "http" or path not in _FRONT_DOOR_PATHS:
+            await self.app(scope, receive, send)
+            return
+
+        from urllib.parse import parse_qsl, urlencode
+
+        from starlette.datastructures import Headers
+
+        from studyloop.web.ws_origin import BOOTSTRAP_QUERY, server_secret_presented
+
+        method = scope.get("method", "")
+        if method == "POST" and path == "/":
+            await self._accept_form(scope, receive, send)
+            return
+        if method not in {"GET", "HEAD"}:
+            await self.app(scope, receive, send)
+            return
+
+        pairs = parse_qsl(scope.get("query_string", b"").decode("latin-1"), keep_blank_values=True)
+        tokens = [value for key, value in pairs if key == BOOTSTRAP_QUERY]
+        if tokens:
+            rest = urlencode([(key, value) for key, value in pairs if key != BOOTSTRAP_QUERY])
+            presented = tokens[0] if len(tokens) == 1 else ""
+            response = self._accept(presented, location=f"{path}?{rest}" if rest else path)
+            await response(scope, receive, send)
+            return
+
+        cookie = Headers(scope=scope).get("cookie", "")
+        if path == "/" and not server_secret_presented(cookie, self._server_secret):
+            await _sign_in_page(status=200)(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
+
+    def _accept(self, presented: str, *, location: str) -> Response:
+        """303 + cookie for the right token; the sign-in page and 403 for anything else."""
+        from studyloop.web.ws_origin import AUTH_COOKIE, secret_matches
+
+        if not secret_matches(presented, self._server_secret):
+            return _sign_in_page(
+                status=403,
+                error="That token is not this server's. Copy it again from the terminal.",
+            )
+        response = RedirectResponse(url=location, status_code=303)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers.append(
+            "set-cookie",
+            f"{AUTH_COOKIE}={self._server_secret}; HttpOnly; SameSite=Strict; Path=/",
+        )
+        return response
+
+    async def _accept_form(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        from urllib.parse import parse_qsl
+
+        from starlette.datastructures import Headers
+
+        from studyloop.web.ws_origin import BOOTSTRAP_QUERY
+
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            body += message.get("body", b"")
+            if len(body) > _MAX_SIGN_IN_FORM_BYTES:
+                too_large = _sign_in_page(status=413, error="That is far too long to be a token.")
+                await too_large(scope, receive, send)
+                return
+            if not message.get("more_body", False):
+                break
+
+        presented = ""
+        content_type = Headers(scope=scope).get("content-type", "")
+        if content_type.split(";", 1)[0].strip().lower() == "application/x-www-form-urlencoded":
+            fields = parse_qsl(body.decode("latin-1"), keep_blank_values=True)
+            tokens = [value for key, value in fields if key == BOOTSTRAP_QUERY]
+            if len(tokens) == 1:
+                presented = _token_from_paste(tokens[0])
+        await self._accept(presented, location="/")(scope, receive, send)
 
 
 async def _refuse(  # type: ignore[no-untyped-def]
@@ -338,11 +492,12 @@ def create_app(
                     this is not set. Ignored (and left unvalidated) when
                     dev_mode=False. Raises ValueError at startup for an unknown
                     engine name.
-        server_secret: Per-process secret ``/`` sets as a cookie and ``/api/*``
-                    plus both WebSockets require (``RequestBoundaryMiddleware``).
-                    ``studyloop web`` mints one at start; empty (the default for
-                    in-process callers) leaves the cookie gate off. The Host
-                    check applies either way.
+        server_secret: Per-process secret ``/api/*`` plus both WebSockets require
+                    as a cookie (``RequestBoundaryMiddleware``), handed out only to
+                    a browser that presents it as ``?token=`` or through the
+                    sign-in form (``BootstrapTokenMiddleware``). ``studyloop web``
+                    mints one at start; empty (the default for in-process
+                    callers) leaves both off. The Host check applies either way.
     """
     from studyloop.web.dev_engines import resolve_dev_engine
 
@@ -377,6 +532,11 @@ def create_app(
     app.state.explorer_tree_fingerprint = None
     app.state.session_options_targets_cache = None
     app.state.session_options_targets_fingerprint = None
+
+    # The sign-in front door (D2): registered BEFORE Basic auth, which makes it
+    # the inner of the two, so a LAN password is still asked for first.
+    if server_secret:
+        app.add_middleware(BootstrapTokenMiddleware, server_secret=server_secret)
 
     # Optional password protection (LAN mode)
     if password:

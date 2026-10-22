@@ -542,7 +542,11 @@ export function liveAgentConsole(origin = 'study') {
         const message = why === 'connection_lost'
           ? 'Your session ended: the connection to the server was lost '
             + '(was studyloop web restarted?). Start a new one when you are ready.'
-          : `Your session ended (${why}${rc}). Start a new one when you are ready.`;
+          : why === 'server_restarted'
+            ? 'Your session ended: this tab has lost its access to the server '
+              + '(was studyloop web restarted?). Reopen StudyLoop from the terminal '
+              + 'or launcher: the address it printed carries the new access token.'
+            : `Your session ended (${why}${rc}). Start a new one when you are ready.`;
         window.dispatchEvent(new CustomEvent('study-session-ended', {
           detail: {
             origin,
@@ -587,20 +591,24 @@ export function liveAgentConsole(origin = 'study') {
         const delays = [0, 1000, 2000, 4000, 8000, 16000];
         /* A restarted server mints a new server secret (F-WEB-20), so this
            tab's cookie no longer opens /api/*: the probe gets 403
-           `server_secret_required`. That IS an answer — the server is back —
-           so GET / once for the new cookie and retry, instead of spending
-           every attempt on the same 403 and never announcing the ending. */
-        let cookieRefreshed = false;
+           `server_secret_required`. That IS an answer: the server is back, and
+           the session lived inside the old process, so it is gone. Since D2
+           (council pass 3, 2026-10-22) the server hands its new cookie only to a
+           browser presenting the new token, which this tab does not have and
+           cannot fetch: GET / now answers the sign-in page, not a cookie. So say
+           so plainly and point at where the new address is, rather than
+           retrying something that cannot work. */
         for (const delay of delays) {
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (this._ws !== ws) return;
           let state;
           try {
-            let res = await fetch('/api/session/state', { cache: 'no-store' });
-            if (res.status === 403 && !cookieRefreshed && await this._isStaleServerSecret(res)) {
-              cookieRefreshed = true;
-              await fetch('/', { cache: 'no-store' });
-              res = await fetch('/api/session/state', { cache: 'no-store' });
+            const res = await fetch('/api/session/state', { cache: 'no-store' });
+            if (res.status === 403 && await this._isStaleServerSecret(res)) {
+              if (this._ws !== ws) return;
+              this.status = 'Server restarted: reopen StudyLoop from the terminal';
+              this._announceEnded(detail, 'server_restarted', null);
+              return;
             }
             if (!res.ok) continue;
             state = await res.json();

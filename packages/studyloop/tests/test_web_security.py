@@ -65,6 +65,7 @@ def _run_studyloop_web(
 
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "config.yaml"))
     monkeypatch.delenv("STUDYLOOP_WEB_PASSWORD", raising=False)
+    monkeypatch.delenv("STUDYLOOP_WEB_TOKEN", raising=False)
     monkeypatch.setattr("studyloop.cli._web._candidate_lan_hosts", lambda: ("192.168.1.42",))
     captured: dict[str, Any] = {}
 
@@ -76,6 +77,15 @@ def _run_studyloop_web(
     result = CliRunner().invoke(cli, ["web", *args])
     assert result.exit_code == 0, result.output
     return captured, result.output
+
+
+def _printed_token(output: str) -> str:
+    """The sign-in token ``studyloop web`` printed inside its URL (D2)."""
+    import re
+
+    match = re.search(r"\?token=([A-Za-z0-9_-]{32,})", output)
+    assert match, f"studyloop web printed no sign-in URL:\n{output}"
+    return match.group(1)
 
 
 # ---------------------------------------------------------------------------
@@ -186,17 +196,19 @@ class TestServerSecret:
             ws.receive_json()
         assert exc_info.value.code == 1008
 
-    def test_browser_flow_with_the_cookie_from_index_reaches_api_and_terminal(
+    def test_browser_flow_with_the_cookie_from_the_sign_in_reaches_api_and_terminal(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """The normal flow: load ``/``, keep its cookie, then the API and the terminal work."""
-        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        """The normal flow: open the printed sign-in URL, keep its cookie, then the API
+        and the terminal work. (Before D2 a bare ``/`` handed the cookie out.)"""
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path)
         _start_stub_session(tmp_path)
         client = TestClient(captured["app"])
 
-        index = client.get("/")
-        assert index.status_code == 200
-        set_cookie = index.headers["set-cookie"]
+        assert "set-cookie" not in client.get("/").headers
+        sign_in = client.get(f"/?token={_printed_token(output)}", follow_redirects=False)
+        assert sign_in.status_code == 303
+        set_cookie = sign_in.headers["set-cookie"]
         assert set_cookie.startswith("studyloop_auth=")
         assert "httponly" in set_cookie.lower()
         assert "samesite=strict" in set_cookie.lower()
@@ -253,39 +265,121 @@ class TestServerSecret:
         response = client.post(ROUTE, json={})
         assert response.json().get("code") != "server_secret_required"
 
-    def test_secret_is_never_printed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_secret_is_printed_only_inside_the_sign_in_url(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """D2 changed this contract: the secret was never printed; now it is printed
+        once, as the token in the sign-in URL (Jupyter's model), and nowhere else."""
         captured, output = _run_studyloop_web(monkeypatch, tmp_path)
+        token = _printed_token(output)
         client = TestClient(captured["app"])
-        client.get("/")
+        client.get(f"/?token={token}")
         secret = client.cookies["studyloop_auth"]
         assert len(secret) >= 32
-        assert secret not in output
+        assert secret == token
+        assert output.count(secret) == 1
+        assert f"http://127.0.0.1:8567/?token={secret}" in output
 
     def test_each_studyloop_web_process_mints_its_own_secret(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         secrets_seen = set()
         for _ in range(2):
-            captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+            captured, output = _run_studyloop_web(monkeypatch, tmp_path)
             client = TestClient(captured["app"])
-            client.get("/")
+            client.get(f"/?token={_printed_token(output)}")
             secrets_seen.add(client.cookies["studyloop_auth"])
         assert len(secrets_seen) == 2
 
     def test_lan_401_does_not_hand_out_the_cookie(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """The cookie is set on a successful ``/`` only, never beside a Basic-auth refusal."""
-        captured, _ = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
+        """The cookie never comes beside a Basic-auth refusal, even for the right token."""
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
         client = TestClient(captured["app"])
-        response = client.get("/", headers={"Host": "192.168.1.42:8567"})
+        lan = {"Host": "192.168.1.42:8567"}
+        response = client.get("/", headers=lan)
         assert response.status_code == 401
         assert "set-cookie" not in response.headers
+        signed = client.get(f"/?token={_printed_token(output)}", headers=lan)
+        assert signed.status_code == 401
+        assert "set-cookie" not in signed.headers
 
     def test_in_process_create_app_leaves_the_cookie_gate_off(self) -> None:
         """``create_app()`` without a secret (tests, embedding) keeps today's behaviour."""
         response = TestClient(create_app()).get("/api/session/state")
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# D9.1 (council pass 3) — course artefacts outside /api sit behind the cookie too
+# ---------------------------------------------------------------------------
+
+_ARTEFACT_SECRET = "a" * 43
+
+
+@pytest.fixture()
+def artefact_app(tmp_path: Path):  # type: ignore[no-untyped-def]
+    """``create_app`` with a server secret over a content tree holding one artefact."""
+    from unittest.mock import patch
+
+    from studyloop.settings import ContentConfig, Settings
+
+    audio = tmp_path / "content" / "my-course" / "audio"
+    audio.mkdir(parents=True)
+    (audio / "episode-01.mp3").write_bytes(b"fake-audio")
+    (tmp_path / "outside.txt").write_text("not course content")
+    settings = Settings(content=ContentConfig(base_path=tmp_path / "content"))
+    with patch("studyloop.web.routes.artefacts.load_settings", return_value=settings):
+        yield create_app(server_secret=_ARTEFACT_SECRET)
+
+
+class TestArtefactsRequireTheCookie:
+    """Under D2 ``/artefacts/...`` was the one unauthenticated read of learner content
+    left: it is served outside ``/api`` and so sat outside the cookie gate."""
+
+    def test_uncookied_artefact_fetch_is_refused(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        response = TestClient(artefact_app).get("/artefacts/my-course/audio/episode-01.mp3")
+        assert response.status_code == 403
+        assert response.json()["code"] == "server_secret_required"
+
+    def test_the_dashboard_cookie_fetches_it(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        """The positive browser path: the page already holds the cookie, ``Path=/``."""
+        client = TestClient(artefact_app)
+        client.get(f"/?token={_ARTEFACT_SECRET}", follow_redirects=False)
+        response = client.get("/artefacts/my-course/audio/episode-01.mp3")
+        assert response.status_code == 200
+        assert response.content == b"fake-audio"
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/artefacts/../outside.txt", "/artefacts/my-course/../../outside.txt"],
+    )
+    def test_traversal_is_still_404_with_the_cookie(self, artefact_app, path: str) -> None:  # type: ignore[no-untyped-def]
+        client = TestClient(artefact_app)
+        client.cookies.set("studyloop_auth", _ARTEFACT_SECRET)
+        assert client.get(path).status_code == 404
+
+    def test_encoded_traversal_is_still_404_with_the_cookie(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        client = TestClient(artefact_app)
+        client.cookies.set("studyloop_auth", _ARTEFACT_SECRET)
+        response = client.get("/artefacts/my-course/audio/..%2F..%2F..%2Foutside.txt")
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        ("path", "gated"),
+        [
+            ("/artefacts/c/t/f.mp3", True),
+            ("/artefacts", True),
+            ("/artefacts/", True),
+            ("/artefactsx/f", False),
+            ("/static/app.js", False),
+        ],
+    )
+    def test_gate_covers_exactly_the_artefact_route(self, path: str, gated: bool) -> None:
+        from studyloop.web.ws_origin import requires_server_secret
+
+        assert requires_server_secret(path) is gated
 
 
 # ---------------------------------------------------------------------------
