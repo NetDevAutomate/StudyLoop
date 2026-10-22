@@ -23,11 +23,11 @@ review_cadence_days: 3
 
 ## Learning Records
 
-### LR-0001 — 
+### LR-0001 —
 
 ## Resources
 
-- 
+-
 
 ## Checkpoints
 

@@ -41,4 +41,3 @@ cannot catch drift in actual agent behavior.
   under test states the answer directly rather than probing
 - **THEN** the LLM-judge assertion fails the journey, distinguishing this
   from a transport/plumbing failure
-

@@ -2,8 +2,15 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
   hooks:
+  # Vendored third-party assets are byte-pinned: vendor/MANIFEST records each
+  # file's upstream sha256 and test_vendor_manifest.py fails on any drift, so
+  # the whitespace fixers must not "repair" a missing final newline or trailing
+  # space in a minified bundle (found by an all-files run, 2026-10-22: eight
+  # vendored files would have been rewritten and the manifest guard went red).
   - id: trailing-whitespace
+    exclude: ^packages/studyloop/src/studyloop/web/static/vendor/
   - id: end-of-file-fixer
+    exclude: ^packages/studyloop/src/studyloop/web/static/vendor/
   - id: check-yaml
     exclude: mkdocs.yml
   - id: check-added-large-files

@@ -64,9 +64,10 @@ jobs:
     # with no secret scan at all. These steps run the same hooks server-side,
     # through pre-commit, so .pre-commit-config.yaml's pinned revs and its
     # detect-secrets `exclude` list are the ones in force (pre-commit itself
-    # comes from the locked dev group). Not mirrored here: `no-aws-tokens`
-    # matches AWS's documented sample key in two committed files, so an
-    # all-files run of it is red on a clean tree.
+    # comes from the locked dev group). `no-aws-tokens` is mirrored too: it was
+    # left out while it matched AWS's documented sample key in two committed
+    # files; the hook now exempts that one value as an exact whole string
+    # (test_repo_no_aws_tokens_hook.py) and an all-files run is green.
     #
     # On a pull request the job also runs trufflehog over the PR's own commits
     # (base..head): provider-specific detectors with live verification, the
@@ -99,6 +100,8 @@ jobs:
       # this is parity with the commit gate rather than extra coverage.
       - name: detect-aws-credentials (whole checkout)
         run: uv run --group dev pre-commit run detect-aws-credentials --all-files
+      - name: no-aws-tokens (whole checkout)
+        run: uv run --group dev pre-commit run no-aws-tokens --all-files
       # The action does not fail on a missing base: with an empty `base` it
       # scans head's whole history instead (action.yml at the pinned commit).
       # This step fails the job first, with exit 2, unless both event SHAs are
