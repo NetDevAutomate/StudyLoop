@@ -50,3 +50,4 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 | [0018](0018-trufflehog-scans-each-pull-request-range.md) | trufflehog in CI scans each pull request's own range, pinned and fail-closed | Accepted | 2026-10-22 council pass 3, ruling D6 (`a5a17045`, `8965206d`) |
 | [0019](0019-bind-address-replaces-lan.md) | `--bind <ip>` replaces `--lan`; second-device access goes over a tunnel or a VPN address | Accepted | 2026-10-22 council pass 3, ruling D7, 3–2 (`db30f9ca`) |
 | [0020](0020-log-topic-partial-result.md) | `log_topic` reports a failed spaced-repetition write as a typed partial result, not an error | Accepted | 2026-10-22 council pass 3, ruling D9.3 (`12f53ab2`) |
+| [0021](0021-experiments-evidence-context-leaves-main.md) | `experiments/evidence_context` leaves `main` for an archive branch | Accepted | 2026-10-22 owner decision on council pass 3 question D8; archive branch `archive/experiments-evidence-context` |
