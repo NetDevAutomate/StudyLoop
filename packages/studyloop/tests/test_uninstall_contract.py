@@ -342,6 +342,41 @@ def test_uninstall_keeps_an_edited_mandate_as_a_backup(sandbox: Sandbox) -> None
     assert steering.with_name("session-db.md.bak").read_text(encoding="utf-8") == edited
 
 
+def test_uninstall_keeps_an_edited_status_line_script_as_a_backup(sandbox: Sandbox) -> None:
+    """The script install copies to ~/.claude/ gets the mandate's treatment.
+
+    A learner who tuned the installed copy (a segment, a colour) loses that
+    work if uninstall unlinks the file whatever it holds. As with an edited
+    mandate: it is moved to a ``.bak`` beside it, so the status line stops
+    (Claude Code's ``statusLine`` entry is removed first) while the bytes
+    survive.
+    """
+    sandbox.install()
+    script = sandbox.home / ".claude/study-statusline.sh"
+    edited = script.read_text(encoding="utf-8") + '\necho "my own segment"\n'
+    script.write_text(edited, encoding="utf-8")
+
+    sandbox.uninstall()
+
+    assert not script.exists()
+    assert script.with_name("study-statusline.sh.bak").read_text(encoding="utf-8") == edited
+    assert _owned_residue(sandbox) == []
+
+
+def test_uninstall_deletes_an_unedited_status_line_script_without_a_backup(
+    sandbox: Sandbox,
+) -> None:
+    """The common case leaves nothing behind: a copy of the shipped script is just removed."""
+    sandbox.install()
+    script = sandbox.home / ".claude/study-statusline.sh"
+    assert script.read_bytes() == (sandbox.repo / "agents/claude/study-statusline.sh").read_bytes()
+
+    sandbox.uninstall()
+
+    assert not script.exists()
+    assert sorted(p.name for p in script.parent.glob("study-statusline.sh*")) == []
+
+
 # StudyLoop's status line: install points Claude Code's ``statusLine`` at the
 # script it copies to ~/.claude/, which uninstall deletes. An entry left behind
 # runs a missing command on every render.

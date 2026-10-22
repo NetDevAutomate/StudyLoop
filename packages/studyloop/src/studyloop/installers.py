@@ -1875,6 +1875,7 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     claude_home = _HOME / ".claude"
     statusline = claude_home / "study-statusline.sh"
     settings = claude_home / "settings.json"
+    shipped = repo_root / "agents/claude/study-statusline.sh"
     changed = 0
 
     if uninstall:
@@ -1882,12 +1883,19 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
         # points at is still there.
         changed += _remove_claude_statusline(settings, statusline)
         if statusline.exists():
-            statusline.unlink()
+            # The mandate remover's rule: a copy of what install wrote is
+            # deleted; anything else may carry the learner's edits (or an
+            # older release's script) and is kept as a .bak beside it. The
+            # statusLine entry is already gone, so the .bak is never run.
+            if statusline.read_bytes() == shipped.read_bytes():
+                statusline.unlink()
+            else:
+                statusline.rename(_backup_path(statusline))
             changed += 1
         return changed
 
     claude_home.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(repo_root / "agents/claude/study-statusline.sh", statusline)
+    shutil.copy2(shipped, statusline)
     statusline.chmod(0o755)
     changed += 1
     template = repo_root / "agents/claude/settings.json"
