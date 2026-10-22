@@ -838,14 +838,14 @@ def _delete_old(
             from agent_session_tools.tiering import _anchored_session_ids
 
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            anchored = _anchored_session_ids(conn)
+            anchored_ids = _anchored_session_ids(conn)
             deleted = deleted_messages = kept = 0
             print("\n🗑️  Deleting sessions (dependents first, foreign keys on)...")
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("BEGIN IMMEDIATE")
             try:
                 for session_id in session_ids:
-                    if session_id in anchored:
+                    if session_id in anchored_ids:
                         kept += 1
                         continue
                     conn.execute("SAVEPOINT pre_lifecycle_delete")
