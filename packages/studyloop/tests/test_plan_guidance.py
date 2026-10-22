@@ -280,9 +280,18 @@ def test_guidance_summary_days_and_urgency_use_one_effective_date(
 
 
 def _document(plan_id: str, title: str, *, frontmatter_id: str | None = None) -> str:
-    """A ready active document whose frontmatter ``id`` may disagree with its file."""
+    """A ready active document whose frontmatter ``id`` may disagree with its file.
+
+    ``created``/``updated`` are pinned: a document without them is stamped with
+    ``utc_now_iso()`` at parse time (``markdown.py``), at second precision, so
+    two scans that straddle a second boundary would differ in those fields and
+    an equality assertion across scans would flake under a loaded full suite
+    (seen once on the 2026-10-22 merged-tree gate; reproduced by parsing the
+    same clock-less document on either side of a second boundary).
+    """
     return (
         f"---\nid: {frontmatter_id or plan_id}\ntitle: {title}\nstatus: active\n"
+        "created: '2026-10-01T09:00:00+00:00'\nupdated: '2026-10-01T09:00:00+00:00'\n"
         f"topics: [sql]\n---\n\n# {title}\n\n## Mission\n\n### Why\n\nBecause.\n\n"
         "### Success\n\n- Do a thing\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n"
     )
