@@ -35,7 +35,13 @@ require_on_path() {
 require_on_path "studyloop"
 require_on_path "session-export"
 
-export STUDYLOOP_CONFIG="${STUDYLOOP_CONFIG:-$(mktemp -d)/config.yaml}"
+# Assigned, never defaulted: the setup guide tells learners to export
+# STUDYLOOP_CONFIG for an alternate profile, and the same three variables can
+# name their real sessions.db and state dir. `${VAR:-...}` would keep such an
+# exported value, and doctor would read and migrate the learner's own database.
+# The release under test always gets fresh, empty state. Plain assignments, then
+# one export, so a failing mktemp still stops the script under `set -e`.
+STUDYLOOP_CONFIG="$(mktemp -d)/config.yaml"
 # STUDYLOOP_CONFIG alone does not move the session DB or state dir off the
 # machine's real ~/.config/studyloop/sessions.db / ~/.local/share/studyloop --
 # both are resolved independently of which config file is active, so every
@@ -44,8 +50,9 @@ export STUDYLOOP_CONFIG="${STUDYLOOP_CONFIG:-$(mktemp -d)/config.yaml}"
 # use) makes `doctor` report "fail", which the status-allowlist below then
 # rejects -- breaking this smoke test for a reason that has nothing to do with
 # the release under test.
-export STUDYLOOP_DB="${STUDYLOOP_DB:-$(mktemp -d)/sessions.db}"
-export STUDYLOOP_STATE_DIR="${STUDYLOOP_STATE_DIR:-$(mktemp -d)/state}"
+STUDYLOOP_DB="$(mktemp -d)/sessions.db"
+STUDYLOOP_STATE_DIR="$(mktemp -d)/state"
+export STUDYLOOP_CONFIG STUDYLOOP_DB STUDYLOOP_STATE_DIR
 
 studyloop --help >/dev/null
 studyloop config --help >/dev/null

@@ -45,8 +45,9 @@ def test_smoke_installed_cli_isolates_the_session_database_and_state_dir() -> No
     script = repo_root / "scripts" / "smoke-installed-cli.sh"
     script_text = script.read_text()
 
-    assert 'export STUDYLOOP_DB="${STUDYLOOP_DB:-$(mktemp -d)/sessions.db}"' in script_text
-    assert 'export STUDYLOOP_STATE_DIR="${STUDYLOOP_STATE_DIR:-$(mktemp -d)/state}"' in script_text
+    assert 'STUDYLOOP_DB="$(mktemp -d)/sessions.db"' in script_text
+    assert 'STUDYLOOP_STATE_DIR="$(mktemp -d)/state"' in script_text
+    assert "export STUDYLOOP_CONFIG STUDYLOOP_DB STUDYLOOP_STATE_DIR" in script_text
 
 
 def test_smoke_uv_tool_install_uses_isolated_tool_home_and_runs_cli_smoke() -> None:
