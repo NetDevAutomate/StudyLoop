@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pytest
 import yaml
 
 if TYPE_CHECKING:
@@ -395,12 +396,22 @@ def _tracked_mentions(needle: str) -> list[str]:
     return proc.stdout.split()
 
 
-def test_removed_orphan_workflow_script_stays_removed() -> None:
-    """``scripts/gen_quality_workflow.js`` was referenced by nothing (no recipe,
-    workflow, doc or script) and carried a shell-injection heredoc and fixed
-    shared ``/tmp`` paths. Deleted, it must not drift back."""
-    assert not (REPO_ROOT / "scripts" / "gen_quality_workflow.js").exists()
-    assert _tracked_mentions("gen_quality_workflow") == []
+@pytest.mark.parametrize(
+    "script",
+    [
+        # Referenced by nothing (no recipe, workflow, doc or script); carried a
+        # shell-injection heredoc and fixed shared /tmp paths. F-OPS-13/14@sol.
+        "gen_quality_workflow.js",
+        # Its only caller was gen_quality_workflow.js; orphaned when that was
+        # deleted. Plan 2, C1.
+        "gen_for_workflow.py",
+    ],
+)
+def test_removed_orphan_workflow_script_stays_removed(script: str) -> None:
+    """An orphaned workflow script, once deleted, must not drift back: neither
+    the file nor any tracked mention of its name."""
+    assert not (REPO_ROOT / "scripts" / script).exists()
+    assert _tracked_mentions(Path(script).stem) == []
 
 
 def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
@@ -409,3 +420,36 @@ def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
     ``git cliff --output CHANGELOG.md`` tells the reader to replace that curated
     history with commit subjects (``chore`` commits skipped). F-OPS-21@claude."""
     assert _tracked_mentions("--output CHANGELOG.md") == []
+
+
+# --- Dependency audit: pinned tool, runner-private temp (plan 2, C4) ---------
+
+#: ``uv tool run pip-audit@X.Y.Z`` -- an exact release, not whatever is latest.
+_PINNED_PIP_AUDIT = re.compile(r"\buv tool run pip-audit@\d+\.\d+\.\d+\s")
+
+
+def _audit_step() -> dict[str, Any]:
+    steps = _workflow()["jobs"]["audit"]["steps"]
+    audit = [
+        step for step in steps if isinstance(step, dict) and "pip-audit" in str(step.get("run", ""))
+    ]
+    assert len(audit) == 1, "expected exactly one pip-audit step in the audit job"
+    return audit[0]
+
+
+def test_dependency_audit_pins_pip_audit() -> None:
+    """An unpinned ``uv tool run pip-audit`` resolves the newest release on every
+    run: the gate's own behaviour (and its supply chain) changes with no commit."""
+    run = _audit_step()["run"]
+    assert "pip-audit" in run
+    assert _PINNED_PIP_AUDIT.search(run), f"pip-audit is not pinned to a release: {run!r}"
+
+
+def test_dependency_audit_writes_no_shared_tmp_path() -> None:
+    """A fixed ``/tmp`` path is shared by every job on a self-hosted runner, so a
+    concurrent or earlier job can pre-plant the requirements file the audit
+    reads. ``runner.temp`` is emptied per job."""
+    step = _audit_step()
+    assert "/tmp" not in step["run"]
+    assert "/tmp" not in str(step.get("env", {}))
+    assert "${{ runner.temp }}" in str(step.get("env", {})) + step["run"]

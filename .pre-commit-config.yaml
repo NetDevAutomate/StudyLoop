@@ -98,7 +98,12 @@ repos:
     stages: [pre-commit]
   - id: no-aws-tokens
     name: Check for AWS tokens
-    entry: (?i)(AWS_BEARER_TOKEN\w*|aws_access_key_id|aws_secret_access_key)\s*[=:]\s*["']?[A-Za-z0-9/+=]{20,}
+    # The negative lookahead exempts AWS's documented sample secret access key
+    # (docs.aws.amazon.com, "wJalr...EXAMPLEKEY") as an exact, case-sensitive,
+    # whole value, so openspec/specs/session-export/spec.md can quote it. It is
+    # not a file exclude: a real-shaped key in that file still fails.
+    # Pinned by packages/studyloop/tests/test_repo_no_aws_tokens_hook.py.
+    entry: (?i)(AWS_BEARER_TOKEN\w*|aws_access_key_id|aws_secret_access_key)\s*[=:]\s*["']?(?!(?-i:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY)(?![A-Za-z0-9/+=]))[A-Za-z0-9/+=]{20,}
     language: pygrep
     types:
     - text
