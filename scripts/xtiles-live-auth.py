@@ -22,8 +22,8 @@ own configuration, which is the same place the sign-in lives.
 from __future__ import annotations
 
 import argparse
+import json
 import os
-import stat
 import sys
 from pathlib import Path
 
@@ -53,6 +53,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _write_owner_only(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` so no byte of it is ever readable by others.
+
+    ``storage_state(path=...)`` would let Playwright create the file under the
+    process umask (0644 under the usual 022), and a chmod afterwards leaves the
+    session readable until it runs. Here the file is created 0600, ``fchmod``
+    tightens one left by an earlier run, and only then is it truncated and
+    written. The process umask is not changed.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        os.ftruncate(fd, 0)
+    except BaseException:
+        os.close(fd)
+        raise
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     state: Path = args.state.expanduser().resolve()
@@ -74,7 +94,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    state.parent.mkdir(parents=True, exist_ok=True)
+    # Owner-only directory when we create it. An existing directory is left as it
+    # is: --state may point into any folder the learner owns, and chmodding that
+    # is not this script's business. The file itself is owner-only either way.
+    os.makedirs(state.parent, mode=0o700, exist_ok=True)
 
     print(f"Opening {XTILES_URL} in a real browser window.")
     print("Sign in to xTiles, then leave the window on any signed-in page.")
@@ -106,10 +129,10 @@ def main(argv: list[str] | None = None) -> int:
         # Give the app a moment to finish writing whatever it stores on sign-in,
         # so the captured state is one a reload would actually accept.
         page.wait_for_timeout(2500)
-        context.storage_state(path=str(state))
+        storage = context.storage_state()
         browser.close()
 
-    os.chmod(state, stat.S_IRUSR | stat.S_IWUSR)
+    _write_owner_only(state, json.dumps(storage))
     print(f"Saved a signed-in session to {state} (owner-only).")
     print("\nNow run the live checks:\n")
     print(
