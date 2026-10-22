@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import shlex
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
@@ -75,11 +76,20 @@ def build_custom_adapter(name: str, config: dict) -> AgentAdapter:
         setup_fn = _STRATEGIES[strategy_name]
 
     # --- Launch command builder ---------------------------------------------
+    # The launch string is shell text, so the resolved binary is shlex-quoted
+    # like the built-in adapters' (a path with a space is one word). A
+    # template that already wraps {binary} in quotes has taken on the quoting
+    # itself; quoting again would put literal quote characters in the path.
+    def _binary_for(template: str, resolved: str) -> str:
+        if '"{binary}"' in template or "'{binary}'" in template:
+            return resolved
+        return shlex.quote(resolved)
+
     def _make_launch_cmd(persona_path: Path, resume: bool) -> str:
         template = resume_template if resume else launch_template
         resolved = shutil.which(binary) or binary
         cmd = template.format(
-            binary=resolved,
+            binary=_binary_for(template, resolved),
             persona=str(persona_path),
             session_dir=str(persona_path.parent),
         )
