@@ -100,7 +100,10 @@ def _ids(path: Path) -> set[str]:
 
 def _assert_notice(out: str) -> None:
     assert "'session-maint archive' is deprecated" in out
-    assert "removed in StudyLoop 0.7.0" in out
+    # The removal is stated relative to the deprecating release, never as a
+    # version number: the next release's number is not known here (G#5a).
+    assert "removed in the release after the one that deprecates it" in out
+    assert "0.7.0" not in out
     assert "session-maint sync-full" in out
     assert "session-maint prune" in out
     # It names the difference rather than claiming a drop-in replacement.

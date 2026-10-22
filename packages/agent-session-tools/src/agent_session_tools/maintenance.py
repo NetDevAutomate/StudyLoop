@@ -598,10 +598,12 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
 # D4 (council pass 3): the two-table file `archive` writes has no reader, and
 # the schema it hand-writes drifts from the canonical one. The supported path
 # differs in what it moves and what it checks, so the notice says how rather
-# than calling it a replacement. Removal release recorded in CHANGELOG.md.
+# than calling it a replacement. The removal is stated relative to the release
+# that carries this deprecation (ADR-0016: deprecate now, remove one release
+# later), never as a version number the next release may not have.
 _ARCHIVE_DEPRECATION = (
-    "⚠️  'session-maint archive' is deprecated and will be removed in StudyLoop "
-    "0.7.0.\n"
+    "⚠️  'session-maint archive' is deprecated and will be removed in the release "
+    "after the one that deprecates it.\n"
     "   Use 'session-maint sync-full' then 'session-maint prune' instead (both "
     "need database.full_db_path set).\n"
     "   That is not a drop-in replacement. sync-full copies whole sessions "
@@ -1188,8 +1190,9 @@ def archive(
 ) -> None:
     """Archive old sessions to a separate two-table database.
 
-    Deprecated; removed in StudyLoop 0.7.0. Use 'session-maint sync-full' then
-    'session-maint prune', which move whole sessions and verify them first.
+    Deprecated; removed in the release after the one that deprecates it. Use
+    'session-maint sync-full' then 'session-maint prune', which move whole
+    sessions and verify them first.
     """
     db_path = db if db else _get_db_path()
     exit_code = _archive(db_path, days, backup=not no_backup)
