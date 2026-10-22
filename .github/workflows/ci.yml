@@ -157,9 +157,13 @@ jobs:
           python-version: "3.12"
       - run: uv sync --locked --all-packages --group dev --all-extras
       - name: Audit full optional dependency surface
+        env:
+          # Same rule as the audit job: runner.temp is per job; a fixed /tmp path
+          # is shared by every job on a self-hosted runner.
+          REQUIREMENTS_TXT: ${{ runner.temp }}/requirements-full.txt
         run: |
-          uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o /tmp/requirements-full.txt
-          uv tool run pip-audit -r /tmp/requirements-full.txt --strict --no-deps --disable-pip
+          uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o "$REQUIREMENTS_TXT"
+          uv tool run pip-audit@2.10.1 -r "$REQUIREMENTS_TXT" --strict --no-deps --disable-pip
 
   test:
     runs-on: ubuntu-latest
