@@ -37,9 +37,11 @@ Clone the repository (fork first if you will open a pull request — the
 just sync-dev
 ```
 
-`just sync-dev` runs `uv sync --all-packages --group dev`: both packages in the workspace plus
-the dev group (pytest, ruff, pyright, pre-commit). MkDocs is not in that group: it lives in the
-`docs` extra, and `just docs` adds it on demand (`uv run --extra docs mkdocs build --strict`).
+`just sync-dev` runs `uv sync --inexact --all-packages --group dev`: both packages in the
+workspace plus the dev group (pytest, ruff, pyright, pre-commit). `--inexact` keeps whatever is
+already installed, so a later `just sync-*` adds to the same venv instead of removing the extras an
+earlier one installed. MkDocs is not in that group: it lives in the `docs` extra, and `just docs`
+adds it on demand (`uv run --extra docs mkdocs build --strict`).
 Choose a wider sync when you need the other optional extras:
 
 1. `just sync-dev` — enough for the default test suite, lint, typecheck and docs.
