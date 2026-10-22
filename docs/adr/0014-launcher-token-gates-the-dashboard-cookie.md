@@ -132,6 +132,10 @@ opens the token URL itself; pasting is only for a hand-run server or a closed ta
   same); the access logger is silent at WARNING and a test pins that.
 - `session/start.py` still prints the LAN address without the token, and `studyloop study` does
   not yet pass `--bind` through (both ledgered in the review record for the owner).
+  *Amendment, 2026-10-22 (plan 4, lane K, merged `affbd076`): both closed. The launcher's printed
+  address carries the token, `studyloop study --bind` is wired, and `studyloop web --show-url`
+  re-prints the sign-in address for a closed tab. The password is no longer persisted to session
+  state; the token is, under a `_token` key the browser-facing state endpoint strips.*
 
 ## Verification
 

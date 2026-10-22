@@ -88,6 +88,18 @@ depends on `--bind` existing.
   address *alone* does not listen there, so `studyloop drill` cannot reach it. The lane
   recommends also listening on loopback; that is an **owner decision** recorded in the ledger,
   not taken here.
+
+*Amendment, 2026-10-22 (plan 4, lane K, merged `affbd076`; coordinator unit `7c7dc813`): both
+items above are closed. `studyloop study --bind` is wired and validated before tmux starts; the
+printed address carries the sign-in token; `runtime_feedback.py` and every docs page say `--bind`;
+a non-loopback `--bind` also listens on `127.0.0.1` (coordinator decision, item 3), so the hop
+reaches the server. Doing that exposed a second blocker the brief had not seen: under any password
+mode the Basic auth middleware answered the hop with 401 before the route's own loopback+token guard
+could run, so `drill` had never worked under `--lan` either. The middleware now passes exactly one
+request shape through, a POST to the practice-check route carrying its capability header; the
+route's guard is stronger than the password for that path. `studyloop web --show-url` re-prints
+the sign-in address (item 4). The `--lan` alias is deprecated in the changelog and removed next
+release, as decided.*
 - The setup guide's second-device section is now tunnel-first; a learner following it needs
   `ssh` or Tailscale on the second device, which is the cost the minority weighed.
 
