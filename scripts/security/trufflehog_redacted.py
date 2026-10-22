@@ -13,10 +13,22 @@ the unreadable lines are not echoed because they may carry the raw match.
 
 Usage (from the repo root)::
 
-    uv run python scripts/security/trufflehog_redacted.py            # staged/uncommitted changes
+    uv run python scripts/security/trufflehog_redacted.py            # staged changes; by hand also
+                                                                   # commits not reachable from HEAD
     uv run python scripts/security/trufflehog_redacted.py --history  # whole git history
     uv run python scripts/security/trufflehog_redacted.py --base origin/main --head HEAD
                                                                      # a pull request's commits
+
+The no-flag mode passes ``--since-commit=HEAD`` and no ``--branch``; what that
+scans depends on who runs it. Under pre-commit, which sets ``PRE_COMMIT=1`` for
+every hook run, trufflehog overrides both ends of the range to HEAD, so the
+commit hook scans the staged changes and nothing else. Run by hand, a base
+with no head is ``git log --all ^HEAD``: the staged changes plus every commit
+on any ref that is not reachable from HEAD (an unmerged branch, a stash). More
+findings, never fewer -- a by-hand run can fail where the hook passed, and
+that is the stricter scan, not a bug. (trufflehog 3.99.3: ``main.go``
+``isPreCommitHook`` override; ``gitparse.go`` ``RepoPath``, "a base-only scan
+is ``--all ^base``".)
 
 ``--base``/``--head`` scan exactly the commits in ``base..head`` -- what CI's
 pull-request step scans (``.github/workflows/ci.yml``, job ``secrets``), but
