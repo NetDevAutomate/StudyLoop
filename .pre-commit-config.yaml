@@ -119,8 +119,11 @@ repos:
   # a second, independent layer under detect-secrets' entropy heuristics. The
   # wrapper consumes trufflehog's JSON and prints detector/file/line only; the
   # raw match is never echoed, so a caught secret cannot leak via the hook's
-  # own output. Fails on `verified` and `unknown` results alike: an
-  # revoked or fake key still leaks the shape of a real one. Binary via mise.
+  # own output. Fails on all three result states -- `verified`, `unknown` and
+  # `unverified` (a revoked or fake key still leaks the shape of a real one;
+  # test_trufflehog_pinned_image.py pins that against the pinned release).
+  # Under pre-commit the scan is the staged changes; the same command run by
+  # hand also walks commits not reachable from HEAD (wrapper docstring). Binary via mise.
   # Full-history sweep: `uv run python scripts/security/trufflehog_redacted.py --history`.
   - id: trufflehog
     name: trufflehog (staged changes, redacted output)

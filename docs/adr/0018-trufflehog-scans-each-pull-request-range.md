@@ -87,6 +87,15 @@ that client-side hooks are advisory, so the gate that matters is the server-side
 - The wrapper's no-flag docstring says "staged changes" but it also walks commits unreachable from
   `HEAD`; that fails closed (more findings, never fewer) and is a docstring fix (ledgered).
 
+*Amendment, 2026-10-22 (plan 4, lane M, merged `e1692522`): the two ledgered items above are
+closed. `test_trufflehog_pinned_image.py` (marker `integration`) runs the pinned 3.99.3 image under
+`PRE_COMMIT=1` against a planted revoked-shape key and goes red if the ordering quirk moves; the CI
+step's `unknown` results remain the backstop. The wrapper's docstring now states both scopes: under
+pre-commit the staged changes only, by hand also commits not reachable from `HEAD`. `actionlint`
+1.7.12 (scratch install, not added to CI) reports no findings on the four workflows, and the
+`audit-full` job now pins `pip-audit` and uses `runner.temp` like `audit`. Hosted execution is
+still unproven until the owner pushes.*
+
 ## Verification
 
 `packages/studyloop/tests/test_ci_workflow_contract.py`: the step exists, is pinned by a 40-hex

@@ -33,7 +33,9 @@ whole workspace, so the job token stays out of the checkout's git config).
   scanner could not verify it) fail the job.
 - **`unverified`** results (verification ran and failed, for example a revoked or fake key) are
   not reported in CI. The commit-time hook still fails on them, because it asks for all three
-  result types.
+  result types. That holds because of an ordering quirk in trufflehog's `PRE_COMMIT` override
+  (ADR-0018); `test_trufflehog_pinned_image.py` runs the pinned release against a planted
+  revoked-shape key to prove it, and goes red if upstream moves the quirk.
 - `--only-verified` is deliberately absent. trufflehog replaces `--results` with `verified`
   whenever `--only-verified` is set, so the pair would drop every `unknown` result. A local run of
   the pinned image showed it: on a planted token, the pair exited 0, while `--results` on its own
