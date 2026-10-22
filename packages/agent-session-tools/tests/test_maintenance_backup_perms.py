@@ -21,7 +21,7 @@ from unittest.mock import patch
 import pytest
 
 from agent_session_tools import maintenance
-from agent_session_tools.maintenance import _archive, create_backup
+from agent_session_tools.maintenance import _archive, _delete_old, create_backup
 
 
 @pytest.fixture
@@ -168,3 +168,115 @@ def test_archive_db_is_created_0600_under_umask_022(tmp_path, umask_022, monkeyp
     assert spy.seen[archive_path] == (0o600, 0)
     assert _mode(archive_path) == 0o600
     assert _current_umask() == 0o022
+
+
+# ---------------------------------------------------------------------------
+# Plan 2 D3 (F-AST-02 on old schemas): `session-maint delete` on a database
+# that predates the lifecycle tables (user_version < 41) ran a bare DELETE
+# with foreign keys off, orphaning every dependent row. Kept in this module
+# because it is the maintenance test file lane D owns; it shares the
+# pre-lifecycle fixture style above, built here through the real migrations.
+# ---------------------------------------------------------------------------
+
+
+def _schema40_db(tmp_path: Path, monkeypatch) -> Path:
+    """A database migrated to v40: the last schema without lifecycle tables."""
+    from importlib.resources import files
+
+    from agent_session_tools import migrations
+
+    monkeypatch.setattr(migrations, "CURRENT_VERSION", 40)
+    db_path = tmp_path / "sessions.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(files("agent_session_tools").joinpath("schema.sql").read_text())
+    migrations.migrate(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 40
+    conn.close()
+    monkeypatch.undo()
+    return db_path
+
+
+def _add_session(db_path: Path, session_id: str, days_ago: int) -> None:
+    when = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO sessions (id, source, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (session_id, "claude_code", when, when),
+    )
+    conn.execute(
+        "INSERT INTO messages (id, session_id, role, content, timestamp)"
+        " VALUES (?, ?, 'user', 'hello', ?)",
+        (f"{session_id}-m1", session_id, when),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _rows(db_path: Path, sql: str) -> list[tuple]:
+    conn = sqlite3.connect(db_path)
+    try:
+        return conn.execute(sql).fetchall()
+    finally:
+        conn.close()
+
+
+def test_pre_lifecycle_delete_takes_dependents_with_it(tmp_path, monkeypatch):
+    db_path = _schema40_db(tmp_path, monkeypatch)
+    _add_session(db_path, "old-1", 100)
+    _add_session(db_path, "old-2", 100)
+    _add_session(db_path, "new-1", 1)
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT INTO session_notes (session_id, notes) VALUES ('old-1', 'n')")
+    conn.execute("INSERT INTO session_tags (session_id, tag) VALUES ('old-1', 't')")
+    conn.execute(
+        "INSERT INTO file_references (session_id, message_id, file_path, tool_name)"
+        " VALUES ('old-1', 'old-1-m1', '/x.py', 'Read')"
+    )
+    conn.commit()
+    conn.close()
+
+    assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+    assert _rows(db_path, "SELECT id FROM sessions") == [("new-1",)]
+    assert _rows(db_path, "PRAGMA foreign_key_check") == []
+    for table in ("session_notes", "session_tags", "file_references"):
+        assert _rows(db_path, f"SELECT COUNT(*) FROM {table}") == [(0,)], table
+    assert _rows(db_path, "SELECT session_id FROM messages") == [("new-1",)]
+
+
+def test_pre_lifecycle_delete_keeps_what_it_cannot_remove_whole(
+    tmp_path, monkeypatch, capsys
+):
+    """A learner-owned session, and one the schema will not let go, stay whole."""
+    db_path = _schema40_db(tmp_path, monkeypatch)
+    for session_id in ("learner", "held", "plain"):
+        _add_session(db_path, session_id, 100)
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO study_sessions (id, session_id, topic, started_at)"
+        " VALUES ('study-1', 'learner', 'sql', '2026-01-01')"
+    )
+    # A dependent the schema does not cascade: SQLite refuses the delete.
+    conn.execute(
+        "CREATE TABLE local_ref (session_id TEXT REFERENCES sessions(id) NOT NULL)"
+    )
+    conn.execute("INSERT INTO local_ref VALUES ('held')")
+    conn.commit()
+    conn.close()
+
+    assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+
+    assert _rows(db_path, "SELECT id FROM sessions ORDER BY id") == [
+        ("held",),
+        ("learner",),
+    ]
+    assert _rows(db_path, "SELECT session_id FROM messages ORDER BY session_id") == [
+        ("held",),
+        ("learner",),
+    ]
+    assert _rows(db_path, "SELECT COUNT(*) FROM study_sessions") == [(1,)]
+    assert _rows(db_path, "PRAGMA foreign_key_check") == []
+    out = capsys.readouterr().out
+    assert "Kept 2 session(s)" in out
+    assert "session-repair --apply" in out
+    assert "Deleted 1 sessions (1 messages)" in out

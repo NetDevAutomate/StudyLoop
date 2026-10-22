@@ -714,17 +714,62 @@ def _delete_old(
                 conn.rollback()
                 raise
         else:
-            # Pre-lifecycle schema: no tombstones exist to write.
-            print("\n🗑️  Deleting messages...")
-            conn.execute(
-                f"DELETE FROM messages WHERE session_id IN ({placeholders})",
-                session_ids,
-            )
-            print("🗑️  Deleting sessions...")
-            conn.execute(
-                f"DELETE FROM sessions WHERE id IN ({placeholders})", session_ids
-            )
-            conn.commit()
+            # Pre-lifecycle schema (user_version < 41): no tombstones exist to
+            # write and purge_session's closure is not available, so this used
+            # to be a bare DELETE with foreign keys off that orphaned every
+            # dependent row (notes, tags, file references, embeddings,
+            # ownership bindings). Now foreign keys are on and each session is
+            # deleted children-first in its own savepoint: what the schema
+            # declares ON DELETE CASCADE goes with it, and a dependent it does
+            # not cascade makes SQLite refuse, so that session is rolled back
+            # whole and kept. Sessions that own learner records are kept
+            # without trying, as on the lifecycle path (a cascade would take
+            # their ownership bindings). Migrating first gives the full
+            # lifecycle delete; the message below says how.
+            from agent_session_tools.tiering import _anchored_session_ids
+
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            anchored = _anchored_session_ids(conn)
+            deleted = deleted_messages = kept = 0
+            print("\n🗑️  Deleting sessions (dependents first, foreign keys on)...")
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                for session_id in session_ids:
+                    if session_id in anchored:
+                        kept += 1
+                        continue
+                    conn.execute("SAVEPOINT pre_lifecycle_delete")
+                    try:
+                        removed = conn.execute(
+                            "DELETE FROM messages WHERE session_id = ?", (session_id,)
+                        ).rowcount
+                        conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+                    except sqlite3.IntegrityError:
+                        conn.execute("ROLLBACK TO pre_lifecycle_delete")
+                        kept += 1
+                    else:
+                        deleted += 1
+                        deleted_messages += removed
+                    finally:
+                        conn.execute("RELEASE pre_lifecycle_delete")
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
+            conn.close()
+            if kept:
+                import shlex
+
+                print(
+                    f"ℹ️  Kept {kept} session(s) that own learner records or rows this "
+                    f"schema (v{version}) does not delete with them. Run "
+                    f"'session-repair --apply --db {shlex.quote(str(db_path))}' to "
+                    "migrate the database, then delete again."
+                )
+            print(f"✅ Deleted {deleted} sessions ({deleted_messages} messages)")
+            logger.info(f"Deleted {deleted} old sessions (pre-lifecycle schema)")
+            return 0
         conn.close()
 
         print(f"✅ Deleted {len(old_sessions)} sessions ({message_count} messages)")
