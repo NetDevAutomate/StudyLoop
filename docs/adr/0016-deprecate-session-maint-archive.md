@@ -51,6 +51,20 @@ Deprecate now, remove after one release.
   (written as 0.7.0, assuming the next release is 0.6.0).
 - At removal, the dead `database.archive_path` key and `get_archive_path` go with the command.
 
+*Amendment, 2026-10-22 (plan 4, lane N, merged `e1b87a63`): two consequences above have moved.
+The `database.archive_path` key and `get_archive_path` were removed ahead of the command, because
+reading the code showed they had no reader at all (the `archive` command derives `<db>_archive.db`
+from `database.path`, `maintenance.py:508`); a `config.yaml` still carrying the key loads. The
+removal release is no longer written as a version: the notice and the changelog say "the release
+after the one that deprecates it". And a blocker on the removal itself was found and reproduced:
+`sync-full` refuses with `LegacySyncRefused` (`replication/legacy.py:49-70`) on any row in any
+`context_*` table, and `parking.py:41-56` seeds `context_board_columns` on first connect for anyone
+who has parked a topic, while every current-schema `delete` writes a `context_tombstones` row. So
+the replacement this deprecation names is unavailable to a large class of learners, and the CLI
+shows the refusal as a traceback (`maintenance.py:1209` catches only `ValueError` and
+`FileNotFoundError`; `LegacySyncRefused` is a `RuntimeError`). `archive` must not be removed until
+those learners have a path; ledgered as a larger follow-up.*
+
 Grounding adopted: single source of truth for the schema (one migration path, one reader set);
 Keep a Changelog's deprecate-then-remove.
 
