@@ -1,15 +1,19 @@
 /**
  * A restarted `studyloop web` mints a new server secret (lane 3, F-WEB-20), so
  * a tab left open across the restart probes /api/session/state with a cookie
- * the new process does not know and gets 403 `server_secret_required`. The
- * probe loop in _reportIfSessionGone used to treat every non-2xx as "server
- * unreachable, try again", so all six attempts (~31 s) were spent on 403s and
- * the "Your session ended … (was studyloop web restarted?)" announcement never
- * fired: the owning view kept its dead live layout and the picker never came
- * back (e2e test_server_restart_under_a_live_tab_returns_the_picker).
+ * the new process does not know and gets 403 `server_secret_required`.
  *
- * The 403 means the server IS back. GET / hands out the new cookie, so the
- * probe refreshes it once and retries, then the normal ended path runs.
+ * Contract history:
+ * - 51ad9487: the probe treated that 403 as "server unreachable, retry", spent
+ *   all six attempts (~31 s) on it and never announced the ending, so the fix
+ *   was to GET / once for the new cookie and retry.
+ * - D2 (council pass 3, 2026-10-22, this file updated by lane E): GET / no
+ *   longer hands out a cookie; only a browser presenting the new process's
+ *   token gets one, and this tab cannot obtain that token. Silent recovery is
+ *   impossible by design, so the honest contract is: the 403 is an answer (the
+ *   server is back, the session that lived in the old process is gone), the
+ *   probe does NOT fetch /, and the owning view is told the session ended with
+ *   a message saying to reopen StudyLoop from the terminal or launcher.
  *
  * Run with:  node --test 'packages/studyloop/tests/js/*.test.js'
  */
@@ -80,22 +84,17 @@ const jsonResponse = (status, body) => ({
   clone() { return jsonResponse(status, body); },
 });
 
-/* A server that was restarted under this tab: the first state probe sees the
-   old cookie and refuses; GET / hands out the new one; the next probe answers
-   with no live session. */
+/* A server that was restarted under this tab: every state probe sees the
+   old cookie and is refused; GET / would only answer the sign-in page. */
 function restartedServer() {
-  let cookieRefreshed = false;
   return async (url) => {
     fetched.push(url);
-    if (url === '/') { cookieRefreshed = true; return jsonResponse(200, {}); }
+    if (url === '/') return jsonResponse(200, {});
     if (url.startsWith('/api/session/state')) {
-      if (!cookieRefreshed) {
-        return jsonResponse(403, {
-          code: 'server_secret_required',
-          detail: 'This request lacks the StudyLoop server cookie. Reload the page.',
-        });
-      }
-      return jsonResponse(200, { study_session_id: null, mode: null, last_release: null });
+      return jsonResponse(403, {
+        code: 'server_secret_required',
+        detail: 'This request lacks the StudyLoop server cookie. Reload the page.',
+      });
     }
     throw new Error(`unexpected fetch ${url}`);
   };
@@ -113,18 +112,33 @@ function connectedConsole() {
 
 const endedEvents = () => dispatched.filter((ev) => ev.type === 'study-session-ended');
 
-test('a stale server cookie after a restart is refreshed once and the ended session is announced', async () => {
+test('a stale server cookie after a restart announces the ending and says to reopen, without fetching /', async () => {
   globalThis.fetch = restartedServer();
   const { view, ws } = connectedConsole();
 
   await view._reportIfSessionGone(DETAIL, ws);
 
-  assert.equal(fetched.filter((u) => u === '/').length, 1, 'GET / exactly once for the new cookie');
+  assert.equal(fetched.filter((u) => u === '/').length, 0,
+    'no GET /: it can no longer hand out a cookie, only the sign-in page');
+  assert.equal(fetched.filter((u) => u.startsWith('/api/session/state')).length, 1,
+    'the first 403 is the answer; no retries spent on it');
   const ended = endedEvents();
   assert.equal(ended.length, 1, 'the owning view is told the session ended');
-  assert.equal(ended[0].detail.reason, 'connection_lost');
+  assert.equal(ended[0].detail.reason, 'server_restarted');
+  assert.match(ended[0].detail.message, /^Your session ended/);
   assert.match(ended[0].detail.message, /was studyloop web restarted\?/);
-  assert.match(view.status, /Session ended/);
+  assert.match(ended[0].detail.message, /Reopen StudyLoop from the terminal or launcher/);
+  assert.match(view.status, /reopen StudyLoop from the terminal/);
+});
+
+test('a probe abandoned by a newer socket announces nothing, even on the stale-cookie 403', async () => {
+  globalThis.fetch = restartedServer();
+  const { view, ws } = connectedConsole();
+  view._ws = new FakeSocket('/api/session/ws?study_session_id=sess-2');
+
+  await view._reportIfSessionGone(DETAIL, ws);
+
+  assert.equal(endedEvents().length, 0);
 });
 
 test('a 403 that is not the stale-cookie code is still treated as unreachable (no cookie refresh)', async () => {

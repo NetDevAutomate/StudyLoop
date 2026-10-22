@@ -65,6 +65,7 @@ def _run_studyloop_web(
 
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "config.yaml"))
     monkeypatch.delenv("STUDYLOOP_WEB_PASSWORD", raising=False)
+    monkeypatch.delenv("STUDYLOOP_WEB_TOKEN", raising=False)
     monkeypatch.setattr("studyloop.cli._web._candidate_lan_hosts", lambda: ("192.168.1.42",))
     captured: dict[str, Any] = {}
 
@@ -76,6 +77,15 @@ def _run_studyloop_web(
     result = CliRunner().invoke(cli, ["web", *args])
     assert result.exit_code == 0, result.output
     return captured, result.output
+
+
+def _printed_token(output: str) -> str:
+    """The sign-in token ``studyloop web`` printed inside its URL (D2)."""
+    import re
+
+    match = re.search(r"\?token=([A-Za-z0-9_-]{32,})", output)
+    assert match, f"studyloop web printed no sign-in URL:\n{output}"
+    return match.group(1)
 
 
 # ---------------------------------------------------------------------------
@@ -186,17 +196,19 @@ class TestServerSecret:
             ws.receive_json()
         assert exc_info.value.code == 1008
 
-    def test_browser_flow_with_the_cookie_from_index_reaches_api_and_terminal(
+    def test_browser_flow_with_the_cookie_from_the_sign_in_reaches_api_and_terminal(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """The normal flow: load ``/``, keep its cookie, then the API and the terminal work."""
-        captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+        """The normal flow: open the printed sign-in URL, keep its cookie, then the API
+        and the terminal work. (Before D2 a bare ``/`` handed the cookie out.)"""
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path)
         _start_stub_session(tmp_path)
         client = TestClient(captured["app"])
 
-        index = client.get("/")
-        assert index.status_code == 200
-        set_cookie = index.headers["set-cookie"]
+        assert "set-cookie" not in client.get("/").headers
+        sign_in = client.get(f"/?token={_printed_token(output)}", follow_redirects=False)
+        assert sign_in.status_code == 303
+        set_cookie = sign_in.headers["set-cookie"]
         assert set_cookie.startswith("studyloop_auth=")
         assert "httponly" in set_cookie.lower()
         assert "samesite=strict" in set_cookie.lower()
@@ -253,34 +265,45 @@ class TestServerSecret:
         response = client.post(ROUTE, json={})
         assert response.json().get("code") != "server_secret_required"
 
-    def test_secret_is_never_printed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_secret_is_printed_only_inside_the_sign_in_url(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """D2 changed this contract: the secret was never printed; now it is printed
+        once, as the token in the sign-in URL (Jupyter's model), and nowhere else."""
         captured, output = _run_studyloop_web(monkeypatch, tmp_path)
+        token = _printed_token(output)
         client = TestClient(captured["app"])
-        client.get("/")
+        client.get(f"/?token={token}")
         secret = client.cookies["studyloop_auth"]
         assert len(secret) >= 32
-        assert secret not in output
+        assert secret == token
+        assert output.count(secret) == 1
+        assert f"http://127.0.0.1:8567/?token={secret}" in output
 
     def test_each_studyloop_web_process_mints_its_own_secret(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         secrets_seen = set()
         for _ in range(2):
-            captured, _ = _run_studyloop_web(monkeypatch, tmp_path)
+            captured, output = _run_studyloop_web(monkeypatch, tmp_path)
             client = TestClient(captured["app"])
-            client.get("/")
+            client.get(f"/?token={_printed_token(output)}")
             secrets_seen.add(client.cookies["studyloop_auth"])
         assert len(secrets_seen) == 2
 
     def test_lan_401_does_not_hand_out_the_cookie(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """The cookie is set on a successful ``/`` only, never beside a Basic-auth refusal."""
-        captured, _ = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
+        """The cookie never comes beside a Basic-auth refusal, even for the right token."""
+        captured, output = _run_studyloop_web(monkeypatch, tmp_path, "--lan")
         client = TestClient(captured["app"])
-        response = client.get("/", headers={"Host": "192.168.1.42:8567"})
+        lan = {"Host": "192.168.1.42:8567"}
+        response = client.get("/", headers=lan)
         assert response.status_code == 401
         assert "set-cookie" not in response.headers
+        signed = client.get(f"/?token={_printed_token(output)}", headers=lan)
+        assert signed.status_code == 401
+        assert "set-cookie" not in signed.headers
 
     def test_in_process_create_app_leaves_the_cookie_gate_off(self) -> None:
         """``create_app()`` without a secret (tests, embedding) keeps today's behaviour."""

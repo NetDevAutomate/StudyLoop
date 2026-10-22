@@ -242,8 +242,16 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
 
 
 def start_web_background(session_name: str, *, lan: bool = False, password: str = "") -> None:
-    """Start the web dashboard as a background process and open browser."""
+    """Start the web dashboard as a background process and open browser.
+
+    The launcher mints the server secret itself (D2, council pass 3) and hands it
+    to the child through the environment, so it can open the browser at the
+    sign-in URL: the server gives its cookie only to a browser presenting it.
+    """
+    import secrets
+
     from studyloop.output import console
+    from studyloop.web.ws_origin import BOOTSTRAP_QUERY, BOOTSTRAP_TOKEN_ENV
 
     port = _get_web_port()
 
@@ -264,8 +272,12 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
     # root reading /proc/<pid>/environ, which is the same access level `--lan`
     # already grants to this machine's owner. `cli/_web.py`'s `--password`
     # option reads this env var itself (Click `envvar=`) when the flag is
-    # absent, so the child needs no special-casing.
-    child_env = {**os.environ, "STUDYLOOP_WEB_PASSWORD": password} if password else None
+    # absent, so the child needs no special-casing. The server secret goes the
+    # same way, for the same reason, and the child scrubs both on start.
+    token = secrets.token_urlsafe(32)
+    child_env = {**os.environ, BOOTSTRAP_TOKEN_ENV: token}
+    if password:
+        child_env["STUDYLOOP_WEB_PASSWORD"] = password
     try:
         proc = subprocess.Popen(
             cmd,
@@ -282,7 +294,13 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
         write_session_state(
             {"web_pid": proc.pid, "web_port": port, TOKEN_KEY: mint_practice_check_token()}
         )
-        _open_browser(f"http://127.0.0.1:{port}/session")
+        sign_in_url = f"http://127.0.0.1:{port}/session?{BOOTSTRAP_QUERY}={token}"
+        # Printed so a closed tab can be reopened without restarting the session.
+        console.print(f"  Dashboard sign-in: {sign_in_url}", soft_wrap=True)
+        console.print("  [dim]Keep that address to reopen the dashboard in this session.[/dim]")
+        # Readiness is polled on the bare `/`: the token never needs to cross the
+        # wire more often than the one browser open.
+        _open_browser(sign_in_url, ready_url=f"http://127.0.0.1:{port}/")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
 
@@ -351,8 +369,11 @@ def _get_web_port() -> int:
         return 8567
 
 
-def _open_browser(url: str) -> None:
+def _open_browser(url: str, *, ready_url: str | None = None) -> None:
     """Open URL in the configured browser after polling for server readiness.
+
+    *ready_url* is what is polled (default: *url*); the launcher polls the bare
+    ``/`` so the sign-in token is not sent on every probe.
 
     Uses os.fork() to create a child process that survives the parent's
     os.execvp(tmux attach). Daemon threads don't survive exec, but forked
@@ -371,7 +392,7 @@ def _open_browser(url: str) -> None:
         # Poll until server is ready (up to 10 seconds)
         for _ in range(20):
             try:
-                urllib.request.urlopen(url, timeout=1)
+                urllib.request.urlopen(ready_url or url, timeout=1)
                 break
             except Exception:
                 time.sleep(0.5)

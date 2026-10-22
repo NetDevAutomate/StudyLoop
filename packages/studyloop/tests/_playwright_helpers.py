@@ -8,21 +8,25 @@ helpers explicitly, following the precedent set in
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import os
+import secrets
 import socket
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping
+    from collections.abc import Generator, Iterator, Mapping
 
     import requests
     from playwright.sync_api import Browser, BrowserContext, Page
@@ -215,6 +219,14 @@ def start_web_server(
 
     child_env = dict(env) if env is not None else _isolated_child_env(extra_env)
     _refuse_if_env_reaches_real_dirs(child_env)
+    from studyloop.web.ws_origin import BOOTSTRAP_TOKEN_ENV
+
+    # D2: the server hands its cookie only to a client presenting its token. Hand
+    # the child a token the way the launcher does, so this process knows it and
+    # every client here (urllib, requests, websockets, a Playwright page) signs
+    # in with it through the server's real front door. A caller's own wins.
+    token = child_env.get(BOOTSTRAP_TOKEN_ENV) or secrets.token_urlsafe(32)
+    child_env[BOOTSTRAP_TOKEN_ENV] = token
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
     if extra_args:
         cmd.extend(extra_args)
@@ -239,9 +251,13 @@ def start_web_server(
     )
     # Discoverable by tests and by a failing teardown.
     proc.studyloop_log_path = log_path  # type: ignore[attr-defined]
+    proc.studyloop_token = token  # type: ignore[attr-defined]
     # Every start path funnels through here, so registering the log at this one
     # point is what makes the per-test server-error check unbypassable.
     _register_server_log(log_path)
+    # ...and registering the token here is what lets every client sign in
+    # without each test file learning the bootstrap.
+    register_server_token(port, token)
 
     def _fail(reason: str) -> RuntimeError:
         tail = _read_log_tail(log_path)
@@ -285,20 +301,69 @@ def _port_is_free(port: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Server cookie for out-of-band clients (F-WEB-20 follow-up)
+# Signing clients in (F-WEB-20 follow-up; D2 bootstrap token, council pass 3)
 # ---------------------------------------------------------------------------
 #
-# `studyloop web` mints a per-process secret. GET / hands it to the browser as
-# the HttpOnly `studyloop_auth` cookie, and every /api/* request (403) and both
-# WebSockets (1008) are refused without it. A Playwright page loads / first and
-# keeps the cookie like any browser does. A test that drives a real server out
-# of band -- urllib, requests, websockets -- has to do the same thing: load /
-# once and present the cookie. These helpers are the one way tests do that; they
-# change nothing about the server.
+# `studyloop web` mints a per-process secret; every /api/* request (403) and both
+# WebSockets (1008) are refused without it as the HttpOnly `studyloop_auth`
+# cookie. Since D2 the server hands that cookie only to a client presenting the
+# secret as `/?token=<secret>` (303 + Set-Cookie); a bare `/` sets nothing. So a
+# test needs the token, and `start_web_server` is where it comes from: it passes
+# the child a token through STUDYLOOP_WEB_TOKEN, as the launcher does, and
+# registers it here by port. Every helper below signs in through the server's
+# real front door with it; they change nothing about the server.
 #
-# Stateless by design: each call loads / afresh, so a server restarted on the
-# same port (new process, new secret) is never answered with a stale cookie.
-# Hold the returned opener/session for a series of calls to one server.
+# Out-of-band clients (urllib, requests, websockets) use server_cookie_header /
+# server_opener / server_session. Playwright pages need nothing: importing this
+# module wraps Page.goto so the first navigation of a context to a registered
+# server signs that context in first (bootstrap_browser_context), exactly as the
+# launcher's token URL does, and then navigates where the test asked.
+#
+# A server started some other way (its own Popen) has a token this process never
+# saw: pass STUDYLOOP_WEB_TOKEN in its env and call register_server_token, or
+# pass token= to the helpers. They refuse with a RuntimeError otherwise.
+#
+# Stateless per call: each helper call signs in afresh, so a server restarted on
+# the same port (new process, new token, re-registered by start_web_server) is
+# never answered with a stale cookie. Hold the returned opener/session for a
+# series of calls to one server.
+
+#: Sign-in token of every server this process started, by origin.
+_SERVER_TOKENS: dict[str, str] = {}
+
+
+def _origin(url: str) -> str:
+    parts = urllib.parse.urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}".lower()
+
+
+def register_server_token(port: int, token: str) -> None:
+    """Record *token* as the sign-in token of the server listening on *port*."""
+    for host in ("127.0.0.1", "localhost"):
+        _SERVER_TOKENS[f"http://{host}:{port}"] = token
+
+
+def server_token(base_url: str) -> str:
+    """The sign-in token of the server at *base_url*; RuntimeError when unknown."""
+    token = _SERVER_TOKENS.get(_origin(base_url))
+    if token is None:
+        msg = (
+            f"no sign-in token is known for {_origin(base_url)}: start it with "
+            "start_web_server (which registers one), or give the child "
+            "STUDYLOOP_WEB_TOKEN and call register_server_token(port, token), or "
+            "pass token= (D2: a bare GET / no longer hands out the server cookie)"
+        )
+        raise RuntimeError(msg)
+    return token
+
+
+def sign_in_url(base_url: str, *, token: str | None = None, path: str = "/") -> str:
+    """The URL a browser opens to sign in, as ``studyloop web`` prints it."""
+    from studyloop.web.ws_origin import BOOTSTRAP_QUERY
+
+    token = token or server_token(base_url)
+    query = urllib.parse.urlencode({BOOTSTRAP_QUERY: token})
+    return f"{_origin(base_url)}{path}?{query}"
 
 
 def _basic_auth_value(username: str, password: str) -> str:
@@ -312,19 +377,24 @@ def server_cookie_header(
     *,
     basic_auth: tuple[str, str] | None = None,
     timeout: float = 10.0,
+    token: str | None = None,
 ) -> str:
-    """Load ``/`` from the server at *base_url*; return its auth ``Cookie`` value.
+    """Sign in to the server at *base_url*; return its auth ``Cookie`` value.
+
+    Loads the sign-in URL (``/?token=<token>``) and keeps the cookie the 303
+    sets. *token* defaults to the one :func:`start_web_server` registered.
 
     The result is ``"studyloop_auth=<secret>"``: the value for a ``Cookie``
     header on a urllib ``Request``, a requests call, or
     ``websockets`` ``connect(additional_headers=...)``.
 
     *basic_auth* is ``(username, password)`` for a server running with LAN
-    password protection, whose ``/`` answers 401 and sets no cookie without it.
+    password protection, which answers 401 and sets no cookie without it.
 
-    Raises ``RuntimeError`` when ``/`` answers without setting the cookie. Every
-    real ``studyloop web`` sets it, so its absence is a server regression and is
-    reported as one here, rather than as a 403 on some later ``/api`` call.
+    Raises ``RuntimeError`` when the sign-in sets no cookie. Every real
+    ``studyloop web`` sets it for its own token, so its absence is a server
+    regression and is reported as one here, rather than as a 403 on some later
+    ``/api`` call.
     """
     import http.cookiejar
 
@@ -332,7 +402,7 @@ def server_cookie_header(
 
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    request = urllib.request.Request(base_url.rstrip("/") + "/")
+    request = urllib.request.Request(sign_in_url(base_url, token=token))
     if basic_auth is not None:
         request.add_header("Authorization", _basic_auth_value(*basic_auth))
     with opener.open(request, timeout=timeout) as response:
@@ -341,8 +411,8 @@ def server_cookie_header(
         if cookie.name == AUTH_COOKIE and cookie.value:
             return f"{AUTH_COOKIE}={cookie.value}"
     msg = (
-        f"GET {base_url.rstrip('/')}/ answered without setting the {AUTH_COOKIE} "
-        "cookie; a real `studyloop web` always sets it (RequestBoundaryMiddleware)"
+        f"signing in at {_origin(base_url)}/?token=... set no {AUTH_COOKIE} cookie; a "
+        "real `studyloop web` always sets it for its own token (BootstrapTokenMiddleware)"
     )
     raise RuntimeError(msg)
 
@@ -352,6 +422,7 @@ def server_opener(
     *,
     basic_auth: tuple[str, str] | None = None,
     timeout: float = 10.0,
+    token: str | None = None,
 ) -> urllib.request.OpenerDirector:
     """A urllib opener that presents *base_url*'s server cookie on every request.
 
@@ -361,7 +432,8 @@ def server_opener(
     so use it only against the server it was built for.
     """
     opener = urllib.request.build_opener()
-    headers = [("Cookie", server_cookie_header(base_url, basic_auth=basic_auth, timeout=timeout))]
+    cookie = server_cookie_header(base_url, basic_auth=basic_auth, timeout=timeout, token=token)
+    headers = [("Cookie", cookie)]
     if basic_auth is not None:
         headers.append(("Authorization", _basic_auth_value(*basic_auth)))
     opener.addheaders = [*opener.addheaders, *headers]
@@ -373,17 +445,103 @@ def server_session(
     *,
     basic_auth: tuple[str, str] | None = None,
     timeout: float = 10.0,
+    token: str | None = None,
 ) -> requests.Session:
     """A ``requests.Session`` that presents *base_url*'s server cookie on every call."""
     import requests
 
     session = requests.Session()
     session.headers["Cookie"] = server_cookie_header(
-        base_url, basic_auth=basic_auth, timeout=timeout
+        base_url, basic_auth=basic_auth, timeout=timeout, token=token
     )
     if basic_auth is not None:
         session.auth = basic_auth
     return session
+
+
+def bootstrap_browser_context(
+    context: BrowserContext, base_url: str, *, token: str | None = None
+) -> None:
+    """Sign a Playwright *context* in to the server at *base_url*.
+
+    Requests the sign-in URL through ``context.request``, which shares the
+    context's cookie store and HTTP credentials, so the server's own 303 sets
+    the cookie in the browser exactly as following the launcher's URL does. A
+    no-op when the context already holds this server's cookie.
+    """
+    from studyloop.web.ws_origin import AUTH_COOKIE
+
+    origin = _origin(base_url)
+    token = token or server_token(origin)
+
+    def _signed_in() -> bool:
+        return any(
+            c.get("name") == AUTH_COOKIE and c.get("value") == token
+            for c in context.cookies(origin)
+        )
+
+    if _signed_in():
+        return
+    response = context.request.get(sign_in_url(origin, token=token), max_redirects=0)
+    try:
+        status = response.status
+    finally:
+        response.dispose()
+    if status != 303 or not _signed_in():
+        msg = (
+            f"signing a browser context in at {origin} answered {status} and set no "
+            f"{AUTH_COOKIE} cookie (expected 303 + Set-Cookie). A 401 means the "
+            "context needs http_credentials for a password-protected server."
+        )
+        raise RuntimeError(msg)
+
+
+#: True inside :func:`browser_sign_in_paused`.
+_SIGN_IN_PAUSED = False
+
+
+@contextlib.contextmanager
+def browser_sign_in_paused() -> Iterator[None]:
+    """Let ``page.goto`` reach a registered server without signing in first.
+
+    For tests of the sign-in itself: the bare page, the form, a wrong token.
+    """
+    global _SIGN_IN_PAUSED
+    previous, _SIGN_IN_PAUSED = _SIGN_IN_PAUSED, True
+    try:
+        yield
+    finally:
+        _SIGN_IN_PAUSED = previous
+
+
+def _install_page_goto_sign_in() -> None:
+    """Wrap Playwright's ``Page.goto`` once per process (see the section comment).
+
+    Only navigations to a server :func:`start_web_server` registered are touched,
+    and only when the URL does not carry a token of its own.
+    """
+    try:
+        from playwright.sync_api import Page as _Page
+    except ImportError:  # pragma: no cover - playwright is a dev dependency
+        return
+    if getattr(_Page.goto, "_studyloop_sign_in", False):
+        return
+    original_goto = _Page.goto
+
+    @functools.wraps(original_goto)
+    def goto(self: Any, url: str, *args: Any, **kwargs: Any) -> Any:
+        from studyloop.web.ws_origin import BOOTSTRAP_QUERY
+
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        if not _SIGN_IN_PAUSED and _origin(url) in _SERVER_TOKENS and BOOTSTRAP_QUERY not in query:
+            bootstrap_browser_context(self.context, url)
+        return original_goto(self, url, *args, **kwargs)
+
+    goto._studyloop_sign_in = True  # type: ignore[attr-defined]
+    _Page.goto = goto  # type: ignore[method-assign]
+
+
+_install_page_goto_sign_in()
 
 
 # ---------------------------------------------------------------------------

@@ -75,6 +75,19 @@ def web(
 
     _os.environ.pop("STUDYLOOP_WEB_PASSWORD", None)
 
+    # D2: the launcher hands over the server secret it minted the same way, so it
+    # can open the browser at the sign-in URL. Scrubbed for the same reason as the
+    # password: every child this server spawns would otherwise inherit it.
+    from studyloop.web.ws_origin import BOOTSTRAP_QUERY, BOOTSTRAP_TOKEN_ENV, is_well_formed_secret
+
+    launcher_token = _os.environ.pop(BOOTSTRAP_TOKEN_ENV, "")
+    if launcher_token and not is_well_formed_secret(launcher_token):
+        msg = (
+            f"{BOOTSTRAP_TOKEN_ENV} must be at least 32 URL-safe characters "
+            "(A-Z, a-z, 0-9, '-', '_'); refusing to start with it."
+        )
+        raise click.ClickException(msg)
+
     try:
         import uvicorn
     except ImportError:
@@ -136,12 +149,14 @@ def web(
         console.print(f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}")
 
     host = "0.0.0.0" if lan else "127.0.0.1"
-    # Per-process server secret (F-WEB-20, 2026-10-21 review): `/` hands it to
-    # the browser as an HttpOnly, SameSite=Strict cookie and `/api/*` plus both
-    # WebSockets require it, so no cross-site page can drive the API or the
-    # terminal. Never printed, never stored: a restart mints a new one and an
-    # open tab picks it up on its next load of `/`.
-    server_secret = secrets.token_urlsafe(32)
+    # Per-process server secret (F-WEB-20, 2026-10-21 review): `/api/*` plus both
+    # WebSockets require it as an HttpOnly, SameSite=Strict cookie, and `/` hands
+    # that cookie only to a browser presenting the secret as `?token=` (D2,
+    # council pass 3), so neither a cross-site page nor a local process that
+    # merely loads `/` can drive the API or the terminal. Printed once, inside the
+    # sign-in URL (Jupyter's model); never stored. A restart mints a new one, and
+    # a tab from before it must be reopened from the new URL.
+    server_secret = launcher_token or secrets.token_urlsafe(32)
     app = create_app(
         study_dirs=study_dirs,
         username=username,
@@ -155,9 +170,15 @@ def web(
         port=port,
         lan_enabled=lan,
         lan_hosts=_candidate_lan_hosts() if lan else (),
+        path=f"/?{BOOTSTRAP_QUERY}={server_secret}",
     )
+    # soft_wrap: a sign-in URL folded across two lines cannot be copied or clicked.
     for line in format_web_access_lines(access_info):
-        console.print(line)
+        console.print(line, soft_wrap=True)
+    console.print(
+        "  [dim]Open that address to sign a browser in; the token is new each time "
+        "studyloop web starts.[/dim]"
+    )
     # loop="asyncio" is required for PTYTransport: uvloop reserves SIGCHLD
     # for its own subprocess tracking and refuses to install a user handler,
     # which our PTY child-exit detection depends on. The standard asyncio

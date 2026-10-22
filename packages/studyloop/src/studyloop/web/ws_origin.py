@@ -16,6 +16,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import os
+import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -85,9 +86,16 @@ def is_in_process_test_scope(scope: Mapping[str, Any]) -> bool:
 
 
 #: The cookie carrying the per-process server secret (F-WEB-20). ``studyloop web``
-#: mints the secret at start; ``/`` hands it to the browser HttpOnly and
-#: SameSite=Strict; ``/api/*`` and both WebSockets require it.
+#: mints the secret at start (or takes the launcher's, :data:`BOOTSTRAP_TOKEN_ENV`);
+#: ``/`` sets it HttpOnly and SameSite=Strict only for a browser that presents the
+#: secret as ``?token=`` (D2, ``BootstrapTokenMiddleware``); ``/api/*`` and both
+#: WebSockets require it.
 AUTH_COOKIE = "studyloop_auth"
+
+#: How the launcher hands ``studyloop web`` the per-process secret it minted, so
+#: it can open the browser at the sign-in URL (D2, council pass 3). Environment,
+#: not argv, for the same reason as the LAN password: argv is world-readable.
+BOOTSTRAP_TOKEN_ENV = "STUDYLOOP_WEB_TOKEN"
 
 
 def requires_server_secret(path: str) -> bool:
@@ -108,10 +116,33 @@ def server_secret_presented(cookie_header: str, secret: str) -> bool:
     """Whether the ``Cookie`` header carries *secret*, compared in constant time."""
     from starlette.requests import cookie_parser
 
-    presented = cookie_parser(cookie_header).get(AUTH_COOKIE, "")
-    # Bytes, not str: compare_digest raises TypeError on non-ASCII str, and the
-    # presented value is whatever the client chose to send.
-    return bool(presented) and hmac.compare_digest(presented.encode(), secret.encode())
+    return secret_matches(cookie_parser(cookie_header).get(AUTH_COOKIE, ""), secret)
+
+
+#: The query parameter, and the sign-in form's field, that carries the token.
+BOOTSTRAP_QUERY = "token"
+
+#: What ``secrets.token_urlsafe(32)`` produces, and the least a launcher may hand
+#: over: the value goes into a URL and a cookie, so URL-safe characters only.
+_SECRET_SHAPE = re.compile(r"[A-Za-z0-9_-]{32,}")
+
+
+def is_well_formed_secret(value: str) -> bool:
+    """Whether *value* is strong and plain enough to serve as the server secret."""
+    return bool(_SECRET_SHAPE.fullmatch(value))
+
+
+def secret_matches(presented: str, secret: str) -> bool:
+    """Whether *presented* equals *secret*, compared in constant time.
+
+    Bytes, not str: ``compare_digest`` raises ``TypeError`` on non-ASCII str, and
+    the presented value is whatever the client chose to send.
+    """
+    return (
+        bool(presented)
+        and bool(secret)
+        and hmac.compare_digest(presented.encode(), secret.encode())
+    )
 
 
 def host_allowed(host_header: str, *, in_process_test: bool = False) -> bool:
