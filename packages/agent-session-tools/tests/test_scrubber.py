@@ -807,6 +807,121 @@ def test_pgp_public_key_block_is_not_a_secret() -> None:
     assert result.findings == []
 
 
+# ===========================================================================
+# _private_key_spans cost (plan 4, D#1). The masking loop used to rebuild the
+# whole string once per matched span, so a text with many armour lines cost
+# quadratic time (20 000 bare armour lines: 1.24 s). The spans it returns
+# are a function of the text alone, so the fix must return exactly what the
+# old loop did, only in one pass per pattern.
+# ===========================================================================
+
+
+def _reference_private_key_spans(text: str) -> list[tuple[int, int]]:
+    """The pre-D#1 algorithm, kept verbatim as the oracle for the output."""
+    from agent_session_tools.scrubber import (
+        _PEM_BLOCK,
+        _PEM_BODY_CHAR,
+        _PEM_FOOT,
+        _PEM_HEAD,
+    )
+
+    if "PRIVATE KEY-----" not in text and "PRIVATE KEY BLOCK-----" not in text:
+        return []
+    spans: list[tuple[int, int]] = []
+    masked = text
+    for pattern in (_PEM_BLOCK, _PEM_HEAD):
+        for match in pattern.finditer(masked):
+            start, end = match.span()
+            spans.append((start, end))
+            masked = masked[:start] + "\0" * (end - start) + masked[end:]
+    for match in _PEM_FOOT.finditer(masked):
+        start = match.start()
+        if masked.endswith(("\n", "\\n"), 0, start):
+            while (
+                start > 0
+                and _PEM_BODY_CHAR.fullmatch(masked[start - 1])
+                and not masked.endswith("-----", 0, start)
+            ):
+                start -= 1
+        spans.append((start, match.end()))
+    return sorted(spans)
+
+
+def _many_armour_lines(count: int) -> str:
+    """``count`` bare BEGIN armour lines, each with a short inline tail."""
+    return "\n".join([_pem_marker("BEGIN", "RSA") + " " + "A" * 60] * count)
+
+
+def _mixed_key_material(groups: int) -> str:
+    """Every shape the span finder handles, repeated: whole blocks, a cut-off
+    head, a cut-off tail, a flattened paste and prose beside a bare armour."""
+    parts: list[str] = []
+    for i in range(groups):
+        parts += [
+            _pem("RSA", f"whole-{i}"),
+            _pem_marker("BEGIN", "EC") + "\n" + _pem_body(f"head-{i}")[0],
+            _pem_body(f"tail-{i}")[1] + "\n" + _pem_marker("END", "EC"),
+            "x " + _pem_marker("BEGIN", "") + "".join(_pem_body(f"flat-{i}")[:2]),
+            "prose " + _pem_marker("BEGIN", "RSA") + " and nothing follows",
+            _pgp(f"pgp-{i}", headers=_PGP_HEADERS),
+        ]
+    return "\n".join(parts)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(_many_armour_lines(2000), id="2000-armour-lines"),
+        pytest.param(_mixed_key_material(60), id="mixed-shapes"),
+    ],
+)
+def test_private_key_spans_match_the_reference_algorithm(
+    text: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import agent_session_tools.scrubber as scrubber_module
+
+    spans = scrubber_module._private_key_spans(text)
+    assert spans == _reference_private_key_spans(text)
+    assert len(spans) > 0
+    # And the redaction built on them: byte-identical output.
+    redacted = Scrubber().scrub(text).text
+    monkeypatch.setattr(
+        scrubber_module, "_private_key_spans", _reference_private_key_spans
+    )
+    assert redacted == Scrubber().scrub(text).text
+
+
+def _best_of(fn, repeats: int) -> float:
+    import time
+
+    best = float("inf")
+    for _ in range(repeats):
+        started = time.perf_counter()
+        fn()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+def test_private_key_spans_cost_grows_linearly_with_armour_lines() -> None:
+    """Ten times the armour lines may cost ten times the work, not a hundred.
+
+    Compared per line so the guard reads as a linearity check: the cost of one
+    line in a 2 000-line text must stay within 3x the cost of one line in a
+    200-line text. The old loop measured about 5.7x here (and 25x at 20 000
+    lines); one pass per pattern measures about 1x. Best of several runs, so
+    a busy machine cannot fail it by a single slow sample.
+    """
+    from agent_session_tools.scrubber import _private_key_spans
+
+    small, large = _many_armour_lines(200), _many_armour_lines(2000)
+    per_line_small = _best_of(lambda: _private_key_spans(small), 7) / 200
+    per_line_large = _best_of(lambda: _private_key_spans(large), 5) / 2000
+    assert per_line_large <= 3 * per_line_small, (
+        f"per-line cost grew {per_line_large / per_line_small:.1f}x "
+        "from 200 to 2000 armour lines; the span finder is not linear"
+    )
+
+
 class TestScrubberDeterministicPlaceholders:
     def test_same_secret_same_placeholder(self):
         s = Scrubber()

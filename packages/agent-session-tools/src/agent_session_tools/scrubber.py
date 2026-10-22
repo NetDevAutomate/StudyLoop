@@ -134,6 +134,21 @@ _PEM_HEAD = re.compile(
 _PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
 
 
+def _mask(text: str, spans: list[tuple[int, int]]) -> str:
+    """Overwrite each span with NULs of the same length, in one pass.
+
+    ``spans`` are one ``finditer`` pass's matches: sorted and disjoint. The
+    length is unchanged, so every offset found so far still holds.
+    """
+    pieces: list[str] = []
+    cursor = 0
+    for start, end in spans:
+        pieces += [text[cursor:start], "\0" * (end - start)]
+        cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
 def _private_key_spans(text: str) -> list[tuple[int, int]]:
     """Return the sorted, disjoint spans of PEM private-key material in text.
 
@@ -145,14 +160,19 @@ def _private_key_spans(text: str) -> list[tuple[int, int]]:
     if "PRIVATE KEY-----" not in text and "PRIVATE KEY BLOCK-----" not in text:
         return []
     spans: list[tuple[int, int]] = []
-    # Each claimed span is overwritten with NULs (same length, so offsets
-    # hold); NUL is not a body character, so later passes stop at it.
+    # Each pass runs over the text with every earlier pass's spans overwritten
+    # with NULs (same length, so offsets hold); NUL is not a body character,
+    # so later passes stop at it. A pass's own matches come from one
+    # ``finditer`` over the string as it stood before the pass, so they are
+    # masked together afterwards, once: masking inside the loop would rebuild
+    # the whole string per span and cost quadratic time in the number of
+    # armour lines (D#1) without changing a single match.
     masked = text
     for pattern in (_PEM_BLOCK, _PEM_HEAD):
-        for match in pattern.finditer(masked):
-            start, end = match.span()
-            spans.append((start, end))
-            masked = masked[:start] + "\0" * (end - start) + masked[end:]
+        found = [match.span() for match in pattern.finditer(masked)]
+        if found:
+            spans += found
+            masked = _mask(masked, found)
     for match in _PEM_FOOT.finditer(masked):
         start = match.start()
         if masked.endswith(("\n", "\\n"), 0, start):
