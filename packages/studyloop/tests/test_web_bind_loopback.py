@@ -79,11 +79,20 @@ class TestListenAddresses:
 
         assert listen_addresses("fd7a:115c:a1e0::1") == ("fd7a:115c:a1e0::1", "127.0.0.1")
 
-    @pytest.mark.parametrize("loopback", ["127.0.0.1", "::1", "127.0.0.2"])
-    def test_a_loopback_address_is_one_listener(self, loopback: str) -> None:
+    @pytest.mark.parametrize("loopback", ["127.0.0.1", "127.0.0.2"])
+    def test_an_ipv4_loopback_address_is_one_listener(self, loopback: str) -> None:
         from studyloop.cli._web import listen_addresses
 
         assert listen_addresses(loopback) == (loopback,)
+
+    def test_ipv6_loopback_also_listens_on_ipv4_loopback(self) -> None:
+        """``::1`` is loopback, but not the loopback the hop and the readiness poll dial:
+        they use ``127.0.0.1``, and an IPv6 socket on ``::1`` does not answer it. A
+        ``--bind ::1`` server therefore needs the second listener like any other address
+        (council pass 4: gpt-6-astra and grok-4.6 both pressed this)."""
+        from studyloop.cli._web import listen_addresses
+
+        assert listen_addresses("::1") == ("::1", "127.0.0.1")
 
     def test_the_deprecated_wildcard_is_one_listener(self) -> None:
         """0.0.0.0 already includes loopback; a second socket would collide with it."""

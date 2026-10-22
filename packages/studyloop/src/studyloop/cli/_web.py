@@ -84,18 +84,19 @@ LOOPBACK = "127.0.0.1"
 def listen_addresses(host: str) -> tuple[str, ...]:
     """The addresses ``studyloop web`` listens on for a validated bind *host*.
 
-    A loopback address, or the deprecated wildcard (which already includes
-    loopback), is one listener. Any other address is two: that address AND
-    :data:`LOOPBACK` (review-4 item 3, ADR-0019 consequences), so a server
-    bound to a tailnet address still answers ``studyloop drill`` and the other
-    local consumers that assume loopback. Host and Origin checks (ADR-0014) are
-    made per request against its own ``Host`` header, so they hold unchanged on
-    both listeners.
+    An IPv4 loopback address (where every local consumer already dials), or the
+    deprecated wildcard (which already includes loopback), is one listener. Any
+    other address is two: that address AND :data:`LOOPBACK` (review-4 item 3,
+    ADR-0019 consequences), so a server bound to a tailnet address, or to
+    ``::1``, still answers ``studyloop drill`` and the other local consumers
+    that dial ``127.0.0.1``; an IPv6 socket on ``::1`` does not. Host and Origin
+    checks (ADR-0014) are made per request against its own ``Host`` header, so
+    they hold unchanged on both listeners.
     """
     import ipaddress
 
     address = ipaddress.ip_address(host)
-    if address.is_loopback or address.is_unspecified:
+    if address.is_unspecified or (address.version == 4 and address.is_loopback):
         return (host,)
     return (host, LOOPBACK)
 
