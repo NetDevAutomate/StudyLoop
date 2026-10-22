@@ -339,3 +339,40 @@ class TestBasicAuthMiddlewareExists:
         from studyloop.web.auth import BasicAuthMiddleware
 
         assert callable(BasicAuthMiddleware)
+
+
+# ---------------------------------------------------------------------------
+# The practice_check hop is not a browser and holds no password
+# ---------------------------------------------------------------------------
+
+
+def test_the_practice_check_hop_is_not_asked_for_the_basic_password() -> None:
+    """``studyloop drill`` posts with the owner-only capability only (hop.py never sends
+    ``Authorization``); a password-gated server must let that reach the route, which
+    then judges loopback + token itself. Before the fix every ``--bind``/``--lan``
+    session answered 401 and the mentor was never told.
+    """
+    from fastapi.testclient import TestClient
+
+    from studyloop.modules import hop
+    from studyloop.web.app import create_app
+
+    app = create_app(study_dirs=[], username="study", password="pw", server_secret="s" * 40)
+    client = TestClient(app, client=("127.0.0.1", 50000))
+    headers = {hop.TOKEN_HEADER: "x" * 43, "Host": "127.0.0.1:8567"}
+
+    response = client.post(hop.ROUTE, json={}, headers=headers)
+
+    assert response.status_code != 401 or "www-authenticate" not in response.headers, (
+        "Basic auth answered before the hop route could"
+    )
+    # Positive control: the same request WITHOUT the hop header is still gated.
+    plain = client.post(hop.ROUTE, json={}, headers={"Host": "127.0.0.1:8567"})
+    assert plain.status_code == 401 and plain.headers.get("www-authenticate", "").startswith(
+        "Basic"
+    )
+    # And any other path still is, hop header or not (the exemption is the one route).
+    other = client.get("/", headers=headers)
+    assert other.status_code == 401 and other.headers.get("www-authenticate", "").startswith(
+        "Basic"
+    )

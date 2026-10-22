@@ -42,6 +42,15 @@ class BasicAuthMiddleware:
         if not self._password or scope_type not in {"http", "websocket"}:
             await self.app(scope, receive, send)
             return
+        if scope_type == "http" and _is_practice_check_hop(scope):
+            # `studyloop drill` (a CLI process, no browser, no password) posts its
+            # result here with the per-session capability from the owner-only state
+            # file; the route admits loopback peers only and checks that token in
+            # constant time, which is a stronger gate than Basic on a cleartext
+            # link. Without this, every `--bind`/`--lan` session answered the hop
+            # 401 and the mentor was never told (review-4 lane K, found-not-fixed).
+            await self.app(scope, receive, send)
+            return
 
         auth_header = Headers(scope=scope).get("authorization", "")
         if self._check_auth(auth_header):
@@ -81,3 +90,12 @@ class BasicAuthMiddleware:
         user_ok = hmac.compare_digest(username, self._username)
         pass_ok = hmac.compare_digest(password, self._password)
         return user_ok and pass_ok
+
+
+def _is_practice_check_hop(scope: Scope) -> bool:
+    """Whether this request is the loopback practice_check hop presenting its own token."""
+    from studyloop.modules.hop import ROUTE, TOKEN_HEADER
+
+    if scope.get("path") != ROUTE:
+        return False
+    return bool(Headers(scope=scope).get(TOKEN_HEADER.lower(), ""))
