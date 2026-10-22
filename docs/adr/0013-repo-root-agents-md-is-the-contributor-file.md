@@ -77,10 +77,10 @@ Grounding adopted by the council: separation of concerns (the two audiences get 
 
 - A learner who opens Codex or Grok Build inside the clone *without* the launcher no longer gets
   the mentor there. `studyloop study` is the supported path and is unaffected.
-- `agents/codex/AGENTS.md` remains tracked and hashed in `agents/manifest.json` but, once the root
-  link is gone, is read by nothing at runtime: the launcher builds personas from
-  `agents/shared/personas/`. Whether to retire that file or give it a real delivery path is an
-  **owner decision** recorded in the review ledger; this ADR does not take it.
+- `agents/codex/AGENTS.md` remained tracked and hashed in `agents/manifest.json` but, once the root
+  link was gone, was read by nothing at runtime: the launcher builds personas from
+  `agents/shared/personas/`. *Resolved 2026-10-22 (remediation plan 4, item 2): the file and its
+  manifest entry were retired; Codex and Grok Build have no tracked definition.*
 - `docs/agent-install.md` no longer says Codex and Grok "read the StudyLoop `AGENTS.md`"; it says
   they read the per-session copy the launcher writes.
 - Four doctor tests that pinned the old contract were rewritten to the new one; the text-contract

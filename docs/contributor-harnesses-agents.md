@@ -34,12 +34,14 @@ a name outside the six is never loaded, however well formed.
 
 The persona a live session receives is rendered from `agents/shared/personas/<mode>.md` by
 `agent_launcher.build_canonical_persona()`; each adapter's `setup()` then writes it in its own
-format. Separately, five of the six harnesses have an installed mentor definition under
+format. Separately, four of the six harnesses have an installed mentor definition under
 `agents/<harness>/` -- `agents/kiro/study-mentor/persona.md`, `agents/claude/socratic-mentor.md`,
-`agents/codex/AGENTS.md`, `agents/opencode/study-mentor.md`, `agents/pi/AGENTS.md`. Grok Build
-reads the Codex file: `adapters/grok.py` projects `agents/codex/AGENTS.md`, and
-`test_adapter_parity.py::test_grok_projects_the_codex_definition` fails the moment a directory
-named `agents/grok` appears. Do not create one; change Codex's definition instead.
+`agents/opencode/study-mentor.md`, `agents/pi/AGENTS.md`. Codex and Grok Build have none: their
+adapters write the built persona into the session directory as `AGENTS.md`, and that is all they
+read (ADR-0013; the tracked Codex definition was retired by remediation plan 4).
+`test_adapter_parity.py::test_per_session_harnesses_have_no_installed_definition` fails the moment
+a directory named `agents/codex` or `agents/grok` appears. Do not create one; change the shared
+personas instead.
 
 `agents/shared/` holds the protocols every definition links to. The one that is pinned is
 `agents/shared/recording-protocol.md`: every mentor definition and both live personas must name its

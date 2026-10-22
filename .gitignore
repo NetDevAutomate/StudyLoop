@@ -459,9 +459,8 @@ $RECYCLE.BIN/
 CLAUDE.md
 AGENTS.md
 !/AGENTS.md
-# pi harness steering files — shipped with the repo, installed into
+# pi harness steering file — shipped with the repo, installed into
 # ~/.pi/agent/ by `studyloop install agents --tool pi`.
-!agents/codex/AGENTS.md
 !agents/pi/AGENTS.md
 agents/cowork/
 .kiro/

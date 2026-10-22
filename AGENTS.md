@@ -6,8 +6,8 @@ This file is for coding agents (and people) changing this repository. It is not 
 
 A study session's mentor persona is built by `studyloop study` from `agents/shared/personas/` and written
 into the session directory it launches the harness in, once per session. That per-session `AGENTS.md` is
-what Codex, Grok Build and pi read. The tracked Codex/Grok definition, `agents/codex/AGENTS.md`, is not
-linked here either: `studyloop install agents` never writes to this checkout.
+what Codex, Grok Build and pi read; Codex and Grok Build have no tracked definition of their own.
+`studyloop install agents` never writes to this checkout.
 
 ## What this repository is
 
