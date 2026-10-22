@@ -67,10 +67,26 @@ jobs:
     # comes from the locked dev group). Not mirrored here: `no-aws-tokens`
     # matches AWS's documented sample key in two committed files, so an
     # all-files run of it is red on a clean tree.
+    #
+    # On a pull request the job also runs trufflehog over the PR's own commits
+    # (base..head): provider-specific detectors with live verification, the
+    # commit gate's second layer, which until now ran only where the hook was
+    # installed (ARBITRATION-pass3 D6). It reports `verified` and `unknown`
+    # results; a revoked or fake key verifies as `unverified` and is left to the
+    # commit-time hook, which fails on all three. Pushes to main are not
+    # range-scanned. Unproven on a hosted runner until the first PR after merge.
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # base..head needs both ends in the clone; a shallow clone has no base.
+          fetch-depth: 0
+          # Nothing here pushes, and the scanner container mounts the whole
+          # workspace: keep the job token out of the checkout's git config.
+          persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
@@ -83,6 +99,32 @@ jobs:
       # this is parity with the commit gate rather than extra coverage.
       - name: detect-aws-credentials (whole checkout)
         run: uv run --group dev pre-commit run detect-aws-credentials --all-files
+      # The action does not fail on a missing base: with an empty `base` it
+      # scans head's whole history instead (action.yml at the pinned commit).
+      # This step fails the job first, with exit 2, unless both event SHAs are
+      # commits in this clone and differ.
+      - name: Resolve the pull request range (fails closed on a missing base)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: uv run --group dev python scripts/security/trufflehog_redacted.py --check-range --base "$PR_BASE" --head "$PR_HEAD"
+      # Official action pinned by commit: tag v3.99.3 is commit
+      # e63326d6545de8f425d93ce24078c6e68d83f70e (GitHub refs API and
+      # `git ls-remote`, 2026-10-22). Its `version` input defaults to `latest`,
+      # so the scanner image is pinned too: ghcr tag 3.99.3 at its manifest-list
+      # digest. The action passes `--github-actions`, whose annotations carry
+      # detector, file and line only -- never the matched value. Not
+      # `--only-verified`: trufflehog replaces `--results` with `verified` when
+      # it is set, which would silently drop the `unknown` results.
+      - name: trufflehog over the pull request's commits (redacted annotations)
+        if: github.event_name == 'pull_request'
+        uses: trufflesecurity/trufflehog@e63326d6545de8f425d93ce24078c6e68d83f70e # v3.99.3
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          version: "3.99.3@sha256:63b6120f410beb64aea4e421f1ed277248e14b2942d124df289422b623f610d8"
+          extra_args: --results=verified,unknown
 
   audit:
     runs-on: ubuntu-latest
