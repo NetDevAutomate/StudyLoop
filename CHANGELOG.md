@@ -478,6 +478,13 @@ experience may change before `1.0.0`.
   connection URL now reads *The server did not return a connection for this
   session*.
 
+### Removed
+
+- The `database.archive_path` setting. Nothing ever read it: `session-maint
+  archive` always wrote its file beside the everyday database
+  (`<name>_archive.db`), whatever the setting said. A `config.yaml` that still
+  has the line keeps loading; the line can be deleted.
+
 ## [0.5.0] - 2026-09-21
 
 ### Added

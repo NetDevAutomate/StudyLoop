@@ -60,8 +60,43 @@ class TestLoadConfig:
         """Test database configuration section."""
         config = load_config()
         assert "path" in config["database"]
-        assert "archive_path" in config["database"]
         assert "backup_dir" in config["database"]
+
+
+class TestArchivePathIsGone:
+    """``database.archive_path`` and ``get_archive_path`` were dead (ADR-0016).
+
+    Nothing read the key: the deprecated ``archive`` command derives its file
+    from ``database.path`` (``<db>_archive.db``), and the getter had no caller.
+    Plan 4, lane N, G#5b removed both. A learner's config.yaml that still
+    carries the key (the setup guide once listed it) must keep loading.
+    """
+
+    def test_default_config_has_no_archive_path(self):
+        assert "archive_path" not in DEFAULT_CONFIG["database"]
+        assert "archive_path" not in load_config()["database"]
+
+    def test_the_getter_is_gone_from_the_module_and_the_package(self):
+        import agent_session_tools
+        from agent_session_tools import config_loader
+
+        assert not hasattr(config_loader, "get_archive_path")
+        assert "get_archive_path" not in agent_session_tools.__all__
+        assert not hasattr(agent_session_tools, "get_archive_path")
+
+    def test_a_config_that_still_sets_the_key_loads(self, tmp_path, monkeypatch):
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "database:\n  path: /tmp/hot.db\n  archive_path: ~/old/sessions_archive.db\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        monkeypatch.delenv("DATABASE_PATH", raising=False)
+
+        config = load_config()
+
+        assert config["database"]["path"] == "/tmp/hot.db"
+        assert "archive_path" not in DEFAULT_CONFIG["database"]
 
     def test_thresholds_section(self):
         """Test thresholds configuration section."""

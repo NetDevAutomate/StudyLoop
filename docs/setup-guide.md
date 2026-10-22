@@ -574,7 +574,6 @@ topics:
 ```yaml
 database:
   path: ~/.config/studyloop/sessions.db
-  archive_path: ~/.config/studyloop/sessions_archive.db
   backup_dir: ~/.config/studyloop/backups
 
 thresholds:
