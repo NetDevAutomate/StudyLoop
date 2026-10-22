@@ -14,6 +14,11 @@ experience may change before `1.0.0`.
   those records with them, after listing what it will destroy by table. It still needs
   `--confirm`, goes through the same tombstone as every other delete so the next export cannot
   bring the sessions back, and refuses on a database that has not been migrated.
+- `session-maint fix-perms [--dry-run]` makes existing snapshot, backup and vector sidecar
+  files owner-only (0600) and reports counts; copies made before they were created owner-only
+  kept the umask's 0644.
+- `session-maint delete --allow-unmigrated` runs the pre-41 delete anyway, with a warning that
+  the deletion can be re-imported by the next export.
 - `--bind ADDRESS` on `studyloop web` and `studyloop study` serves the dashboard on one
   address this machine has -- a Tailscale or other VPN address, where the tunnel encrypts
   the traffic -- instead of every interface, behind the same password gate `--lan` had.
@@ -109,6 +114,8 @@ experience may change before `1.0.0`.
   and the final line reports how many were deleted and how many were kept and
   names the flag that would delete them, instead of reporting that no old
   sessions were found when every old session was kept.
+- `session-maint delete` refuses a database older than schema 41 (no tombstones: the next
+  export would re-import what was deleted) and names the migration to run first.
 - Body Double is for anything you are doing, and a live session is the
   agent's screen. The **Focus** card is gone from Body Double: it listed the
   three most recent study topics with an "at capacity" chip above the picker
@@ -157,6 +164,14 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Scrubber: a PGP private key flattened onto one line with its `Version:`/`Comment:` headers is
+  redacted whole; a flattened cut-off key loses every body run, not only the first; `ghp_`/`gho_`
+  tokens of 36-255 characters are redacted whole (they were matched at exactly 36); redacting a
+  text with thousands of armour lines is linear (20,000 lines: 1.25 s to 0.02 s).
+- `session-maint delete` on a database older than schema v5 removes the deleted messages'
+  full-text index rows, so a search no longer finds the deleted session.
+- `session-maint sync-full`, `prune` and `snapshot` print a legacy-sync refusal as a `❌` line
+  and exit 1 instead of a Python traceback.
 - A sessions database last written by an older release could never reach the
   current schema. `init_db`'s legacy reconciliation adds every final-shape
   column to the tables that already exist *before* the migrations run, and
