@@ -2078,17 +2078,21 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
         # The entry first: if it cannot be removed cleanly, the script it
         # points at is still there.
         changed += _remove_claude_statusline(settings, statusline)
-        if statusline.exists():
-            # The mandate remover's rule: a copy of what install wrote is
-            # deleted; anything else may carry the learner's edits (or an
-            # older release's script) and is kept as a .bak beside it. The
-            # statusLine entry is already gone, so the .bak is never run.
-            if statusline.read_bytes() == shipped.read_bytes():
-                statusline.unlink()
-            else:
-                statusline.rename(_backup_path(statusline))
-            changed += 1
-        return changed
+        # Read first, no exists() probe (test_no_exists_then_read_race): a
+        # missing script means nothing to remove.
+        try:
+            installed = statusline.read_bytes()
+        except FileNotFoundError:
+            return changed
+        # The mandate remover's rule: a copy of what install wrote is deleted;
+        # anything else may carry the learner's edits (or an older release's
+        # script) and is kept as a .bak beside it. The statusLine entry is
+        # already gone, so the .bak is never run.
+        if installed == shipped.read_bytes():
+            statusline.unlink()
+        else:
+            statusline.rename(_backup_path(statusline))
+        return changed + 1
 
     claude_home.mkdir(parents=True, exist_ok=True)
     shutil.copy2(shipped, statusline)
