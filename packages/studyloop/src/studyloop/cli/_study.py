@@ -209,11 +209,25 @@ def _agent_names() -> list[str]:
     help="Energy level (1-10).",
 )
 @click.option("--web", is_flag=True, help="Also start the web dashboard.")
-@click.option("--lan", is_flag=True, help="Expose web dashboard + terminal to LAN (implies --web).")
+@click.option(
+    "--bind",
+    "bind_address",
+    default=None,
+    metavar="ADDRESS",
+    help="Serve the web dashboard on this one IP address of this machine as well as "
+    "127.0.0.1, e.g. its Tailscale/VPN address (implies --web). A non-loopback address "
+    "gets the Basic-auth password (generated when unset).",
+)
+@click.option(
+    "--lan",
+    is_flag=True,
+    help="Deprecated: exposes the dashboard on every interface (0.0.0.0) in cleartext; "
+    "use --bind ADDRESS. Implies --web. Removed in the next release.",
+)
 @click.option(
     "--password",
     default="",
-    help="Password for HTTP Basic Auth when using --lan (auto-generated if not set).",
+    help="Password for HTTP Basic Auth with --bind/--lan (auto-generated if not set).",
 )
 @click.option("--resume", is_flag=True, help="Resume an existing session.")
 @click.option("--end", "end_session", is_flag=True, help="End the current session.")
@@ -226,6 +240,7 @@ def study(
     timer: str | None,
     energy: int,
     web: bool,
+    bind_address: str | None,
     lan: bool,
     password: str,
     resume: bool,
@@ -241,6 +256,8 @@ def study(
 
         studyloop study "Spark Internals" --mode co-study --timer pomodoro
 
+        studyloop study "Python Decorators" --bind 100.64.0.5   # reach it from a tablet
+
         studyloop study --resume
 
         studyloop study --end
@@ -251,6 +268,19 @@ def study(
     reaches the agent through this one launch chain and no user-facing flag
     exists to hand-roll a brief.
     """
+    # D7 (ADR-0019): validated here, before tmux or anything else starts, with the
+    # same rule `studyloop web --bind` applies; the spawned server would otherwise
+    # refuse it silently (its output is discarded) and the session would come up
+    # without a dashboard.
+    if lan and bind_address is not None:
+        msg = "--lan and --bind cannot be combined; use --bind ADDRESS (--lan is deprecated)."
+        raise click.UsageError(msg)
+    bind: str | None = None
+    if bind_address is not None:
+        from studyloop.cli._web import _validated_bind_address
+
+        bind = _validated_bind_address(bind_address)
+
     if end_session:
         _handle_end(ctx)
         return
@@ -275,7 +305,7 @@ def study(
     if timer is None:
         timer = "pomodoro" if mode == "co-study" else "elapsed"
 
-    if lan:
+    if lan or bind is not None:
         web = True
 
     # Resolve free-text topic to a TopicConfig (for briefing, content, review)
@@ -291,6 +321,7 @@ def study(
         energy,
         web,
         lan=lan,
+        bind=bind,
         password=password,
         topic_config=topic_config,
         brief=brief,
@@ -308,6 +339,7 @@ def _handle_start(
     web: bool,
     *,
     lan: bool = False,
+    bind: str | None = None,
     password: str = "",
     topic_config: TopicConfig | None = None,
     resume_session_name: str | None = None,
@@ -331,6 +363,7 @@ def _handle_start(
             energy,
             web,
             lan=lan,
+            bind=bind,
             password=password,
             topic_config=topic_config,
             resume_session_name=resume_session_name,
