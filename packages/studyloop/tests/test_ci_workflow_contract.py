@@ -609,34 +609,51 @@ def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
     assert _tracked_mentions("--output CHANGELOG.md") == []
 
 
-# --- Dependency audit: pinned tool, runner-private temp (plan 2, C4) ---------
+# --- Dependency audit: pinned tool, runner-private temp (plan 2, C4; plan 4, M) -
 
 #: ``uv tool run pip-audit@X.Y.Z`` -- an exact release, not whatever is latest.
-_PINNED_PIP_AUDIT = re.compile(r"\buv tool run pip-audit@\d+\.\d+\.\d+\s")
+_PINNED_PIP_AUDIT = re.compile(r"\buv tool run pip-audit@(\d+\.\d+\.\d+)\s")
+
+#: Both jobs run pip-audit: ``audit`` over the locked default surface,
+#: ``audit-full`` over every optional extra. One pin and one temp rule for both.
+AUDIT_JOBS = ("audit", "audit-full")
 
 
-def _audit_step() -> dict[str, Any]:
-    steps = _workflow()["jobs"]["audit"]["steps"]
+def _audit_step(job: str) -> dict[str, Any]:
+    steps = _workflow()["jobs"][job]["steps"]
     audit = [
         step for step in steps if isinstance(step, dict) and "pip-audit" in str(step.get("run", ""))
     ]
-    assert len(audit) == 1, "expected exactly one pip-audit step in the audit job"
+    assert len(audit) == 1, f"expected exactly one pip-audit step in the {job} job"
     return audit[0]
 
 
-def test_dependency_audit_pins_pip_audit() -> None:
+@pytest.mark.parametrize("job", AUDIT_JOBS)
+def test_dependency_audit_pins_pip_audit(job: str) -> None:
     """An unpinned ``uv tool run pip-audit`` resolves the newest release on every
     run: the gate's own behaviour (and its supply chain) changes with no commit."""
-    run = _audit_step()["run"]
+    run = _audit_step(job)["run"]
     assert "pip-audit" in run
-    assert _PINNED_PIP_AUDIT.search(run), f"pip-audit is not pinned to a release: {run!r}"
+    assert _PINNED_PIP_AUDIT.search(run), f"{job}: pip-audit is not pinned to a release: {run!r}"
 
 
-def test_dependency_audit_writes_no_shared_tmp_path() -> None:
+def test_both_audit_jobs_pin_the_same_pip_audit_release() -> None:
+    """Two jobs auditing the same lock with two scanner releases would disagree
+    on what passes; a half-moved pin is the usual way that happens."""
+    pins = set()
+    for job in AUDIT_JOBS:
+        match = _PINNED_PIP_AUDIT.search(_audit_step(job)["run"])
+        assert match, f"{job}: pip-audit is not pinned"
+        pins.add(match.group(1))
+    assert len(pins) == 1, f"audit jobs pin different pip-audit releases: {sorted(pins)}"
+
+
+@pytest.mark.parametrize("job", AUDIT_JOBS)
+def test_dependency_audit_writes_no_shared_tmp_path(job: str) -> None:
     """A fixed ``/tmp`` path is shared by every job on a self-hosted runner, so a
     concurrent or earlier job can pre-plant the requirements file the audit
     reads. ``runner.temp`` is emptied per job."""
-    step = _audit_step()
-    assert "/tmp" not in step["run"]
+    step = _audit_step(job)
+    assert "/tmp" not in step["run"], f"{job}: {step['run']!r}"
     assert "/tmp" not in str(step.get("env", {}))
     assert "${{ runner.temp }}" in str(step.get("env", {})) + step["run"]

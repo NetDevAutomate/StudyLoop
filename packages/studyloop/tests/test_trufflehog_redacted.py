@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import yaml
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -117,6 +118,38 @@ def test_real_shape_finding_fails_without_echoing_the_match(
 
 
 @pytest.mark.parametrize(
+    ("overrides", "state"),
+    [
+        pytest.param({"Verified": True}, "verified", id="verified"),
+        pytest.param(
+            {"Verified": False, "VerificationError": "dial tcp: " + SENTINEL},
+            "unknown",
+            id="unknown",
+        ),
+        pytest.param({"Verified": False}, "unverified", id="unverified"),
+        pytest.param({"Verified": False, "VerificationError": ""}, "unverified", id="empty-error"),
+    ],
+)
+def test_finding_state_is_reported_without_the_error_text(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    overrides: dict[str, Any],
+    state: str,
+) -> None:
+    """trufflehog's three result states, as engine.go sorts them at the pinned
+    commit: ``Verified`` true is verified; false with a ``VerificationError`` is
+    unknown (the provider could not be asked); false without one is unverified
+    (the provider was asked and said no -- a revoked or fake key). The hook's
+    reader needs that distinction: ``unknown`` means "check your network",
+    ``unverified`` means "this is shaped like a real key and is dead". The error
+    text itself may carry an endpoint or a redacted hint, so it is never printed."""
+    code, output, _ = _run(monkeypatch, capsys, stdout=_finding(**overrides) + "\n", returncode=183)
+    assert code == 1
+    assert f"state={state}" in output
+    assert SENTINEL not in output
+
+
+@pytest.mark.parametrize(
     ("stdout", "returncode"),
     [
         pytest.param('{"DetectorName": "Github", "Raw": "' + SENTINEL, 0, id="truncated-json"),
@@ -166,6 +199,83 @@ def test_missing_metadata_still_counts_as_a_finding(
     )
     assert code == 1
     assert SENTINEL not in output
+
+
+# --- The no-flag mode and the hook that runs it (plan 3 lane H FNF#1) ---------
+#
+# No flag passes `--since-commit=HEAD` and no `--branch`. Under pre-commit
+# (PRE_COMMIT=1, set for every hook run: pre_commit/commands/run.py) trufflehog
+# overrides both ends of the range to HEAD and scans the staged changes only
+# (main.go, isPreCommitHook). Run by hand, a base with no head is
+# `git log --all ^HEAD`: staged changes plus every commit on any ref not
+# reachable from HEAD (gitparse.go, RepoPath). The wrapper's docstring and the
+# hook's name must each describe the scope that applies to them.
+
+PRE_COMMIT_CONFIG = Path(__file__).resolve().parents[3] / ".pre-commit-config.yaml"
+
+
+def _trufflehog_hook() -> dict[str, Any]:
+    config = yaml.safe_load(PRE_COMMIT_CONFIG.read_text(encoding="utf-8"))
+    hooks = [
+        hook
+        for repo in config["repos"]
+        if repo.get("repo") == "local"
+        for hook in repo["hooks"]
+        if hook.get("id") == "trufflehog"
+    ]
+    assert len(hooks) == 1, "expected exactly one local trufflehog hook"
+    return hooks[0]
+
+
+def test_no_flag_scan_is_base_only_since_head(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The scope the docstring and the hook name describe: ``--since-commit=HEAD``
+    with no ``--branch``. A ``--branch=HEAD`` here would make the by-hand run
+    match the hook (HEAD..HEAD, staged only) at the price of dropping the
+    unreachable-commit findings a by-hand run reports today; that is a
+    behaviour change, not a docs fix, and nothing has asked for it."""
+    _, _, calls = _run(monkeypatch, capsys, stdout="", returncode=0)
+    assert len(calls) == 1
+    assert "--since-commit=HEAD" in calls[0]
+    assert not any(arg.startswith("--branch") for arg in calls[0])
+    assert "--results=verified,unknown,unverified" in calls[0]
+
+
+def test_docstring_states_what_the_no_flag_mode_scans_by_hand() -> None:
+    """The usage block once called the no-flag mode "staged/uncommitted changes".
+    That is the hook's scope, not a by-hand run's: the docstring must name the
+    PRE_COMMIT=1 dependency and the commits-not-reachable-from-HEAD walk."""
+    doc = _load().__doc__ or ""
+    usage = doc[doc.index("Usage") :]
+    assert "PRE_COMMIT=1" in doc, "name the variable pre-commit sets that narrows the scan"
+    assert "not reachable from HEAD" in doc, "say what a by-hand run scans beyond the index"
+    assert "uncommitted" not in usage, (
+        "'uncommitted' reads as unstaged too; trufflehog scans the index"
+    )
+
+
+def test_hook_runs_the_wrapper_in_its_no_flag_mode() -> None:
+    hook = _trufflehog_hook()
+    entry = hook["entry"].split()
+    assert entry[-1] == "scripts/security/trufflehog_redacted.py"
+    assert not any(arg.startswith("--") for arg in entry[entry.index("python") + 1 :]), (
+        "the hook is the no-flag mode; a scope flag here changes what every commit is scanned for"
+    )
+    assert hook.get("always_run") is True
+    assert hook.get("pass_filenames") is False
+    assert hook.get("stages") == ["pre-commit"]
+
+
+def test_hook_name_claims_the_staged_scope_and_no_more() -> None:
+    """Under PRE_COMMIT=1 the hook scans the staged changes only, so that is
+    what its name may claim; it must not read as a history or whole-tree scan
+    (``pre-commit run trufflehog --all-files`` still scans only the index)."""
+    name = _trufflehog_hook()["name"]
+    assert "staged changes" in name
+    assert "redacted" in name
+    for wider in ("history", "all files", "whole", "since HEAD"):
+        assert wider not in name, f"the hook does not scan {wider!r}"
 
 
 # --- Pull-request range scan (ARBITRATION-pass3 D6) --------------------------
