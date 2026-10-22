@@ -33,7 +33,6 @@ DEFAULT_CONFIG = {
     },
     "database": {
         "path": str(CONFIG_DIR / "sessions.db"),
-        "archive_path": str(CONFIG_DIR / "sessions_archive.db"),
         "backup_dir": str(CONFIG_DIR / "backups"),
         # Tiering: complete-history DB (e.g. on an external volume).
         # Empty string = tiering disabled. See tiering.py.
@@ -343,9 +342,6 @@ def load_config() -> dict[str, Any]:
 
     # Expand all paths
     config["database"]["path"] = str(expand_path(config["database"]["path"]))
-    config["database"]["archive_path"] = str(
-        expand_path(config["database"]["archive_path"])
-    )
     config["database"]["backup_dir"] = str(
         expand_path(config["database"]["backup_dir"])
     )
@@ -407,13 +403,6 @@ def get_db_path(config: dict[str, Any] | None = None) -> Path:
     if env_db and configured == DEFAULT_CONFIG["database"]["path"]:
         return Path(env_db).expanduser()
     return Path(configured)
-
-
-def get_archive_path(config: dict[str, Any] | None = None) -> Path:
-    """Get archive database path from config."""
-    if config is None:
-        config = load_config()
-    return Path(config["database"]["archive_path"])
 
 
 def get_backup_dir(config: dict[str, Any] | None = None) -> Path:
@@ -514,7 +503,6 @@ if __name__ == "__main__":
 
     print("\n📋 Configuration Loaded:")
     print(f"  Database: {config['database']['path']}")
-    print(f"  Archive: {config['database']['archive_path']}")
     print(f"  Backups: {config['database']['backup_dir']}")
     print(f"  Log: {config['logging']['path']}")
     print(

@@ -11,19 +11,23 @@ and the release note, not `[Unreleased]` — so the reviewer does, against quest
 
 1. Open `CHANGELOG.md` and find `## [Unreleased]` (the first heading after the preamble).
 2. Pick the section from the table below. If the heading is missing, add it in this order:
-   `### Added`, `### Changed`, `### Fixed`, `### Security`, `### Removed` — the order the
-   `[0.5.0]` entry already uses.
+   `### Added`, `### Changed`, `### Deprecated`, `### Fixed`, `### Security`, `### Removed` —
+   the order the `[0.5.0]` entry uses, with `Deprecated` (added for ADR-0016) between
+   `Changed` and `Fixed`. These are the six [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+   sections; a contract test (`packages/studyloop/tests/test_contributor_docs.py`) checks that
+   `[Unreleased]` uses no other heading.
 3. Add **one bullet per user-visible change**, written for the learner: what they can now do, or
    what no longer goes wrong, in a sentence they would recognise. Say *what is true now*, not
    which function changed.
 4. Reference the issue when there is one (`(issue #30)`), never a sha — bullets outlive branches.
-5. Do not date anything and do not rename `[Unreleased]`; do not add sections outside the five.
+5. Do not date anything and do not rename `[Unreleased]`; do not add sections outside the six.
 
 | Commit type | Section | Notes |
 | --- | --- | --- |
 | `feat` | Added | a capability a learner did not have before |
 | `fix` | Fixed | something that went wrong and now does not |
 | a behaviour change | Changed | an existing flow does something different; dependency bounds and packaging changes also go here |
+| a deprecation | Deprecated | a command or option that still works, says it is going, and names what replaces it and when |
 | a removal | Removed | a command, option or page that is gone |
 | a security fix | Security | say what was exposed in neutral terms |
 | `test`, `docs`, `chore`, `ci` | none, normally | the PR says so under question 2 ("no changelog entry: contributor-facing only") |

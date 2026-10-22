@@ -6,7 +6,6 @@ formats, and database maintenance.
 """
 
 from agent_session_tools.config_loader import (
-    get_archive_path,
     get_backup_dir,
     get_db_path,
     get_log_path,
@@ -37,7 +36,6 @@ __all__ = [
     "__version__",
     "load_config",
     "get_db_path",
-    "get_archive_path",
     "get_backup_dir",
     "get_log_path",
 ]

@@ -597,10 +597,14 @@ session-sync push|pull|sync REMOTE       # Sync database across machines
 session-sync all                         # Push all peers before pulling all peers
 session-sync status|endpoints            # Show configured peers / listener status
 session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
-session-maint vacuum|reindex|schema|archive  # Database maintenance
-session-maint delete --confirm            # Permanently delete old sessions
+session-maint vacuum|reindex|schema      # Database maintenance
+session-maint archive --days N           # DEPRECATED: removed in the release after the one that deprecates it;
+                                          # use sync-full then prune (not a drop-in replacement)
+session-maint delete --days N --confirm   # Permanently delete old sessions; keeps sessions that own learner records
+session-maint delete --days N --confirm --forget-learner-records
+                                          # ...and also deletes those sessions and their learner records
 session-maint find-duplicates|fts-check|compact  # Integrity and rescue
-session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune
+session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune (prune is a dry run until --no-dry-run)
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
                                           # Migrate the DB if behind, then embed the backlog (doctor's embeddings_alignment remediation)
 session-maint embed-check [--fix]        # Migrate the DB if behind, then audit/repair message_embeddings alignment
