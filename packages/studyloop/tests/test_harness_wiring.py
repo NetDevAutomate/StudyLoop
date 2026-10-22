@@ -18,12 +18,15 @@ def _repo_root() -> Path:
 
 REPO = _repo_root()
 TARGET = "extract-struggles"
+#: Codex and Grok Build ship no definition file: their persona is built per
+#: session from the shared personas (listed), which is what they actually read.
 SHIPPED_MENTOR_FILES = (
     REPO / "agents" / "claude" / "settings.json",
     REPO / "agents" / "kiro" / "skills" / "study-mentor" / "SKILL.md",
-    REPO / "agents" / "codex" / "AGENTS.md",
     REPO / "agents" / "opencode" / "study-mentor.md",
     REPO / "agents" / "pi" / "AGENTS.md",
+    REPO / "agents" / "shared" / "personas" / "study.md",
+    REPO / "agents" / "shared" / "personas" / "co-study.md",
 )
 
 
@@ -36,7 +39,7 @@ def test_shipped_mentor_does_not_run_unconfigured_extraction(path: Path) -> None
 
 
 def test_every_release_harness_has_a_real_session_export_route() -> None:
-    from studyloop.installers import _HARNESS_EXPORT
+    from studyloop.installers import _CODEX_HOOK_SENTINEL, _HARNESS_EXPORT
 
     assert {name: spec.export_flag for name, spec in _HARNESS_EXPORT.items()} == {
         "kiro": "kiro-only",
@@ -45,9 +48,11 @@ def test_every_release_harness_has_a_real_session_export_route() -> None:
         "pi": "pi-only",
         "grok": "grok-only",
     }
-    assert "session-export --codex-only" in (REPO / "agents" / "codex" / "AGENTS.md").read_text(
-        encoding="utf-8"
-    )
+    # Codex has no steering-mandate slot: its route is the SessionEnd hook
+    # install_codex_session_end_hook merges into ~/.codex/hooks.json. (The
+    # retired agents/codex/AGENTS.md carried the flag in prose; nothing
+    # delivered that file, so the hook was always the real route.)
+    assert _CODEX_HOOK_SENTINEL == "session-export --codex-only"
     assert "session-export --opencode-only" in (
         REPO / "agents" / "opencode" / "study-mentor.md"
     ).read_text(encoding="utf-8")
