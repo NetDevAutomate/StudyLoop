@@ -54,6 +54,8 @@ def tree(tmp_path: Path) -> dict[str, object]:
             tmp_path / "snapshots" / "sessions_full_snapshot_20260102_000000.db", 0o664
         ),
         _write(tmp_path / "backups" / "sessions_backup_20260101_000000.db", 0o644),
+        # `vacuum --db <full>` backs the full DB up under its own stem.
+        _write(tmp_path / "backups" / "sessions_full_backup_20260101_000000.db", 0o644),
         _write(tmp_path / "db" / "sessions.vec.db", 0o644),
         _write(tmp_path / "db" / "sessions.vec.db-wal", 0o644),
     ]
@@ -98,7 +100,7 @@ class TestFixPerms:
             assert _mode(path) == 0o644, path
         assert _mode(tree["pointed_at"]) == 0o644
         out = capsys.readouterr().out
-        assert "Tightened 5 file(s) to 0600" in out
+        assert "Tightened 6 file(s) to 0600" in out
         assert "1 already 0600" in out
         assert "skipped 1 symlink" in out
         assert str(tree["link"]) in out
@@ -109,7 +111,7 @@ class TestFixPerms:
         for path in tree["targets"]:
             assert _mode(path) != 0o600, path
         out = capsys.readouterr().out
-        assert "Would tighten 5 file(s) to 0600" in out
+        assert "Would tighten 6 file(s) to 0600" in out
         for path in tree["targets"]:
             assert str(path) in out
 
@@ -119,7 +121,7 @@ class TestFixPerms:
         assert _fix_perms(tree["cfg"]) == 0
         out = capsys.readouterr().out
         assert "Tightened 0 file(s) to 0600" in out
-        assert "6 already 0600" in out
+        assert "7 already 0600" in out
 
     def test_without_a_full_db_only_the_hot_tier_is_swept(self, tmp_path, capsys):
         cfg = {
@@ -165,7 +167,7 @@ class TestCli:
         monkeypatch.setattr(maintenance, "_config", tree["cfg"])
         result = runner.invoke(app, ["fix-perms"])
         assert result.exit_code == 0, result.output
-        assert "Tightened 5 file(s) to 0600" in result.output
+        assert "Tightened 6 file(s) to 0600" in result.output
         for path in tree["targets"]:
             assert _mode(path) == 0o600, path
 
@@ -173,7 +175,7 @@ class TestCli:
         monkeypatch.setattr(maintenance, "_config", tree["cfg"])
         result = runner.invoke(app, ["fix-perms", "--dry-run"])
         assert result.exit_code == 0, result.output
-        assert "Would tighten 5 file(s) to 0600" in result.output
+        assert "Would tighten 6 file(s) to 0600" in result.output
         for path in tree["targets"]:
             assert _mode(path) != 0o600, path
 

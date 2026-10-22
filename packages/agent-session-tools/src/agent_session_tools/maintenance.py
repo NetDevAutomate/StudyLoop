@@ -157,12 +157,14 @@ def create_backup(db_path: Path) -> Path | None:
 def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
     """Every local copy of the record, or index derived from it, the config names.
 
-    Maintenance backups (``<hot stem>_backup_*.db`` in ``database.backup_dir``),
-    snapshots (``<full stem>_snapshot_*.db`` in ``database.snapshot_dir``, or
-    ``backup_dir`` when unset) and the vector sidecars (``<stem>.vec.db`` beside
-    the hot and the full database, with their WAL/SHM/journal companions). The
-    globs are non-recursive and the names are the ones this package writes, so
-    nothing outside those directories, and nothing else inside them, is listed.
+    Maintenance backups (``<stem>_backup_*.db`` in ``database.backup_dir``,
+    whatever the stem: ``vacuum``/``reindex``/``delete --db`` back up any
+    database under its own stem), snapshots (``<full stem>_snapshot_*.db`` in
+    ``database.snapshot_dir``, or ``backup_dir`` when unset) and the vector
+    sidecars (``<stem>.vec.db`` beside the hot and the full database, with
+    their WAL/SHM/journal companions). The globs are non-recursive and the
+    names are the ones this package writes, so nothing outside those
+    directories, and nothing else inside them, is listed.
     """
     from agent_session_tools.embedding_store import sidecar_path
     from agent_session_tools.tiering import get_full_db_path
@@ -175,9 +177,7 @@ def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
 
     found: list[tuple[str, Path]] = []
     if backup_dir.is_dir():
-        found += [
-            ("backup", p) for p in sorted(backup_dir.glob(f"{hot.stem}_backup_*.db"))
-        ]
+        found += [("backup", p) for p in sorted(backup_dir.glob("*_backup_*.db"))]
     if full is not None and snapshot_dir.is_dir():
         found += [
             ("snapshot", p)
