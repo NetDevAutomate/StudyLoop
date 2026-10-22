@@ -15,9 +15,6 @@ TRACKED_FILES: dict[str, list[str]] = {
     "claude": [
         "claude/socratic-mentor.md",
         "claude/study-plan-architect.md",
-        "claude/study-generate.md",
-        "claude/study-setup.md",
-        "claude/study-audio.md",
     ],
     "kiro": [
         "kiro/study-mentor.json",

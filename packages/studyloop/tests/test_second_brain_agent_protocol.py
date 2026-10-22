@@ -190,3 +190,22 @@ def test_every_file_the_generator_tracks_is_in_the_manifest() -> None:
     recorded = set(manifest["agents"])
     missing = {rel for rel in tracked if (AGENTS / rel).is_file()} - recorded
     assert not missing, f"tracked but not in the manifest: {sorted(missing)}"
+
+
+def test_every_file_the_generator_tracks_exists() -> None:
+    """A generator entry for a file that is gone is a manifest entry that silently
+    never appears: ``update-agent-manifest.py`` skips missing paths without a
+    word, so the list drifts from the tree and the previous test's
+    ``is_file()`` filter hides it. The three ``claude/study-*.md`` entries
+    outlived their files by this route (removed in 751562cd).
+    """
+    generator = REPO_ROOT / "scripts" / "update-agent-manifest.py"
+    if not generator.is_file():
+        pytest.skip("no manifest generator in this checkout")
+
+    source = generator.read_text(encoding="utf-8")
+    tracked = set(re.findall(r'"((?:[a-z]+/)+[A-Za-z0-9_.-]+\.(?:md|json|js|ts))"', source))
+    assert tracked, "could not read the generator's file list; the scan is vacuous"
+
+    gone = sorted(rel for rel in tracked if not (AGENTS / rel).is_file())
+    assert not gone, f"the generator tracks files that do not exist: {gone}"
