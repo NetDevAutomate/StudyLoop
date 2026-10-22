@@ -162,7 +162,20 @@ class TestOriginPolicy:
         ("origin", "host", "allowed"),
         [
             ("http://192.168.1.20:8567", "192.168.1.20:8567", True),  # LAN, same-origin
-            ("http://[::1]:5173", "127.0.0.1:8567", True),  # loopback dev origin
+            # D9.2 (council pass 3): SameSite does not partition by port, so a page
+            # on ANOTHER loopback port would drive the socket with the cookie. A
+            # loopback Origin is admitted on this server's own port only. (This row
+            # was `True` -- "loopback dev origin" -- before the ruling.)
+            ("http://[::1]:5173", "127.0.0.1:8567", False),
+            ("http://127.0.0.1:9999", "127.0.0.1:8567", False),
+            ("http://localhost:9999", "localhost:8567", False),
+            ("http://127.0.0.1:8567", "127.0.0.1:8567", True),  # same port
+            ("http://localhost:8567", "127.0.0.1:8567", True),  # same server, other name
+            ("http://[::1]:8567", "localhost:8567", True),
+            ("http://localhost", "127.0.0.1:80", True),  # default port is port 80
+            ("http://localhost", "127.0.0.1:8567", False),
+            ("https://localhost", "localhost:443", True),
+            ("http://127.0.0.1:8567", "", False),  # no Host: nothing to match
             ("http://1.2.3.4", "127.0.0.1:8567", False),  # cross-site page by IP
             ("http://testserver", "testserver", False),  # name alone grants nothing
         ],
@@ -171,6 +184,51 @@ class TestOriginPolicy:
         from studyloop.web.ws_origin import origin_allowed
 
         assert origin_allowed(origin, host=host) is allowed
+
+    def test_an_allowlisted_exact_loopback_origin_on_another_port_is_admitted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The explicit dev escape hatch (``STUDYLOOP_ALLOWED_ORIGINS``), exact match only."""
+        from studyloop.web.ws_origin import origin_allowed
+
+        monkeypatch.setenv("STUDYLOOP_ALLOWED_ORIGINS", "http://127.0.0.1:9999")
+        assert origin_allowed("http://127.0.0.1:9999", host="127.0.0.1:8567")
+        assert not origin_allowed("http://127.0.0.1:9998", host="127.0.0.1:8567")
+        assert not origin_allowed("http://localhost:9999", host="127.0.0.1:8567")
+
+    def test_in_process_client_has_no_port_to_differ_from(self) -> None:
+        """``testserver`` never crossed a socket: there is no listening port, so the
+        port rule has nothing to compare. Only with the in-process flag, as for Host."""
+        from studyloop.web.ws_origin import origin_allowed
+
+        assert origin_allowed("http://127.0.0.1:8788", host="testserver", in_process_test=True)
+        assert not origin_allowed("http://127.0.0.1:8788", host="testserver")
+        assert not origin_allowed("http://1.2.3.4", host="testserver", in_process_test=True)
+
+    def test_terminal_socket_from_another_loopback_port_is_refused_before_accept(
+        self, tmp_path: Path
+    ) -> None:
+        """End to end in-process, with a real loopback Host: 1008, never accepted."""
+        _start_stub_session(tmp_path)
+        client = TestClient(create_app())
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/api/session/ws?study_session_id=study-1",
+                headers={"Host": "127.0.0.1:8567", "Origin": "http://127.0.0.1:9999"},
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+    def test_terminal_socket_from_the_same_port_is_accepted(self, tmp_path: Path) -> None:
+        _start_stub_session(tmp_path)
+        client = TestClient(create_app())
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers={"Host": "127.0.0.1:8567", "Origin": "http://localhost:8567"},
+        ) as ws:
+            assert ws.receive_json() == {"type": "started", "agent": "claude"}
 
 
 # ---------------------------------------------------------------------------

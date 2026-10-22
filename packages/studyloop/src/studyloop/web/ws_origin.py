@@ -178,14 +178,41 @@ def host_allowed(host_header: str, *, in_process_test: bool = False) -> bool:
     return in_process_test and name == IN_PROCESS_TEST_HOST
 
 
+def _host_port(host_header: str) -> int | None:
+    """The explicit port in a ``Host`` header value; None when it names none.
+
+    Call only on a value :func:`_host_name` accepted (so any port is all digits).
+    """
+    value = host_header.strip()
+    rest = value[value.find("]") + 1 :] if value.startswith("[") else value.partition(":")[2]
+    rest = rest.removeprefix(":")
+    return int(rest) if rest else None
+
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
 def origin_allowed(origin: str, *, host: str = "", in_process_test: bool = False) -> bool:
     """Return whether a WebSocket Origin is allowed for the request Host.
 
     Rules are intentionally narrow:
-    - localhost / 127.0.0.1 / [::1] are allowed on any port for local development.
-    - STUDYLOOP_ALLOWED_ORIGINS entries are exact matches.
+    - STUDYLOOP_ALLOWED_ORIGINS entries are exact matches: the explicit escape
+      hatch, e.g. a dev server on another loopback port.
+    - A loopback Origin (localhost / 127.0.0.1 / [::1]) is allowed only for a
+      loopback Host on the SAME port (D9.2, council pass 3): ``localhost:8567``
+      and ``127.0.0.1:8567`` are this server under two names. ``SameSite``
+      partitions cookies by site, not by port, so the server cookie rides along
+      on a socket opened by a page on any other loopback port; this Origin
+      check is the only barrier against that page, so "any loopback port for
+      local development" (the old rule) is gone. No dev server in the repo
+      used it (V4).
     - Any other origin must be same-origin with this server: its netloc equals
       Host exactly AND that Host passes :func:`host_allowed`.
+
+    The in-process ``TestClient`` (``Host: testserver`` with *in_process_test*)
+    never crossed a socket, so there is no listening port for a loopback Origin
+    to differ from; that pairing is admitted, and only with the flag, as for
+    :func:`host_allowed`.
 
     The Host condition is the F-WEB-03 fix. Under DNS rebinding Origin and Host
     are both the attacker's name, so "Origin == Host" alone admitted it. The
@@ -205,8 +232,19 @@ def origin_allowed(origin: str, *, host: str = "", in_process_test: bool = False
         return False
 
     hostname = (parsed.hostname or "").lower()
-    if parsed.scheme in {"http", "https"} and hostname in _LOCALHOST_NAMES:
-        return True
+    if parsed.scheme in _DEFAULT_PORTS and hostname in _LOCALHOST_NAMES:
+        host_name = _host_name(host)
+        if host_name is None:
+            return False
+        if in_process_test and host_name == IN_PROCESS_TEST_HOST:
+            return True
+        if host_name not in _LOCALHOST_NAMES:
+            return False
+        try:
+            origin_port = parsed.port or _DEFAULT_PORTS[parsed.scheme]
+        except ValueError:  # a port outside 0-65535
+            return False
+        return origin_port == (_host_port(host) or _DEFAULT_PORTS[parsed.scheme])
 
     return (
         bool(host)
