@@ -9,6 +9,11 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- `session-maint delete --days N --confirm --forget-learner-records` also deletes the old
+  sessions that hold learner records (study sessions, teach-backs, parked topics, notes), and
+  those records with them, after listing what it will destroy by table. It still needs
+  `--confirm`, goes through the same tombstone as every other delete so the next export cannot
+  bring the sessions back, and refuses on a database that has not been migrated.
 - Optional learning modules (issue #53). `studyloop module new <id>` scaffolds a module -- a
   directory of data with one offline drill -- that passes `studyloop module check`, the
   conformance check with seventeen quotable rules (`MC001`-`MC017`, `--json` for CI).
@@ -88,6 +93,11 @@ experience may change before `1.0.0`.
 
 ### Changed
 
+- `session-maint delete --days N` says what it keeps. Sessions older than N days
+  that hold learner records were already kept; the `--days` help now says so,
+  and the final line reports how many were deleted and how many were kept and
+  names the flag that would delete them, instead of reporting that no old
+  sessions were found when every old session was kept.
 - Body Double is for anything you are doing, and a live session is the
   agent's screen. The **Focus** card is gone from Body Double: it listed the
   three most recent study topics with an "at capacity" chip above the picker
