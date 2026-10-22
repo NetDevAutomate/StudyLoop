@@ -46,6 +46,7 @@ if str(_tests_dir) not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    give_child_sign_in_token,
     server_opener,
 )
 
@@ -174,6 +175,7 @@ def _start_web_server_real_kiro() -> subprocess.Popen:
     # _playwright_helpers._isolated_child_env; this launcher bypasses that
     # helper only to keep HOME, so it sets the one variable itself.
     env["STUDYLOOP_SESSION_DIR"] = tempfile.mkdtemp(prefix="studyloop-dogfood-session-dir-")
+    give_child_sign_in_token(env, WEB_PORT)  # D2: clients sign in with it
 
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
     proc = subprocess.Popen(

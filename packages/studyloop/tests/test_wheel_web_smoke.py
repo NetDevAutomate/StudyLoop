@@ -30,7 +30,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from _playwright_helpers import server_opener
+from _playwright_helpers import give_child_sign_in_token, server_opener
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -128,6 +128,7 @@ def web_app(web_venv: Path, tmp_path_factory: pytest.TempPathFactory):
         "STUDYLOOP_DB": str(state_root / "sessions.db"),
         "STUDYLOOP_STATE_DIR": str(state_root / "state"),
     }
+    give_child_sign_in_token(env, port)  # D2: server_opener signs in with it
     log_path = state_root / "server.log"
     with log_path.open("wb") as log:
         server = subprocess.Popen(

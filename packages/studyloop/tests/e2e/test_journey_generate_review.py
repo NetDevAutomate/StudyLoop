@@ -40,6 +40,7 @@ if _tests_dir not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     _isolated_child_env,
     _refuse_if_env_reaches_real_dirs,
+    give_child_sign_in_token,
 )
 
 if TYPE_CHECKING:
@@ -125,6 +126,7 @@ def server(world: dict) -> Generator[str, None, None]:
     # HOME/STUDYLOOP_SESSION_DIR back to the developer's real config dir.
     env = _isolated_child_env({"STUDYLOOP_CONFIG": str(world["config"])})
     _refuse_if_env_reaches_real_dirs(env)
+    give_child_sign_in_token(env, WEB_PORT)  # D2: clients sign in with it
     proc = subprocess.Popen(
         [
             sys.executable,

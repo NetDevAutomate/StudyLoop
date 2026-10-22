@@ -219,14 +219,7 @@ def start_web_server(
 
     child_env = dict(env) if env is not None else _isolated_child_env(extra_env)
     _refuse_if_env_reaches_real_dirs(child_env)
-    from studyloop.web.ws_origin import BOOTSTRAP_TOKEN_ENV
-
-    # D2: the server hands its cookie only to a client presenting its token. Hand
-    # the child a token the way the launcher does, so this process knows it and
-    # every client here (urllib, requests, websockets, a Playwright page) signs
-    # in with it through the server's real front door. A caller's own wins.
-    token = child_env.get(BOOTSTRAP_TOKEN_ENV) or secrets.token_urlsafe(32)
-    child_env[BOOTSTRAP_TOKEN_ENV] = token
+    token = give_child_sign_in_token(child_env, port)
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
     if extra_args:
         cmd.extend(extra_args)
@@ -341,6 +334,24 @@ def register_server_token(port: int, token: str) -> None:
     """Record *token* as the sign-in token of the server listening on *port*."""
     for host in ("127.0.0.1", "localhost"):
         _SERVER_TOKENS[f"http://{host}:{port}"] = token
+
+
+def give_child_sign_in_token(child_env: dict[str, str], port: int) -> str:
+    """Put a sign-in token in *child_env* for the server about to listen on *port*.
+
+    D2: the server hands its cookie only to a client presenting its token. This
+    hands the child a token the way the launcher does and registers it, so this
+    process knows it and every client here (urllib, requests, websockets, a
+    Playwright page) signs in with it through the server's real front door. A
+    token already in *child_env* wins. For the few tests that start
+    ``studyloop web`` with their own ``Popen`` instead of :func:`start_web_server`.
+    """
+    from studyloop.web.ws_origin import BOOTSTRAP_TOKEN_ENV
+
+    token = child_env.get(BOOTSTRAP_TOKEN_ENV) or secrets.token_urlsafe(32)
+    child_env[BOOTSTRAP_TOKEN_ENV] = token
+    register_server_token(port, token)
+    return token
 
 
 def server_token(base_url: str) -> str:
