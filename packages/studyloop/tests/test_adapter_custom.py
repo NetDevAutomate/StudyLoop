@@ -160,3 +160,43 @@ class TestCustomAgentFromConfig:
 
         with pytest.raises(ValueError, match="Unknown strategy"):
             build_custom_adapter("bad", {"binary": "x", "strategy": "unknown", "launch": "x"})
+
+
+class TestCustomAdapterQuotesItsBinary:
+    """The launch string is shell text (``/bin/sh -c``, or the tmux pane command).
+
+    The built-in adapters ``shlex.quote`` their resolved binary; a custom
+    adapter must too, or a harness under a path with a space launches as two
+    words. A template that already quotes ``{binary}`` itself keeps working:
+    quoting it a second time would put literal quote characters in the path.
+    """
+
+    BINARY = "/opt/my tools/exampletool"
+
+    def _launch(self, tmp_path, template: str) -> list[str]:
+        import shlex
+
+        from studyloop.adapters._custom import build_custom_adapter
+
+        config = {"binary": "exampletool", "strategy": "cli-flag", "launch": template}
+        adapter = build_custom_adapter("exampletool", config)
+        persona = tmp_path / "persona.md"
+        persona.touch()
+        with patch("shutil.which", return_value=self.BINARY):
+            return shlex.split(adapter.launch_cmd(persona, False))
+
+    def test_binary_with_a_space_is_one_word(self, tmp_path):
+        argv = self._launch(tmp_path, "{binary} --read {persona}")
+
+        assert argv[0] == self.BINARY
+        assert argv[1] == "--read"
+
+    def test_a_template_that_double_quotes_the_binary_is_not_quoted_twice(self, tmp_path):
+        argv = self._launch(tmp_path, '"{binary}" --read {persona}')
+
+        assert argv[0] == self.BINARY
+
+    def test_a_template_that_single_quotes_the_binary_is_not_quoted_twice(self, tmp_path):
+        argv = self._launch(tmp_path, "'{binary}' --read {persona}")
+
+        assert argv[0] == self.BINARY

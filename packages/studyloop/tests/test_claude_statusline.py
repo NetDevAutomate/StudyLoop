@@ -65,6 +65,7 @@ def _render(
     *,
     state: dict[str, Any] | None = None,
     stdin: dict[str, Any] | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run the status line against a temporary HOME, never the real one."""
     home = tmp_path / "home"
@@ -77,7 +78,7 @@ def _render(
         input=json.dumps(payload) + "\n",
         capture_output=True,
         text=True,
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin", **(env or {})},
         cwd=tmp_path,
         timeout=10,
         check=False,
@@ -157,3 +158,83 @@ def test_segments_are_joined_with_box_drawing_separator(bash: str, tmp_path: Pat
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count(SEPARATOR) == 4, f"segments not joined by │: {result.stdout!r}"
+
+
+def test_script_reads_no_pomodoro_state() -> None:
+    """The ``pomodoro`` segment had no writer, so it could never render.
+
+    Nothing puts a ``pomodoro`` object in ``session-state.json``: the web
+    timer is a browser-local Alpine store, and the only persisted
+    pomodoro-related key is ``timer_mode``. A segment reading a key no writer
+    produces is dead code that implies a feature the line does not have.
+    """
+    source = SCRIPT.read_text(encoding="utf-8").lower()
+
+    assert "pomodoro" not in source
+    assert "pomo_" not in source
+
+
+def test_ended_session_shows_no_topic_or_energy(bash: str, tmp_path: Path) -> None:
+    """An ended session's state file keeps its last topic and energy.
+
+    ``session_state.write_session_state`` merges ``{"mode": "ended"}`` into
+    the existing file, so the old ``topic`` and ``energy_label`` stay on disk
+    until the next start. The line must not present them as current.
+    """
+    result = _render(
+        bash,
+        tmp_path,
+        state={"mode": "ended", "energy_label": "high", "topic": "Stale topic"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Stale topic" not in result.stdout
+    assert "🔋" not in result.stdout, f"energy shown for an ended session: {result.stdout!r}"
+    assert result.stdout.count(SEPARATOR) == 2, f"expected timer, context, cost: {result.stdout!r}"
+
+
+def test_live_session_still_shows_topic_and_energy(bash: str, tmp_path: Path) -> None:
+    result = _render(
+        bash, tmp_path, state={"mode": "focus", "energy_label": "high", "topic": "Live topic"}
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Live topic" in result.stdout
+    assert "High" in result.stdout
+
+
+def test_state_file_follows_studyloop_session_dir(bash: str, tmp_path: Path) -> None:
+    """``session_state.SESSION_DIR`` honours ``STUDYLOOP_SESSION_DIR``; so must the line.
+
+    The default-location file is planted as a decoy: reading it would show
+    the wrong session's topic.
+    """
+    session_dir = tmp_path / "custom session dir"
+    session_dir.mkdir()
+    (session_dir / "session-state.json").write_text(
+        json.dumps({"energy_label": "low", "topic": "From session dir"})
+    )
+
+    result = _render(
+        bash,
+        tmp_path,
+        state={"energy_label": "high", "topic": "Default-location decoy"},
+        env={"STUDYLOOP_SESSION_DIR": str(session_dir)},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "From session dir" in result.stdout, result.stdout
+    assert "Default-location decoy" not in result.stdout
+    assert "Low" in result.stdout
+
+
+def test_empty_studyloop_session_dir_falls_back_to_the_default(bash: str, tmp_path: Path) -> None:
+    result = _render(
+        bash,
+        tmp_path,
+        state={"energy_label": "high", "topic": "Default location"},
+        env={"STUDYLOOP_SESSION_DIR": ""},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Default location" in result.stdout
