@@ -48,6 +48,16 @@ trufflehog's own allowlist already drops AWS's documented sample access key,
 so that fixture is never a finding. Verified 2026-09-15: a planted ``ghp_``
 token in the index is caught with ``--since-commit=HEAD``; it was silently
 dropped when ``unverified`` was not requested.
+
+That last point rests on an upstream ordering quirk (ADR-0018, consequences).
+Under ``PRE_COMMIT=1`` trufflehog means to narrow results to
+``verified,unknown`` (``main.go``, ``isPreCommitHook``), but at 3.99.3 that
+override runs after ``--results`` was parsed into the engine, so this
+wrapper's ``--results=verified,unknown,unverified`` stands and the hook fails
+on a revoked key. If upstream moves the override, the hook silently stops
+failing on revoked or fake keys. ``test_trufflehog_pinned_image.py`` pins the
+contract against the pinned release: a planted revoked-shape key under
+``PRE_COMMIT=1`` must still be reported as ``state=unverified`` and exit 1.
 """
 
 from __future__ import annotations
@@ -137,13 +147,29 @@ def _rows(stream: str) -> tuple[list[dict], int]:
         findings.append(
             {
                 "detector": item.get("DetectorName", "?"),
-                "verified": bool(item.get("Verified")),
+                "state": _state(item),
                 "commit": str(git.get("commit", ""))[:10],
                 "file": git.get("file", ""),
                 "line": git.get("line", ""),
             }
         )
     return findings, unrecognised
+
+
+def _state(item: dict) -> str:
+    """Sort a finding the way trufflehog's own ``--results`` filter does.
+
+    engine.go at the pinned commit: ``Verified`` true is ``verified``; false
+    with a ``VerificationError`` is ``unknown`` (the provider could not be
+    asked -- no network, a timeout); false without one is ``unverified`` (the
+    provider was asked and said no: a revoked or fake key). Only the word is
+    kept; the error text may name an endpoint or carry a redacted hint.
+    """
+    if item.get("Verified"):
+        return "verified"
+    if item.get("VerificationError"):
+        return "unknown"
+    return "unverified"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -215,17 +241,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    by = collections.Counter((f["detector"], f["verified"]) for f in findings)
+    by = collections.Counter((f["detector"], f["state"]) for f in findings)
     scope = "history" if args.history else "since HEAD"
     if pr_range is not None:
         scope = f"PR range {pr_range[0][:10]}..{pr_range[1][:10]}"
     print(f"trufflehog findings: {len(findings)} ({scope})")
-    for (det, ver), count in by.most_common():
-        print(f"  {count:>4}  {det}  verified={ver}")
+    for (det, state), count in by.most_common():
+        print(f"  {count:>4}  {det}  state={state}")
     for f in findings[: args.max_rows]:
-        verified = "yes" if f["verified"] else "no"
         where = f"{f['file']}:{f['line']}"
-        print(f"  - {f['detector']:<26} verified={verified:<3} {f['commit']} {where}")
+        print(f"  - {f['detector']:<26} state={f['state']:<10} {f['commit']} {where}")
     if len(findings) > args.max_rows:
         print(f"  … {len(findings) - args.max_rows} more")
     return 1 if findings else 0

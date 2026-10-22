@@ -118,6 +118,38 @@ def test_real_shape_finding_fails_without_echoing_the_match(
 
 
 @pytest.mark.parametrize(
+    ("overrides", "state"),
+    [
+        pytest.param({"Verified": True}, "verified", id="verified"),
+        pytest.param(
+            {"Verified": False, "VerificationError": "dial tcp: " + SENTINEL},
+            "unknown",
+            id="unknown",
+        ),
+        pytest.param({"Verified": False}, "unverified", id="unverified"),
+        pytest.param({"Verified": False, "VerificationError": ""}, "unverified", id="empty-error"),
+    ],
+)
+def test_finding_state_is_reported_without_the_error_text(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    overrides: dict[str, Any],
+    state: str,
+) -> None:
+    """trufflehog's three result states, as engine.go sorts them at the pinned
+    commit: ``Verified`` true is verified; false with a ``VerificationError`` is
+    unknown (the provider could not be asked); false without one is unverified
+    (the provider was asked and said no -- a revoked or fake key). The hook's
+    reader needs that distinction: ``unknown`` means "check your network",
+    ``unverified`` means "this is shaped like a real key and is dead". The error
+    text itself may carry an endpoint or a redacted hint, so it is never printed."""
+    code, output, _ = _run(monkeypatch, capsys, stdout=_finding(**overrides) + "\n", returncode=183)
+    assert code == 1
+    assert f"state={state}" in output
+    assert SENTINEL not in output
+
+
+@pytest.mark.parametrize(
     ("stdout", "returncode"),
     [
         pytest.param('{"DetectorName": "Github", "Raw": "' + SENTINEL, 0, id="truncated-json"),
