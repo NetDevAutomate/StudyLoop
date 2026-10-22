@@ -601,14 +601,30 @@ def create_snapshot(
 
     src = sqlite3.connect(f"file:{full}?mode=ro", uri=True)
     try:
+        # The snapshot is a whole copy of the 0600 record (F-AST-14). Left to
+        # VACUUM INTO, SQLite creates it under the umask (0644 under 022), so
+        # it is created here, owner-only and empty (VACUUM INTO accepts an
+        # empty file), and SQLite writes every byte into that. O_EXCL: the
+        # loop above chose an unused name; never write into someone else's.
+        fd = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
-            src.execute("VACUUM INTO ?", (str(snapshot),))
-        except sqlite3.OperationalError:  # pragma: no cover - old SQLite
-            dst = sqlite3.connect(snapshot)
+            os.fchmod(fd, 0o600)
+        finally:
+            os.close(fd)
+        try:
             try:
-                src.backup(dst)
-            finally:
-                dst.close()
+                src.execute("VACUUM INTO ?", (str(snapshot),))
+            except sqlite3.OperationalError:  # pragma: no cover - old SQLite
+                dst = sqlite3.connect(snapshot)
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+        except BaseException:
+            # An empty or partial file would read as the newest snapshot to
+            # maybe_snapshot and hold back the next one for a whole interval.
+            snapshot.unlink(missing_ok=True)
+            raise
     finally:
         src.close()
 

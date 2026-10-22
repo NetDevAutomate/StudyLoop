@@ -466,6 +466,15 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
     # SQLite online backup includes committed WAL pages without copying a live DB.
     with tempfile.TemporaryDirectory(prefix="session-sync-seed-") as tmp:
         snapshot = Path(tmp) / "sessions.db"
+        # The seed is a whole copy of the 0600 record, and scp creates the
+        # remote copy with this file's mode (F-AST-14). Left to
+        # sqlite3.connect it is created under the umask (0644 under 022), so
+        # it is created here, owner-only and empty, before SQLite writes it.
+        fd = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+        finally:
+            os.close(fd)
         with sqlite3.connect(local_db) as source, sqlite3.connect(snapshot) as dest:
             source.backup(dest)
             legacy_guard.check_database(dest)
