@@ -29,7 +29,12 @@ def _validate_artefact_path(course: str, artefact_type: str, filename: str) -> P
 
 @router.get("/artefacts/{course}/{artefact_type}/{filename:path}")
 def serve_artefact(course: str, artefact_type: str, filename: str) -> FileResponse:
-    """Serve an artefact file (audio, video, slides, etc.) with path validation."""
+    """Serve an artefact file (audio, video, slides, etc.) with path validation.
+
+    Outside ``/api`` but behind the same server cookie (D9.1, council pass 3):
+    ``ws_origin.requires_server_secret`` names this prefix, so a real
+    ``studyloop web`` refuses an uncookied fetch before it reaches this route.
+    """
     path = _validate_artefact_path(course, artefact_type, filename)
     return FileResponse(path)
 

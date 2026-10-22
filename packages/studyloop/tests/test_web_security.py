@@ -312,6 +312,77 @@ class TestServerSecret:
 
 
 # ---------------------------------------------------------------------------
+# D9.1 (council pass 3) — course artefacts outside /api sit behind the cookie too
+# ---------------------------------------------------------------------------
+
+_ARTEFACT_SECRET = "a" * 43
+
+
+@pytest.fixture()
+def artefact_app(tmp_path: Path):  # type: ignore[no-untyped-def]
+    """``create_app`` with a server secret over a content tree holding one artefact."""
+    from unittest.mock import patch
+
+    from studyloop.settings import ContentConfig, Settings
+
+    audio = tmp_path / "content" / "my-course" / "audio"
+    audio.mkdir(parents=True)
+    (audio / "episode-01.mp3").write_bytes(b"fake-audio")
+    (tmp_path / "outside.txt").write_text("not course content")
+    settings = Settings(content=ContentConfig(base_path=tmp_path / "content"))
+    with patch("studyloop.web.routes.artefacts.load_settings", return_value=settings):
+        yield create_app(server_secret=_ARTEFACT_SECRET)
+
+
+class TestArtefactsRequireTheCookie:
+    """Under D2 ``/artefacts/...`` was the one unauthenticated read of learner content
+    left: it is served outside ``/api`` and so sat outside the cookie gate."""
+
+    def test_uncookied_artefact_fetch_is_refused(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        response = TestClient(artefact_app).get("/artefacts/my-course/audio/episode-01.mp3")
+        assert response.status_code == 403
+        assert response.json()["code"] == "server_secret_required"
+
+    def test_the_dashboard_cookie_fetches_it(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        """The positive browser path: the page already holds the cookie, ``Path=/``."""
+        client = TestClient(artefact_app)
+        client.get(f"/?token={_ARTEFACT_SECRET}", follow_redirects=False)
+        response = client.get("/artefacts/my-course/audio/episode-01.mp3")
+        assert response.status_code == 200
+        assert response.content == b"fake-audio"
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/artefacts/../outside.txt", "/artefacts/my-course/../../outside.txt"],
+    )
+    def test_traversal_is_still_404_with_the_cookie(self, artefact_app, path: str) -> None:  # type: ignore[no-untyped-def]
+        client = TestClient(artefact_app)
+        client.cookies.set("studyloop_auth", _ARTEFACT_SECRET)
+        assert client.get(path).status_code == 404
+
+    def test_encoded_traversal_is_still_404_with_the_cookie(self, artefact_app) -> None:  # type: ignore[no-untyped-def]
+        client = TestClient(artefact_app)
+        client.cookies.set("studyloop_auth", _ARTEFACT_SECRET)
+        response = client.get("/artefacts/my-course/audio/..%2F..%2F..%2Foutside.txt")
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        ("path", "gated"),
+        [
+            ("/artefacts/c/t/f.mp3", True),
+            ("/artefacts", True),
+            ("/artefacts/", True),
+            ("/artefactsx/f", False),
+            ("/static/app.js", False),
+        ],
+    )
+    def test_gate_covers_exactly_the_artefact_route(self, path: str, gated: bool) -> None:
+        from studyloop.web.ws_origin import requires_server_secret
+
+        assert requires_server_secret(path) is gated
+
+
+# ---------------------------------------------------------------------------
 # ledger 21 / F-WEB-01@gpt-5.6-terra — --lan never serves without a password
 # ---------------------------------------------------------------------------
 

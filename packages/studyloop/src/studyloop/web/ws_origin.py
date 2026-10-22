@@ -98,17 +98,27 @@ AUTH_COOKIE = "studyloop_auth"
 BOOTSTRAP_TOKEN_ENV = "STUDYLOOP_WEB_TOKEN"
 
 
+#: Learner content served outside ``/api`` (D9.1, council pass 3): course
+#: artefacts are learner data, so they sit behind the same cookie.
+_ARTEFACTS_PREFIX = "/artefacts"
+
+
 def requires_server_secret(path: str) -> bool:
     """Whether a request to *path* must present the server secret.
 
     Everything under ``/api`` except the ``practice_check`` loopback hop, which
     ``studyloop drill`` (a CLI process with no browser cookie) calls with its own
-    per-session capability token, checked by that route.
+    per-session capability token, checked by that route; and the course
+    artefacts under ``/artefacts`` (D9.1), the one learner-content read outside
+    ``/api``. The app shell (``/``, static files) stays open: it holds no
+    learner data, and ``/`` is where a browser signs in.
     """
     from studyloop.modules.hop import ROUTE as PRACTICE_CHECK_ROUTE
 
     if path == PRACTICE_CHECK_ROUTE:
         return False
+    if path == _ARTEFACTS_PREFIX or path.startswith(_ARTEFACTS_PREFIX + "/"):
+        return True
     return path == "/api" or path.startswith("/api/")
 
 
