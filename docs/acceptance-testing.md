@@ -632,7 +632,9 @@ module-contract design names (`openspec/changes/module-contract-v1/design.md` §
 real product -- a subprocess `studyloop web` with the deterministic harness agent, the real
 CLI in subprocesses, a headless browser -- as ordered phases on one world per persona:
 
-- **Persona A, an AuDHD learner on a tablet over `--lan`** (viewport 820×1180, budget 6 min):
+- **Persona A, an AuDHD learner on a tablet over a password-gated non-loopback bind** (the
+  server runs with the deprecated `--lan`, the same Basic-auth gate `--bind` applies; viewport
+  820×1180, budget 6 min):
   no Labs entry before a module is installed, `module add`, exactly one Labs entry listing ids
   and prompts only, a drill started inside the one claimed session, keyboard-only traversal,
   Escape cancelling with the recovery copy, a reload that re-attaches, a module declaring a

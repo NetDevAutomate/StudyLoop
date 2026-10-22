@@ -133,7 +133,8 @@ studyloop restore                         # List available backups
 studyloop restore BACKUP --confirm        # Restore from backup (safety backup first)
 
 # Web
-studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
+studyloop web [--port PORT] [--bind ADDRESS] [--password SECRET] # Launch study web app (PWA); prints the sign-in address
+studyloop web --show-url                  # Print the running session dashboard's sign-in address again
 studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
 studyloop-mcp [--dev]                     # MCP server exposing studyloop's own tools
 ```
@@ -148,8 +149,9 @@ studyloop study "Spark Internals" --mode co-study       # User-driven co-study
 studyloop study "topic" --timer pomodoro                # Override default timer
 studyloop study "topic" --agent claude --web            # Explicit agent + web dashboard
 studyloop study "topic" --agent codex                  # Explicit Codex CLI session
-studyloop study "topic" --lan                           # LAN access with password auth (implies --web)
-studyloop study "topic" --lan --password SECRET         # Explicit password for LAN auth
+studyloop study "topic" --bind 100.64.0.5               # Also serve the dashboard on one VPN/LAN address of this machine (implies --web)
+studyloop study "topic" --bind 100.64.0.5 --password SECRET  # Explicit Basic-auth password for that address
+studyloop study "topic" --lan                           # Deprecated: every interface in cleartext; use --bind
 studyloop study "topic" --agent opencode                # Preview OpenCode integration
 studyloop study "topic" --agent pi                      # Preview pi integration
 studyloop study --resume                                # Resume conversation (-r)
@@ -166,9 +168,10 @@ Run `studyloop study` without a topic to open the textual picker for body double
 - Sidebar shows timer, activity feed, counters (keyboard: `p` pause, `r` reset, `Q` end session)
 - IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
-- `--web` auto-opens a browser to the dashboard on startup
-- `--lan` exposes the dashboard on your LAN with HTTP Basic Auth, prints usable local/LAN URLs, username, and password (implies `--web`). Password is auto-generated if not set via `--password` or `lan_password` in config
-- `--password SECRET` sets the LAN authentication password (used with `--lan`)
+- `--web` auto-opens a browser at the dashboard's sign-in address (`/session?token=…`): the token is new for each server and is what signs a browser in (ADR-0014). The address is printed before tmux takes the screen; `studyloop web --show-url` prints it again
+- `--bind ADDRESS` also serves the dashboard on one IP address this machine has — a Tailscale/VPN address is the recommended one — behind HTTP Basic Auth, and prints that address with the token, the username and the password (implies `--web`). The server also listens on `127.0.0.1`, so `studyloop drill` and the local browser keep working. Wildcards (`0.0.0.0`, `::`) and addresses this machine lacks are refused. Password is auto-generated if not set via `--password` or `lan_password` in config
+- `--lan` is deprecated (removed in the next release): every interface, in cleartext; use `--bind ADDRESS`
+- `--password SECRET` sets the Basic-auth password for `--bind`/`--lan`
 
 **Session lifecycle:**
 - **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar. Refuses with "A session is already active" only when a prior session's owner is confirmed still alive (its tmux session, or — for a web session — its server process); a claim left behind by a crashed session is reclaimed automatically, with a warning logged naming the stale session, instead of refusing forever.
@@ -487,13 +490,15 @@ rather than routine tidy-up.
 
 ### Web UI
 
-`studyloop web` launches the browser workspace for flashcard and quiz review. It is installable as a PWA, but does not work offline — there is no service worker, so the StudyLoop server must stay reachable. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
+`studyloop web` launches the browser workspace for flashcard and quiz review. It is installable as a PWA, but does not work offline — there is no service worker, so the StudyLoop server must stay reachable. It prints a sign-in address once (`http://127.0.0.1:8567/?token=…`); the token is new each time the server starts and is what signs a browser in. By default it binds to `127.0.0.1`; `--bind ADDRESS` also serves on one address this machine has (a Tailscale/VPN address, where the tunnel encrypts) behind HTTP Basic Auth, and keeps listening on `127.0.0.1`. `--lan` (every interface, cleartext) is deprecated. See [Remote Study](setup-guide.md#remote-study-ipad-on-the-bus).
 
 ```bash
 studyloop web                    # Serve on 127.0.0.1:8567
 studyloop web --port 9000        # Custom port
-studyloop web --lan              # LAN access with auth
-studyloop web --lan --password SECRET
+studyloop web --bind "$(tailscale ip -4)"   # Also serve on this VPN address, with auth
+studyloop web --bind 192.168.1.20 --password SECRET
+studyloop web --show-url         # Re-print the study session dashboard's sign-in address
+studyloop web --lan              # Deprecated: every interface in cleartext
 ```
 
 | Key | Action | When |
@@ -528,7 +533,7 @@ downgraded to another transport.
 ```yaml
 web_port: 8567       # web dashboard port (default 8567)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
-lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
+lan_password: ""     # persistent Basic-auth password for --bind/--lan (auto-generated if empty)
 ```
 
 **Agent priority config** (`~/.config/studyloop/config.yaml`):

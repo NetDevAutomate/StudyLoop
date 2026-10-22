@@ -174,7 +174,7 @@ def _end_session_over_http() -> None:
         creds = base64.b64encode(f"{user}:{password}".encode()).decode()
         req.add_header("Authorization", f"Basic {creds}")
     with contextlib.suppress(Exception):
-        # The server cookie `/` sets is required on /api (F-WEB-20).
+        # The cookie the token sign-in issued is required on /api (F-WEB-20, ADR-0014).
         server_opener(BASE, basic_auth=(user, password) if password else None).open(req, timeout=3)
 
 

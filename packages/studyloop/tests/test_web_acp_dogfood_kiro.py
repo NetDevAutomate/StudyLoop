@@ -210,7 +210,7 @@ def _teardown_server(proc: subprocess.Popen) -> None:
 
             creds = base64.b64encode(f"{user}:{password}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        # The server cookie `/` sets is required on /api (F-WEB-20).
+        # The cookie the token sign-in issued is required on /api (F-WEB-20, ADR-0014).
         server_opener(
             f"http://127.0.0.1:{WEB_PORT}", basic_auth=(user, password) if password else None
         ).open(req, timeout=3)
@@ -270,7 +270,7 @@ def _end_any_active_session_via_api() -> None:
 
             creds = base64.b64encode(f"{user}:{password}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
-        # The server cookie `/` sets is required on /api (F-WEB-20).
+        # The cookie the token sign-in issued is required on /api (F-WEB-20, ADR-0014).
         server_opener(
             f"http://127.0.0.1:{WEB_PORT}", basic_auth=(user, password) if password else None
         ).open(req, timeout=3)

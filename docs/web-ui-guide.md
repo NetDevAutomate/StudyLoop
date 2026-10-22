@@ -176,19 +176,34 @@ silence. See [Voice Output](voice-output.md) for setup and privacy details.
 
 ## Use it from another device
 
-To open StudyLoop from a tablet or another laptop on the same trusted network:
+A browser signs in once with the address the server prints: it carries a
+token that is new each time the server starts. From this machine that is the
+`http://127.0.0.1:8567/…?token=…` line. To open StudyLoop from a tablet or
+another laptop, safest first (details in
+[Remote Study](setup-guide.md#remote-study-ipad-on-the-bus)):
 
-```bash
-studyloop web --lan
-```
+1. An `ssh -L 8567:127.0.0.1:8567` tunnel from the other laptop — nothing
+   listens beyond this machine.
+2. A Tailscale or other VPN address with `--bind`:
 
-Use the address and password printed in the terminal. LAN mode uses HTTP Basic
-Auth, but it is still intended for a trusted local network—not direct exposure to
-the internet. A tunnel or reverse proxy changes the security boundary and is not
-part of the supported quick path: its Origin header differs from the LAN host's,
-so WebSocket connections through it are rejected by default. If you still need
-one, set `STUDYLOOP_ALLOWED_ORIGINS` to a comma-separated list of exact origins
-(scheme + host + port, no wildcards) — see
+   ```bash
+   studyloop study "topic" --bind "$(tailscale ip -4)"   # or: studyloop web --bind …
+   ```
+
+   Open the printed `Dashboard:` address on the other device and enter the
+   printed username and password. The server also keeps listening on
+   `127.0.0.1` for this machine's own tools.
+3. `--lan` (deprecated, removed in the next release): every interface, in
+   cleartext, behind the same password.
+
+HTTP Basic Auth is a password gate on a link you already trust, not
+encryption — never expose the server directly to the internet. If a tab is
+closed and the token with it, `studyloop web --show-url` prints the session's
+sign-in address again. A reverse proxy changes the security boundary and is not
+part of the supported quick path: its Origin header differs from the server's
+host, so WebSocket connections through it are rejected by default. If you still
+need one, set `STUDYLOOP_ALLOWED_ORIGINS` to a comma-separated list of exact
+origins (scheme + host + port, no wildcards) — see
 [Troubleshooting](troubleshooting.md#web-and-lan-access).
 
 ## If a live agent does not appear

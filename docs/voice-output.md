@@ -286,7 +286,7 @@ The middle rung matters: with no Kokoro server at all, the app still talks, usin
 
 An earlier tier ran Kokoro-82M in the page itself, via transformers.js on WebGPU or WASM. It has been removed, along with the vendored ONNX Runtime, the phonemiser and ~27 MB of model runtime. The reasons, in order of how badly each hurt:
 
-- **It could not run at all over `studyloop web --lan`.** That serves plain HTTP, which is not a secure context, so the browser hides both `navigator.gpu` and Cache Storage. The tablets voice was mostly *for* were exactly the devices it could not reach.
+- **It could not run at all from another device.** `studyloop web --bind` (and the deprecated `--lan`) serve plain HTTP, which is not a secure context, so the browser hides both `navigator.gpu` and Cache Storage. The tablets voice was mostly *for* were exactly the devices it could not reach.
 - **6.6x real time on a warmed WebGPU tier** — slower than reading the card.
 - **It self-downgraded to a silent tier** rather than failing visibly.
 - **It occasionally spoke Mandarin**, for reasons never established.

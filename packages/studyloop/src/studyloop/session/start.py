@@ -239,6 +239,7 @@ def start_session(
     web: bool,
     *,
     lan: bool = False,
+    bind: str | None = None,
     password: str = "",
     topic_config: TopicConfig | None = None,
     resume_session_name: str | None = None,
@@ -248,6 +249,11 @@ def start_session(
     brief_intro: str | None = None,
 ) -> None:
     """Start a new study session with tmux environment.
+
+    ``bind`` is the one IP address the web dashboard also serves on (ADR-0019,
+    validated by the CLI); ``lan`` is the deprecated every-interface alias. Either
+    implies ``web`` was requested, and any address beyond loopback gets the
+    Basic-auth password (``password``, else config, else generated).
 
     ``brief`` / ``brief_intro`` are the planning-brief section and the sentence
     that frames it (see :func:`~studyloop.agent_launcher.build_canonical_persona`);
@@ -507,11 +513,16 @@ def start_session(
             state_update["topic_config_name"] = topic_config.name
         write_session_state(state_update)
 
-        # Resolve LAN credentials: CLI flag > config > auto-generate
+        # Resolve the Basic-auth credentials for anything beyond loopback (ADR-0019):
+        # CLI flag > config > auto-generate. ``--bind 127.0.0.1`` is the default
+        # behaviour and gets none.
+        import ipaddress
+
+        exposed = lan or (bind is not None and not ipaddress.ip_address(bind).is_loopback)
         lan_username = "study"
         lan_password = password
         lan_password_generated = False
-        if lan:
+        if exposed:
             try:
                 from studyloop.settings import load_settings as _ls_inner
 
@@ -521,13 +532,13 @@ def start_session(
                     lan_password = _settings.lan_password
             except Exception:
                 pass
-        if lan and not lan_password:
+        if exposed and not lan_password:
             import secrets
 
             lan_password = secrets.token_urlsafe(16)
             lan_password_generated = True
 
-        if lan and lan_password:
+        if exposed and lan_password:
             console.print()
             for line in format_lan_credential_lines(
                 LanCredentialFeedback(
@@ -538,47 +549,53 @@ def start_session(
             ):
                 console.print(line)
 
+        sign_in_token: str | None = None
         if web:
-            start_web_background(session_name, lan=lan, password=lan_password)
+            sign_in_token = start_web_background(
+                session_name, lan=lan, password=lan_password, bind=bind
+            )
 
-        # Persist LAN info to session state so it's visible after os.execvp
-        if lan:
+        # Print where the other device reaches the dashboard. The token is the
+        # browser's credential (ADR-0014), so the address carries it: without it a
+        # second device lands on the sign-in page with nothing to paste. Shown
+        # briefly before tmux takes over; `studyloop web --show-url` re-prints it.
+        # The password is deliberately NOT written to the session state: the
+        # browser-facing state endpoint echoes every key not named `*_token` /
+        # `*_secret`, and nothing reads it back.
+        if exposed and sign_in_token:
             import socket
 
-            try:
-                hostname = socket.gethostname()
-                lan_ip = socket.gethostbyname(hostname)
-            except Exception:
-                lan_ip = "<your-ip>"
             from studyloop.session.orchestrator import _get_web_port
+            from studyloop.web.ws_origin import BOOTSTRAP_QUERY
 
             web_port = _get_web_port()
+            if bind is not None:
+                reach_host = bind
+            else:
+                try:
+                    reach_host = socket.gethostbyname(socket.gethostname())
+                except Exception:
+                    reach_host = "<your-ip>"
             access_info = build_web_access_info(
-                bind_host="0.0.0.0",
+                bind_host="0.0.0.0" if lan else bind or "127.0.0.1",
                 port=web_port,
                 lan_enabled=True,
-                lan_hosts=(lan_ip,),
-                path="/session",
+                lan_hosts=(reach_host,),
+                path=f"/session?{BOOTSTRAP_QUERY}={sign_in_token}",
             )
-            lan_url = access_info.lan_urls[0] if access_info.lan_urls else access_info.local_url
-            write_session_state(
-                {
-                    "lan_ip": lan_ip,
-                    "lan_password": lan_password,
-                    "lan_url": lan_url,
-                }
-            )
+            reach_url = access_info.lan_urls[0] if access_info.lan_urls else access_info.local_url
 
-            # Print LAN info — this shows briefly before tmux takes over,
-            # but is also saved in session state (visible via web dashboard
-            # and `studyloop study --resume` output).
-            console.print("\n[bold]LAN access:[/bold]")
-            console.print(f"  Dashboard: {lan_url}")
+            console.print("\n[bold]Dashboard access from another device:[/bold]")
+            # soft_wrap: a sign-in URL folded across two lines cannot be copied or clicked.
+            console.print(f"  Dashboard: {reach_url}", soft_wrap=True)
             console.print(f"  Username:  {lan_username}")
             if lan_password_generated:
                 console.print(f"  Password:  {lan_password}")
             elif lan_password:
                 console.print("  Password:  configured; not shown")
+            console.print(
+                "  [dim]Tab closed? `studyloop web --show-url` prints this address again.[/dim]"
+            )
 
         attach_if_needed(session_name, result["already_in_tmux"])
     except Exception as exc:

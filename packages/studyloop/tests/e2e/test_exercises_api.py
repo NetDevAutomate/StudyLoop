@@ -66,7 +66,8 @@ def api(tmp_path_factory):
     env = launch_env(root, PORT, extra_args=["--dev"])
 
     try:
-        # Presents the server cookie `/` sets, which every /api route requires.
+        # Signs in with the server's token (ADR-0014: `/` sets the cookie only for a
+        # browser presenting it), which every /api route requires.
         with server_session(env.base_url) as http:
 
             class Api:

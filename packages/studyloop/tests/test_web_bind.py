@@ -34,6 +34,7 @@ def _run(
 
     *local* replaces the machine's interface check with a fixed set, so a test
     does not depend on which addresses this host has. Omitted, the real check runs.
+    See ``test_web_bind_loopback.py`` for what a non-loopback bind listens on.
     """
     import uvicorn
     from click.testing import CliRunner
@@ -46,6 +47,9 @@ def _run(
     monkeypatch.setattr("studyloop.cli._web._candidate_lan_hosts", lambda: ("192.168.1.42",))
     if local is not None:
         monkeypatch.setattr("studyloop.cli._web._is_local_address", lambda a: a in local)
+        # A stubbed interface check means the address is not really here, so the
+        # socket layer (which a non-loopback bind now reaches, item 3) is stubbed too.
+        monkeypatch.setattr("studyloop.cli._web.listen_sockets", lambda hosts, port: [])
     captured: dict[str, Any] = {}
 
     def capture(server: Any, *_args: Any, **_kwargs: Any) -> None:

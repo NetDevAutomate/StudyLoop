@@ -91,15 +91,26 @@ For local-only use:
 studyloop web
 ```
 
-For LAN use:
+Each server prints a sign-in address once, with a token that is new every start;
+a browser that opens it is signed in. A tab from before a restart cannot recover
+on its own: reopen it from the new address. If the tab is closed and the token
+gone, `studyloop web --show-url` prints the current session dashboard's address
+again (it refuses when no server is up).
+
+To reach it from another device, prefer an `ssh -L` tunnel or a Tailscale/VPN
+address (see [Remote Study](setup-guide.md#remote-study-ipad-on-the-bus)):
 
 ```bash
-studyloop web --lan
+studyloop web --bind "$(tailscale ip -4)"      # or: studyloop study "topic" --bind …
 ```
 
-Configured LAN passwords are not printed. Generated one-time passwords are
-printed once. If a phone or tablet cannot connect, check that the shown LAN URL
-uses the host's real LAN address and that the device is on the same network.
+`--bind` refuses an address this machine does not have and lists the ones it
+found; it refuses `0.0.0.0` and `::`. The server also listens on `127.0.0.1`, so
+local tools keep working. `--lan` (every interface, cleartext) is deprecated.
+Configured passwords are not printed. Generated one-time passwords are printed
+once. If a phone or tablet cannot connect, check that the shown address is the
+one the device can route to (the VPN address on a tailnet) and that it opened the
+address with the token, or pasted the token into the sign-in page.
 
 A WebSocket connection through a tunnel or reverse proxy has a different Origin
 than the LAN host expects, and is rejected by default. Set

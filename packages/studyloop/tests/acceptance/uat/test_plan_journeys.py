@@ -237,7 +237,8 @@ def page(web_server, auth_context: BrowserContext) -> Generator[Page, None, None
 
 def _http(path: str, method: str = "GET") -> Any:
     user, password = effective_credentials()
-    # Loads `/` for the server cookie /api requires; Basic auth when configured.
+    # Signs in with the server's token for the cookie /api requires (ADR-0014; a bare
+    # `/` sets none); Basic auth when configured.
     opener = server_opener(BASE, basic_auth=(user, password) if password else None)
     req = urllib.request.Request(f"{BASE}{path}", method=method)
     with opener.open(req, timeout=10) as resp:

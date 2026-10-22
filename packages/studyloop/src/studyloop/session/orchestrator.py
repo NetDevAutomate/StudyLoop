@@ -243,16 +243,20 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
 
 def start_web_background(
     session_name: str, *, lan: bool = False, password: str = "", bind: str | None = None
-) -> None:
+) -> str | None:
     """Start the web dashboard as a background process and open browser.
 
     The launcher mints the server secret itself (D2, council pass 3) and hands it
     to the child through the environment, so it can open the browser at the
     sign-in URL: the server gives its cookie only to a browser presenting it.
+    Returns that token so the caller can print an address that signs a browser
+    in; None when the server could not be started.
 
     *bind* is passed through as ``studyloop web --bind`` (D7); the child validates
-    it. A server bound to one non-loopback address does not listen on loopback,
-    so the browser is opened on that address. *lan* is the deprecated alias.
+    it. A server bound to one non-loopback address also listens on loopback
+    (ADR-0019 follow-up, review-4 item 3), so the browser is opened on the bound
+    address and local consumers keep dialling 127.0.0.1. *lan* is the deprecated
+    alias.
     """
     import secrets
 
@@ -296,13 +300,23 @@ def start_web_background(
         from studyloop.modules.hop import TOKEN_KEY
         from studyloop.session_state import write_session_state
 
+        base = _browser_base_url(bind, port)
         # The per-session capability the loopback `practice_check` hop presents (council
         # M0 Q2.2): minted beside the port it will be presented to, in the owner-only
         # state file `studyloop drill` trusts. The web route re-mints only when absent.
+        # The sign-in token and the bound host sit beside it for the same reason, so
+        # `studyloop web --show-url` can re-print the address once the tab is closed
+        # (review-4 item 4). The key ends in `_token`: the browser-facing state
+        # endpoint strips those, so the page never sees its own credential.
         write_session_state(
-            {"web_pid": proc.pid, "web_port": port, TOKEN_KEY: mint_practice_check_token()}
+            {
+                "web_pid": proc.pid,
+                "web_port": port,
+                "web_bind_host": _reach_host(bind),
+                WEB_SIGN_IN_TOKEN_KEY: token,
+                TOKEN_KEY: mint_practice_check_token(),
+            }
         )
-        base = _browser_base_url(bind, port)
         sign_in_url = f"{base}/session?{BOOTSTRAP_QUERY}={token}"
         # Printed so a closed tab can be reopened without restarting the session.
         console.print(f"  Dashboard sign-in: {sign_in_url}", soft_wrap=True)
@@ -312,21 +326,33 @@ def start_web_background(
         _open_browser(sign_in_url, ready_url=f"{base}/")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
+        return None
+    return token
 
 
-def _browser_base_url(bind: str | None, port: int) -> str:
+#: Session-state key holding the launcher-minted sign-in token (ADR-0014) for
+#: `studyloop web --show-url`. Must end in ``_token`` (see ``_for_browser``).
+WEB_SIGN_IN_TOKEN_KEY = "web_sign_in_token"
+
+
+def _reach_host(bind: str | None) -> str:
     """Where this machine's browser reaches the server: the bound address, else loopback."""
     import ipaddress
 
-    host = "127.0.0.1"
     if bind is not None:
         try:
             address = ipaddress.ip_address(bind.strip())
         except ValueError:
             address = None  # the child refuses it; nothing better to open
         if address is not None and not address.is_unspecified:
-            host = f"[{address}]" if address.version == 6 else str(address)
-    return f"http://{host}:{port}"
+            return str(address)
+    return "127.0.0.1"
+
+
+def _browser_base_url(bind: str | None, port: int) -> str:
+    """``http://host:port`` for :func:`_reach_host`, IPv6 bracketed."""
+    host = _reach_host(bind)
+    return f"http://[{host}]:{port}" if ":" in host else f"http://{host}:{port}"
 
 
 def mint_practice_check_token() -> str:
