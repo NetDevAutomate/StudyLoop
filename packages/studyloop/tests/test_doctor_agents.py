@@ -210,25 +210,19 @@ class TestAgentDefinitionCheck:
             results = check_agent_definitions()
         assert any(r.status == "warn" for r in results)
 
-    def test_codex_install_path_uses_repo_root(self, tmp_path: Path):
-        from studyloop.doctor.agents import _get_agent_install_path
+    @pytest.mark.parametrize("tool", ["codex", "grok"])
+    def test_codex_and_grok_have_no_installed_definition_path(self, tool: str):
+        """Council pass 3, D1: the repo-root AGENTS.md is the contributor file.
 
-        with patch("studyloop.doctor.agents.find_repo_root", return_value=tmp_path):
-            path = _get_agent_install_path("codex")
-
-        assert path == tmp_path / "AGENTS.md"
-
-    def test_grok_definition_uses_repo_agents_md(self, tmp_path: Path):
-        """Grok Build reads the same repo-root AGENTS.md as Codex, by design.
-
-        Asserted separately from the Codex case so that giving Grok Build its
-        own definition file becomes a deliberate, visible change rather than a
-        silent divergence between two harnesses that share one source file.
+        Codex and Grok Build read the AGENTS.md the launcher writes into each
+        session directory, so there is no installed file for the doctor to
+        resolve or hash. Asking for one is a programming error, not a path.
         """
-        from studyloop.doctor.agents import _get_agent_install_path
+        from studyloop.doctor.agents import PER_SESSION_PERSONA_TOOLS, _get_agent_install_path
 
-        with patch("studyloop.doctor.agents.find_repo_root", return_value=tmp_path):
-            assert _get_agent_install_path("grok") == tmp_path / "AGENTS.md"
+        assert tool in PER_SESSION_PERSONA_TOOLS
+        with pytest.raises(LookupError, match="per-session"):
+            _get_agent_install_path(tool)
 
     def test_manifest_fetch_fails(self):
         from studyloop.doctor.agents import check_agent_definitions
@@ -311,29 +305,22 @@ class TestPlanArchitectDefinitionCheck:
         )
 
 
-class TestSharedDefinitionIsCheckedAgainstItsSource:
-    """Grok Build has no definition of its own: it reads the repo-root AGENTS.md
-    that the ``codex/AGENTS.md`` manifest entry tracks (installers._TOOL_LINKS).
-    The doctor looked for a ``grok/`` key, found none and said "No manifest
-    entry for grok" -- a row about a file that cannot exist, while the file
-    Grok actually reads went unchecked (reported 2026-09-27)."""
+class TestPerSessionPersonaHarnessesAreReportedNotHashed:
+    """Codex and Grok Build have no installed definition (council pass 3, D1).
+
+    Before, the doctor hash-checked the repo-root AGENTS.md for both and, once
+    that file became the contributor file, would have told every contributor
+    their "codex agent definition is outdated" with an upgrade that could not
+    fix it. Now the row says where the persona really comes from and never
+    warns about a file nothing reads.
+    """
 
     @staticmethod
-    def _manifest(body: bytes) -> dict:
-        import hashlib
-
-        digest = hashlib.sha256(body).hexdigest()[:16]
-        return {"version": 1, "agents": {"codex/AGENTS.md": {"hash": digest, "updated": "x"}}}
-
-    @staticmethod
-    def _rows(tmp_path: Path, installed: bytes, manifest: dict) -> dict:
+    def _rows(tool: str, manifest: dict) -> dict:
         from studyloop.doctor.agents import check_agent_definitions
 
-        agents_md = tmp_path / "AGENTS.md"
-        agents_md.write_bytes(installed)
         with (
-            patch("studyloop.doctor.agents._detect_ai_tools", return_value=["grok"]),
-            patch("studyloop.doctor.agents._get_agent_install_path", return_value=agents_md),
+            patch("studyloop.doctor.agents._detect_ai_tools", return_value=[tool]),
             patch(
                 "studyloop.doctor.agents._fetch_manifest_with_reason",
                 return_value=(manifest, ""),
@@ -341,12 +328,17 @@ class TestSharedDefinitionIsCheckedAgainstItsSource:
         ):
             return {row.name: row for row in check_agent_definitions()}
 
-    def test_a_current_shared_file_passes_and_names_its_source(self, tmp_path: Path):
-        rows = self._rows(tmp_path, b"persona", self._manifest(b"persona"))
-        assert rows["agent_grok"].status == "pass"
-        assert "No manifest entry" not in rows["agent_grok"].message
-        assert "codex/AGENTS.md" in rows["agent_grok"].message
+    @pytest.mark.parametrize("tool", ["codex", "grok"])
+    def test_row_is_info_and_names_per_session_delivery(self, tool: str):
+        manifest = {"version": 1, "agents": {"codex/AGENTS.md": {"hash": "0" * 16, "updated": "x"}}}
+        rows = self._rows(tool, manifest)
+        assert rows[f"agent_{tool}"].status == "info"
+        assert "per session" in rows[f"agent_{tool}"].message
+        assert "outdated" not in rows[f"agent_{tool}"].message
+        assert "No manifest entry" not in rows[f"agent_{tool}"].message
 
-    def test_a_stale_shared_file_warns(self, tmp_path: Path):
-        rows = self._rows(tmp_path, b"older persona", self._manifest(b"persona"))
-        assert rows["agent_grok"].status == "warn"
+    @pytest.mark.parametrize("tool", ["codex", "grok"])
+    def test_a_stale_or_missing_manifest_entry_never_warns(self, tool: str):
+        rows = self._rows(tool, {"version": 1, "agents": {}})
+        assert rows[f"agent_{tool}"].status == "info"
+        assert not rows[f"agent_{tool}"].fix_auto

@@ -244,18 +244,41 @@ def _installed_repo_sources() -> list[Path]:
     return sorted(files)
 
 
-def test_installed_sources_include_the_codex_and_grok_persona() -> None:
-    assert REPO_ROOT / "agents" / "codex" / "AGENTS.md" in _installed_repo_sources()
+def _learner_facing_sources() -> list[Path]:
+    """Installed sources plus the per-session persona parts the launcher assembles.
+
+    Council pass 3, D1: Codex and Grok Build no longer get a repo-root link, so
+    ``agents/codex/AGENTS.md`` is not an installed source any more; what those
+    harnesses actually read is built from ``agents/shared/personas/`` into each
+    session directory. Both sets are learner-facing and are checked together.
+    """
+    files = set(_installed_repo_sources())
+    personas = REPO_ROOT / "agents" / "shared" / "personas"
+    files.update(p for p in personas.rglob("*") if p.is_file())
+    tracked_codex = REPO_ROOT / "agents" / "codex" / "AGENTS.md"
+    if tracked_codex.is_file():
+        files.add(tracked_codex)
+    return sorted(files)
+
+
+def test_installed_sources_no_longer_include_a_repo_root_persona_link() -> None:
+    """D1: nothing ``install agents`` links comes from or goes to the checkout root."""
+    from studyloop import installers
+
+    specs = [spec for specs in installers._TOOL_LINKS.values() for spec in specs]
+    assert all("{repo_root}" not in spec.target for spec in specs)
+    assert REPO_ROOT / "agents" / "shared" / "personas" / "study.md" in _learner_facing_sources()
 
 
 def test_mentor_definitions_carry_no_developer_tool_steering() -> None:
-    """F-OPS-05: agents/codex/AGENTS.md is the Codex and Grok Build learner
-    persona ("a strict Socratic mentor, not a code assistant"), yet it carried a
-    KiroGraph block telling the model to explore "this codebase" and to ask the
-    learner to run `kirograph init --index`. No other harness's mentor had it."""
+    """F-OPS-05: the Codex and Grok Build learner persona ("a strict Socratic
+    mentor, not a code assistant") carried a KiroGraph block telling the model
+    to explore "this codebase" and to ask the learner to run `kirograph init
+    --index`. No other harness's mentor had it. Checked across every
+    learner-facing source, installed or assembled per session."""
     hits = [
         p.relative_to(REPO_ROOT).as_posix()
-        for p in _installed_repo_sources()
+        for p in _learner_facing_sources()
         if "kirograph" in p.read_text(encoding="utf-8", errors="replace").lower()
     ]
     assert hits == []

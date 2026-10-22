@@ -113,12 +113,22 @@ def test_all_installer_agent_sources_exist() -> None:
     assert missing == []
 
 
+#: Tracked by the manifest but linked by no installer. Council pass 3 (D1) took
+#: the repo-root link away, so the Codex/Grok definition is now delivered by
+#: nothing at all: launched sessions get a persona built from
+#: agents/shared/personas/. Whether to retire it or deliver it some other way is
+#: an open owner decision (lane F found-not-fixed); this names it rather than
+#: letting the check below pass it silently.
+_MANIFEST_SOURCES_NOT_INSTALLED = frozenset({"agents/codex/AGENTS.md"})
+
+
 def test_manifest_agent_entries_exist_and_match_installer_sources() -> None:
     repo_root = _repo_root()
     manifest = json.loads((repo_root / "agents/manifest.json").read_text(encoding="utf-8"))
     manifest_sources = {f"agents/{key}" for key in manifest["agents"]}
     installer_sources = set().union(*_installer_sources_by_tool().values())
     installer_sources.update(spec.source for spec in installers._SHARED_LINKS)
+    installer_sources.update(_MANIFEST_SOURCES_NOT_INSTALLED)
 
     assert sorted(source for source in manifest_sources if not (repo_root / source).exists()) == []
     assert (
@@ -331,11 +341,13 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
     detected = sorted(_XTILES_LINKED_HARNESSES)
 
     # Sandbox-escape guard. ``_rebase`` only redirects targets under the real
-    # HOME, so a ``{repo_root}`` target (codex and grok both have one: the
-    # repo-root AGENTS.md symlink) is NOT sandboxed -- this test would link it
-    # for real and then, via the ``uninstall=True`` call at the end, DELETE a
-    # tracked file from the working tree. That is not hypothetical: adding grok
-    # to _XTILES_LINKED_HARNESSES removed the repo's own AGENTS.md symlink.
+    # HOME, so a ``{repo_root}`` target (codex and grok had one until council
+    # pass 3, D1: the repo-root AGENTS.md symlink) is NOT sandboxed -- this test
+    # would link it for real and then, via the ``uninstall=True`` call at the
+    # end, DELETE a tracked file from the working tree. That is not
+    # hypothetical: adding grok to _XTILES_LINKED_HARNESSES once removed the
+    # repo's own AGENTS.md symlink. test_repo_root_agents_md.py now forbids
+    # such targets outright; this guard stays as the local reason.
     # Fail loudly here instead, so whoever adds such a harness sandboxes the
     # target rather than discovering it from a mysteriously dirty git status.
     escaping = sorted(

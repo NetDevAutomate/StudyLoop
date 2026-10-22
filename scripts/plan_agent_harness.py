@@ -92,7 +92,7 @@ HARNESSES: dict[str, Harness] = {
         first=["exec", "{prompt}"],
         resume=["exec", "--resume", "{prompt}"],
         supports_agent_flag=False,
-        note="codex reads AGENTS.md from the repo root",
+        note="codex reads the AGENTS.md the launcher writes into the session directory",
     ),
 }
 

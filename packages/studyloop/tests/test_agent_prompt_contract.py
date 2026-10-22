@@ -297,18 +297,24 @@ def test_opencode_memory_search_is_wired_and_not_hedged() -> None:
     )
 
 
-def test_agents_md_is_the_codex_symlink() -> None:
+def test_root_agents_md_is_not_the_learner_persona() -> None:
+    """Council pass 3, D1: the repo-root AGENTS.md is the contributor file.
+
+    This test used to pin the opposite (root AGENTS.md == agents/codex/AGENTS.md,
+    via a symlink). The full contract, including the install/uninstall cycle
+    leaving the checkout clean, is in ``test_repo_root_agents_md.py``.
+    """
     repo_root = _repo_root()
     root_agents = repo_root / "AGENTS.md"
     codex_agents = repo_root / "agents/codex/AGENTS.md"
-    assert root_agents.read_text(encoding="utf-8") == codex_agents.read_text(encoding="utf-8")
+    assert not root_agents.is_symlink()
+    assert root_agents.read_text(encoding="utf-8") != codex_agents.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
 # L7 -- study-plan-architect: ONE canonical body, carried verbatim by every
 # native harness definition after its own harness-specific header (frontmatter
-# for Claude/OpenCode, nothing at all for Kiro), exactly like AGENTS.md ==
-# agents/codex/AGENTS.md above.
+# for Claude/OpenCode, nothing at all for Kiro).
 # ---------------------------------------------------------------------------
 
 _PLAN_ARCHITECT_CANONICAL = "agents/shared/personas/plan-architect.md"

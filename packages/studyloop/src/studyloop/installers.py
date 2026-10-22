@@ -127,13 +127,14 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             str(_HOME / ".config/opencode/plugins/studyloop-session-export.js"),
         ),
     ),
-    "codex": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
-    # Deliberately the SAME source and target as codex. Grok Build reads the
-    # AGENTS.md instruction-file family from the repository root down to the
-    # working directory, exactly as Codex does, so both harnesses are served by
-    # one repo-root file. A grok-specific copy under agents/grok/ would be a
-    # second body of the same persona and would drift; none has ever existed.
-    "grok": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
+    # Codex and Grok Build get no persona link. Both read AGENTS.md from the
+    # session directory the launcher writes it into (adapters/codex.py,
+    # adapters/grok.py); the repo-root AGENTS.md is the contributor file, and
+    # an installer must never create or unlink a git-tracked path (council
+    # pass 3, D1). install_agent_definitions still wires their hooks, mandates
+    # and MCP servers.
+    "codex": (),
+    "grok": (),
     "pi": (
         LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),
         LinkSpec(
@@ -229,8 +230,8 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "opencode-only"),
     "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
     # Grok scans every *.md under $GROK_HOME/rules/ for all projects, which is
-    # the global-steering slot the other four use. The shared AGENTS.md Grok
-    # also reads names the Codex flag, so this file is what carries grok's own.
+    # the global-steering slot the other four use. The per-session AGENTS.md the
+    # launcher writes names the Codex flag, so this file is what carries grok's own.
     "grok": _HarnessExport(_grok_home() / "rules/session-db.md", "grok-only"),
 }
 
@@ -1706,10 +1707,6 @@ def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool
             target.parent.mkdir(parents=True, exist_ok=True)
             changed += _copy_path(source, target, uninstall=uninstall)
             continue
-        # In-repo targets use relative links so they survive repo moves and
-        # syncing between machines with different absolute paths.
-        in_repo = "{repo_root}" in spec.target
-        link_value = Path(os.path.relpath(source, target.parent)) if in_repo else source
         target.parent.mkdir(parents=True, exist_ok=True)
         if uninstall:
             if target.is_symlink() and _points_to(target, source):
@@ -1721,7 +1718,7 @@ def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool
             raise InstallError(f"Missing install asset: {source}")
 
         if target.is_symlink():
-            if os.readlink(target) == str(link_value):
+            if os.readlink(target) == str(source):
                 continue
             # Legacy absolute (or otherwise stale) link — replace below.
             target.unlink()
@@ -1729,7 +1726,7 @@ def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool
             backup = target.with_name(f"{target.name}.bak")
             shutil.move(str(target), str(backup))
 
-        target.symlink_to(link_value)
+        target.symlink_to(source)
         changed += 1
     return changed
 

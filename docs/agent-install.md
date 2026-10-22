@@ -100,9 +100,9 @@ Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/ski
 
 ### Codex
 
-Codex reads the StudyLoop `AGENTS.md` from the project. Launching through `studyloop study` creates the session context and starts Codex in that directory.
+Codex reads the `AGENTS.md` that `studyloop study` writes into each session directory, built from the shared mentor persona, and starts Codex there. `studyloop install agents --tool codex` writes nothing into a repository: it wires the session-end export hook and both StudyLoop MCP servers.
 
-That `AGENTS.md` carries one self-gated line about xTiles at wind-down, inert unless your provider is `xtiles` and an `xtiles` MCP server is connected. Codex needs no skill link of its own: it reads `~/.agents/skills/` natively, which is where the shared copy lives.
+Codex needs no skill link of its own: it reads `~/.agents/skills/` natively, which is where the shared `studyloop-xtiles-wind-down` copy lives. The skill stays silent unless your provider is `xtiles` and an `xtiles` MCP server is connected.
 
 Codex has no named-agent feature, so the study-plan-architect persona reaches it the same way the mentor does — through the launcher, not a second `AGENTS.md`:
 
@@ -156,9 +156,9 @@ persona through the launcher: `studyloop study --mode plan-architect --agent pi`
 
 ### Grok Build
 
-Grok Build is xAI's terminal coding agent (binary `grok`). It reads the repo-root `AGENTS.md` — the same file Codex reads — so `studyloop install agents --tool grok` links that one shared definition instead of a Grok-specific copy that could drift. There is no `agents/grok/` directory, by design. Launching through `studyloop study` creates the session context and starts Grok Build in that directory; it resumes through its native `--resume` option.
+Grok Build is xAI's terminal coding agent (binary `grok`). Like Codex, it reads the `AGENTS.md` that `studyloop study` writes into each session directory, so there is no Grok-specific persona and no `agents/grok/` directory, by design. `studyloop install agents --tool grok` writes nothing into a repository. Launching through `studyloop study` creates the session context and starts Grok Build in that directory; it resumes through its native `--resume` option.
 
-Because it is the same file, it carries the same self-gated xTiles line as Codex's. Grok Build also discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
+Grok Build discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
 
 Grok Build has no named-agent feature: `studyloop study --mode plan-architect --agent grok` launches the study-plan-architect persona the same way.
 
@@ -182,7 +182,7 @@ Then confirm the wiring:
 studyloop doctor --category agents
 ```
 
-Doctor checks that the `grok` binary responds and that the shared repo-root `AGENTS.md` is in place.
+Doctor checks that the `grok` binary responds. There is no installed Grok definition to check: the launcher writes the persona as `AGENTS.md` into each session directory, and the repo-root `AGENTS.md` is the contributor file.
 
 ## Session memory and automatic export
 

@@ -28,15 +28,22 @@ MANIFEST_URL = (
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
-    "codex": ("codex", "{repo_root}/AGENTS.md"),
+    # Codex and Grok Build have no installed definition file: the launcher writes
+    # the persona as AGENTS.md into each session directory (adapters/codex.py,
+    # adapters/grok.py) and the repo-root AGENTS.md is the contributor file
+    # (council pass 3, D1). An empty path means "nothing on disk to check".
+    "codex": ("codex", ""),
     "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
     "pi": ("pi", "~/.pi/agent/AGENTS.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
-    # Deliberately the same repo-root AGENTS.md that Codex reads: Grok Build
-    # discovers the AGENTS.md instruction-file family from the repository root
-    # down to the working directory, so a second copy would only drift.
-    "grok": ("grok", "{repo_root}/AGENTS.md"),
+    "grok": ("grok", ""),
 }
+
+#: Harnesses whose persona is delivered per session by the launcher rather than
+#: installed to a path the doctor can hash. Keep in step with ``TOOL_AGENTS``.
+PER_SESSION_PERSONA_TOOLS: frozenset[str] = frozenset(
+    name for name, (_, path) in TOOL_AGENTS.items() if not path
+)
 
 assert tuple(TOOL_AGENTS) == RELEASE_HARNESSES
 assert all(TOOL_AGENTS[name][0] == HARNESSES[name].binary for name in RELEASE_HARNESSES)
@@ -50,6 +57,9 @@ def _detect_ai_tools() -> list[str]:
 
 def _get_agent_install_path(tool: str) -> Path:
     _, path_template = TOOL_AGENTS[tool]
+    if not path_template:
+        msg = f"{tool} has no installed agent definition path (per-session persona)"
+        raise LookupError(msg)
     if "{repo_root}" in path_template:
         repo_root = find_repo_root(Path.cwd()) or Path.cwd()
         return Path(path_template.format(repo_root=repo_root)).expanduser()
@@ -74,7 +84,7 @@ def _agent_definition_install_path(tool: str, key: str) -> Path | None:
     resources folder link) has no single file to hash, and is skipped.
     """
     primary_path = TOOL_AGENTS[tool][1]
-    if Path(primary_path).name == Path(key).name:
+    if primary_path and Path(primary_path).name == Path(key).name:
         return _get_agent_install_path(tool)
 
     from studyloop.installers import _TOOL_LINKS
@@ -395,13 +405,28 @@ def check_agent_definitions() -> list[CheckResult]:
     from studyloop.installers import _TOOL_LINKS
 
     for tool in tools:
+        if tool in PER_SESSION_PERSONA_TOOLS:
+            # Nothing on disk to hash: the launcher writes this harness's persona
+            # into each session directory from agents/shared/personas/, so the
+            # manifest check does not apply and a missing file is not a defect
+            # (council pass 3, D1: the repo-root AGENTS.md is the contributor
+            # file and is never installed to).
+            results.append(
+                CheckResult(
+                    "agents",
+                    f"agent_{tool}",
+                    "info",
+                    f"{tool} persona is written per session by the launcher (no installed file)",
+                    "",
+                    False,
+                )
+            )
+            continue
         tool_keys = [k for k in manifest_agents if k.startswith(f"{tool}/")]
         if not tool_keys:
             # A harness with no definition of its own is checked against the
-            # manifest entries of the files its installer links. Grok Build reads
-            # the repo-root AGENTS.md that ``codex/AGENTS.md`` tracks; looking only
-            # for a ``grok/`` key reported "No manifest entry" and left the file it
-            # actually reads unchecked.
+            # manifest entries of the files its installer links (a shared or
+            # directory-level definition).
             tool_keys = [
                 key
                 for spec in _TOOL_LINKS.get(tool, ())

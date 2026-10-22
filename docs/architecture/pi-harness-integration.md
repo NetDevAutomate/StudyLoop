@@ -265,7 +265,7 @@ How that compares across the supported harnesses, as wired in `installers.py`
 | Harness | Automatic hook | Steering mandate |
 |---|---|---|
 | Claude Code | `Stop` hook in `~/.claude/settings.json` | `~/.claude/rules/session-db.md` |
-| Codex | `~/.codex/hooks.json` | none — the reminder lives in the installed `AGENTS.md` |
+| Codex | `~/.codex/hooks.json` | none — the reminder lives in the per-session `AGENTS.md` the launcher writes |
 | Kiro CLI | `~/.kiro/agents/study-mentor.json` | `~/.kiro/steering/session-db.md` |
 | OpenCode | plugin `~/.config/opencode/plugins/studyloop-session-export.js` | `~/.config/opencode/session-db.md` |
 | pi | extension `~/.pi/agent/extensions/studyloop-session-export.ts` | `~/.pi/agent/session-db.md` |
