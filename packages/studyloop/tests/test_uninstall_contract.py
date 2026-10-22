@@ -342,6 +342,41 @@ def test_uninstall_keeps_an_edited_mandate_as_a_backup(sandbox: Sandbox) -> None
     assert steering.with_name("session-db.md.bak").read_text(encoding="utf-8") == edited
 
 
+def test_uninstall_keeps_an_edited_status_line_script_as_a_backup(sandbox: Sandbox) -> None:
+    """The script install copies to ~/.claude/ gets the mandate's treatment.
+
+    A learner who tuned the installed copy (a segment, a colour) loses that
+    work if uninstall unlinks the file whatever it holds. As with an edited
+    mandate: it is moved to a ``.bak`` beside it, so the status line stops
+    (Claude Code's ``statusLine`` entry is removed first) while the bytes
+    survive.
+    """
+    sandbox.install()
+    script = sandbox.home / ".claude/study-statusline.sh"
+    edited = script.read_text(encoding="utf-8") + '\necho "my own segment"\n'
+    script.write_text(edited, encoding="utf-8")
+
+    sandbox.uninstall()
+
+    assert not script.exists()
+    assert script.with_name("study-statusline.sh.bak").read_text(encoding="utf-8") == edited
+    assert _owned_residue(sandbox) == []
+
+
+def test_uninstall_deletes_an_unedited_status_line_script_without_a_backup(
+    sandbox: Sandbox,
+) -> None:
+    """The common case leaves nothing behind: a copy of the shipped script is just removed."""
+    sandbox.install()
+    script = sandbox.home / ".claude/study-statusline.sh"
+    assert script.read_bytes() == (sandbox.repo / "agents/claude/study-statusline.sh").read_bytes()
+
+    sandbox.uninstall()
+
+    assert not script.exists()
+    assert sorted(p.name for p in script.parent.glob("study-statusline.sh*")) == []
+
+
 # StudyLoop's status line: install points Claude Code's ``statusLine`` at the
 # script it copies to ~/.claude/, which uninstall deletes. An entry left behind
 # runs a missing command on every render.
@@ -480,12 +515,7 @@ def test_install_then_uninstall_then_install_restores_the_status_line(sandbox: S
 
 
 def test_install_never_replaces_a_learners_own_status_line(sandbox: Sandbox) -> None:
-    """A learner's status line is theirs; install adds nothing beside it.
-
-    Only the ``statusLine`` member is asserted: install also merges the
-    session-export Stop hook into this file (and reflows it while doing so,
-    FOUND-NOT-FIXED lane B #2), which is a separate contract.
-    """
+    """A learner's status line is theirs; install adds nothing beside it."""
     settings = sandbox.home / ".claude/settings.json"
     planted = json.dumps({"statusLine": _LEARNER_STATUS_LINE, "theme": "dark"}, indent=2) + "\n"
     settings.write_text(planted, encoding="utf-8")
@@ -502,11 +532,8 @@ def test_install_adds_the_status_line_without_reflowing_the_learners_file(
 ) -> None:
     """The adder itself inserts one member; every other byte of the file stays.
 
-    Checked on ``_configure_claude`` directly: the session-export Stop-hook
-    installer that runs after it still reserialises the whole file
-    (FOUND-NOT-FIXED lane B #2), so the end-to-end install cannot yet promise
-    this. Hand formatting and a non-ASCII value are the tell-tales a
-    reserialising writer would destroy.
+    Checked on ``_configure_claude`` directly. Hand formatting and a non-ASCII
+    value are the tell-tales a reserialising writer would destroy.
     """
     settings = sandbox.home / ".claude/settings.json"
     before = '{\n    "theme": "caf\u00e9",\n    "model": "opus"\n}\n'
@@ -522,3 +549,73 @@ def test_install_adds_the_status_line_without_reflowing_the_learners_file(
     installers._configure_claude(sandbox.repo, uninstall=True)
 
     assert settings.read_text(encoding="utf-8") == before
+
+
+# The Stop-hook writer (lane B #2). Install merges StudyLoop's session-export
+# Stop hook into ~/.claude/settings.json after the status line; until this
+# landed it reserialised the whole file with ``json.dumps(indent=2)``, so the
+# end-to-end install still reflowed a hand-formatted file and escaped every
+# non-ASCII character in it, and uninstall could not give those bytes back.
+# The planted files below are hand-formatted (4-space indent, one-line
+# groups, a non-ASCII value) precisely so a reserialising writer fails them.
+_HAND_FORMATTED_NO_HOOKS = '{\n    "theme": "caf\u00e9",\n    "model": "opus"\n}\n'
+_LEARNER_ONE_LINE_GROUP = (
+    '{"matcher": "", "hooks": [{"type": "command", "command": "say \u00abfertig\u00bb"}]}'
+)
+_HAND_FORMATTED_WITH_A_LEARNER_STOP_GROUP = (
+    "{\n"
+    '    "theme": "caf\u00e9",\n'
+    '    "hooks": {\n'
+    '        "Stop": [\n'
+    f"            {_LEARNER_ONE_LINE_GROUP}\n"
+    "        ]\n"
+    "    },\n"
+    '    "model": "opus"\n'
+    "}\n"
+)
+
+
+@pytest.mark.parametrize(
+    "planted",
+    [_HAND_FORMATTED_NO_HOOKS, _HAND_FORMATTED_WITH_A_LEARNER_STOP_GROUP],
+    ids=["no-hooks", "learner-stop-group"],
+)
+def test_install_then_uninstall_returns_a_hand_formatted_settings_file_byte_for_byte(
+    sandbox: Sandbox, planted: str
+) -> None:
+    """The end-to-end promise: every byte the learner wrote comes back.
+
+    Through ``install_agent_definitions`` (status line AND Stop hook), not the
+    status-line adder alone.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    settings.write_text(planted, encoding="utf-8")
+
+    sandbox.install()
+    _assert_installed_once(sandbox)
+    sandbox.uninstall()
+
+    assert settings.read_text(encoding="utf-8") == planted
+
+
+def test_stop_hook_install_keeps_every_byte_the_learner_wrote(sandbox: Sandbox) -> None:
+    """Install adds its group; the learner's lines are still there verbatim.
+
+    A reserialising writer reflows the one-line group onto nine lines and
+    turns ``\u00ab`` into ``\\u00ab``.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    settings.write_text(_HAND_FORMATTED_WITH_A_LEARNER_STOP_GROUP, encoding="utf-8")
+
+    sandbox.install()
+
+    text = settings.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    assert '    "theme": "caf\u00e9",' in lines
+    # Install's group follows the learner's, so theirs now ends in a comma;
+    # likewise the status line is added after "model".
+    assert f"            {_LEARNER_ONE_LINE_GROUP}," in lines, "learner group reflowed or escaped"
+    assert '    "model": "opus",' in lines
+    stop = json.loads(text)["hooks"]["Stop"]
+    assert stop[0]["hooks"][0]["command"] == "say \u00abfertig\u00bb"
+    assert len(stop) == 2 and "session-export --claude-only" in stop[1]["hooks"][0]["command"]

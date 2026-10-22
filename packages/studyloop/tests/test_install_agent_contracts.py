@@ -54,8 +54,9 @@ _XTILES_LINKED_HARNESSES = ("kiro", "claude")
 _XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode", "pi", "grok")
 
 #: Harnesses whose definition file carries a self-gated paragraph as well.
+#: Codex and Grok Build have no installed definition (their persona is built per
+#: session from agents/shared/personas/), so there is no file to carry one.
 _XTILES_PARAGRAPH_FILES = (
-    "agents/codex/AGENTS.md",
     "agents/pi/AGENTS.md",
     "agents/opencode/study-mentor.md",
 )
@@ -113,22 +114,20 @@ def test_all_installer_agent_sources_exist() -> None:
     assert missing == []
 
 
-#: Tracked by the manifest but linked by no installer. Council pass 3 (D1) took
-#: the repo-root link away, so the Codex/Grok definition is now delivered by
-#: nothing at all: launched sessions get a persona built from
-#: agents/shared/personas/. Whether to retire it or deliver it some other way is
-#: an open owner decision (lane F found-not-fixed); this names it rather than
-#: letting the check below pass it silently.
-_MANIFEST_SOURCES_NOT_INSTALLED = frozenset({"agents/codex/AGENTS.md"})
-
-
 def test_manifest_agent_entries_exist_and_match_installer_sources() -> None:
+    """Every manifest entry exists, is delivered by an installer link, and hashes true.
+
+    No exemption set: a definition the manifest hashes but no installer links
+    is maintenance for nothing (the Codex/Grok ``agents/codex/AGENTS.md`` was
+    the one such file after council pass 3 took the repo-root link away; the
+    launcher builds those harnesses' persona from ``agents/shared/personas/``,
+    and the file was retired with remediation plan 4, item 2).
+    """
     repo_root = _repo_root()
     manifest = json.loads((repo_root / "agents/manifest.json").read_text(encoding="utf-8"))
     manifest_sources = {f"agents/{key}" for key in manifest["agents"]}
     installer_sources = set().union(*_installer_sources_by_tool().values())
     installer_sources.update(spec.source for spec in installers._SHARED_LINKS)
-    installer_sources.update(_MANIFEST_SOURCES_NOT_INSTALLED)
 
     assert sorted(source for source in manifest_sources if not (repo_root / source).exists()) == []
     assert (
@@ -535,9 +534,11 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # registered set once `studyloop install agents --tool opencode` started
 # registering session-db-mcp globally (L8-mcp-opencode-grok).
 
+# Codex and Grok Build install no definition: their persona is the per-session
+# document the launcher builds from agents/shared/personas/, which names none of
+# these tools (recorded in reviews/.../lanes/review4-J-harness-small.md).
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",
-    "agents/codex/AGENTS.md",
     "agents/claude/socratic-mentor.md",
     "agents/opencode/study-mentor.md",
     "agents/pi/AGENTS.md",
@@ -557,7 +558,6 @@ _SESSION_START_SENTENCE = (
 )
 #: Prose definition -> the installers.py tool id that harness corresponds to.
 _MENTOR_DEFINITION_TOOL_ID = {
-    "agents/codex/AGENTS.md": "codex",
     "agents/claude/socratic-mentor.md": "claude",
     "agents/opencode/study-mentor.md": "opencode",
     "agents/pi/AGENTS.md": "pi",

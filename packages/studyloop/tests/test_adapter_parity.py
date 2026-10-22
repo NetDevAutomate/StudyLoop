@@ -108,17 +108,19 @@ def test_readme_names_every_supported_harness_by_its_label() -> None:
 #: The additive, learner-agreed writers (``record_teachback`` is the new one).
 W_AUTO = ("log_topic", "log_struggle", "record_teachback", "record_plan_learning")
 
-#: The mentor definition each harness INSTALLS (global steering / sub-agent). Grok Build
-#: reads the same canonical file as Codex (its header says so; ``adapters/grok.py``
-#: projects it). The LIVE session persona is a different document -- see
-#: ``LIVE_PERSONAS`` and ``test_the_built_live_persona_names_each_writer`` below.
-MENTOR_DEFINITIONS = {
+#: The mentor definition each harness INSTALLS (global steering / sub-agent).
+#: Codex and Grok Build install none (``None``): their adapters write the persona
+#: the launcher builds into each session directory as ``AGENTS.md``, and the
+#: tracked Codex definition that used to stand here was retired (ADR-0013;
+#: remediation plan 4, item 2). The LIVE session persona is a different document
+#: -- see ``LIVE_PERSONAS`` and ``test_the_built_live_persona_names_each_writer``.
+MENTOR_DEFINITIONS: dict[str, str | None] = {
     "kiro": "agents/kiro/study-mentor/persona.md",
     "claude": "agents/claude/socratic-mentor.md",
     "opencode": "agents/opencode/study-mentor.md",
-    "codex": "agents/codex/AGENTS.md",
+    "codex": None,
     "pi": "agents/pi/AGENTS.md",
-    "grok": "agents/codex/AGENTS.md",
+    "grok": None,
 }
 
 #: What ``studyloop study`` actually hands EVERY adapter's ``setup()`` (council review 9,
@@ -129,7 +131,9 @@ LIVE_PERSONAS = ("agents/shared/personas/study.md", "agents/shared/personas/co-s
 
 
 def _definition(harness: str) -> str:
-    return (REPO_ROOT / MENTOR_DEFINITIONS[harness]).read_text(encoding="utf-8")
+    relative = MENTOR_DEFINITIONS[harness]
+    assert relative is not None, f"{harness} installs no definition; test the live persona"
+    return (REPO_ROOT / relative).read_text(encoding="utf-8")
 
 
 def test_mentor_definitions_cover_exactly_the_six() -> None:
@@ -141,6 +145,7 @@ def test_every_mentor_definition_names_each_w_auto_writer() -> None:
     missing = {
         harness: [w for w in W_AUTO if not re.search(rf"\b{w}\b", _definition(harness))]
         for harness in sorted(MENTOR_DEFINITIONS)
+        if MENTOR_DEFINITIONS[harness] is not None
     }
     missing = {h: ws for h, ws in missing.items() if ws}
     assert not missing, f"W_auto writers not named: {missing}"
@@ -169,15 +174,19 @@ def test_the_built_live_persona_names_each_writer(monkeypatch) -> None:
         assert "recording-protocol.md" in built
 
 
-def test_grok_projects_the_codex_definition() -> None:
-    """``MENTOR_DEFINITIONS['grok']`` is the Codex file because the Grok adapter says so;
-    pin that statement so an ``agents/grok/`` split cannot drop the protocol silently."""
-    header = (REPO_ROOT / "packages/studyloop/src/studyloop/adapters/grok.py").read_text(
+@pytest.mark.parametrize("harness", ["codex", "grok"])
+def test_per_session_harnesses_have_no_installed_definition(harness: str) -> None:
+    """Codex and Grok Build read the per-session ``AGENTS.md`` their adapter writes
+    from the built persona, and nothing else; pin that so a tracked ``agents/codex/``
+    or ``agents/grok/`` definition cannot reappear without joining the protocol
+    tests (``MENTOR_DEFINITIONS`` and ``TestRecordingProtocol.DEFINITIONS``)."""
+    header = (REPO_ROOT / f"packages/studyloop/src/studyloop/adapters/{harness}.py").read_text(
         encoding="utf-8"
     )
-    assert "AGENTS.md" in header.split('"""')[1], "grok adapter no longer documents AGENTS.md"
-    assert not (REPO_ROOT / "agents/grok").exists(), (
-        "agents/grok/ now exists: add it to MENTOR_DEFINITIONS and the protocol tests"
+    assert "AGENTS.md" in header.split('"""')[1], f"{harness} adapter no longer documents AGENTS.md"
+    assert MENTOR_DEFINITIONS[harness] is None
+    assert not (REPO_ROOT / "agents" / harness).exists(), (
+        f"agents/{harness}/ now exists: add it to MENTOR_DEFINITIONS and the protocol tests"
     )
 
 

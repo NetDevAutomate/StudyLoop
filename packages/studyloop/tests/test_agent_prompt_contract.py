@@ -300,15 +300,19 @@ def test_opencode_memory_search_is_wired_and_not_hedged() -> None:
 def test_root_agents_md_is_not_the_learner_persona() -> None:
     """Council pass 3, D1: the repo-root AGENTS.md is the contributor file.
 
-    This test used to pin the opposite (root AGENTS.md == agents/codex/AGENTS.md,
-    via a symlink). The full contract, including the install/uninstall cycle
-    leaving the checkout clean, is in ``test_repo_root_agents_md.py``.
+    This test used to pin the opposite (root AGENTS.md == the tracked Codex
+    definition, via a symlink). That definition is retired (remediation plan 4,
+    item 2); the learner persona is now only what the launcher builds from
+    ``agents/shared/personas/``. The full contract, including the
+    install/uninstall cycle leaving the checkout clean, is in
+    ``test_repo_root_agents_md.py``.
     """
     repo_root = _repo_root()
     root_agents = repo_root / "AGENTS.md"
-    codex_agents = repo_root / "agents/codex/AGENTS.md"
     assert not root_agents.is_symlink()
-    assert root_agents.read_text(encoding="utf-8") != codex_agents.read_text(encoding="utf-8")
+    text = root_agents.read_text(encoding="utf-8")
+    for persona in (repo_root / "agents/shared/personas").glob("*.md"):
+        assert text != persona.read_text(encoding="utf-8"), persona
 
 
 # ---------------------------------------------------------------------------
@@ -344,13 +348,12 @@ def test_plan_architect_native_files_carry_the_canonical_body_verbatim(relative:
     assert body == canonical, f"{relative} body has drifted from {_PLAN_ARCHITECT_CANONICAL}"
 
 
-@pytest.mark.parametrize(
-    "relative", ["agents/codex/AGENTS.md", "agents/shared/session-db-mandate.md"]
-)
+@pytest.mark.parametrize("relative", ["agents/shared/session-db-mandate.md"])
 def test_shared_mcp_conditional_matches_the_installers_mcp_harness_set(relative: str) -> None:
-    """The generic conditional in the two SHARED files must name exactly the
+    """The generic conditional in the SHARED mandate must name exactly the
     harnesses installers._MCP_HARNESSES registers session-db for -- derived
-    from code, not copied prose."""
+    from code, not copied prose. (The retired Codex/Grok definition carried a
+    copy; the mandate is the one left.)"""
     import studyloop.installers as installers
 
     text = (_repo_root() / relative).read_text(encoding="utf-8")

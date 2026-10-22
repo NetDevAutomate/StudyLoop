@@ -54,7 +54,11 @@ instances via `build_custom_adapter()`. Each entry specifies `binary`,
 `{binary}`, `{persona}`, `{session_dir}` placeholders), optional
 `resume` template, optional `env` vars, optional `teardown` shell
 command, and optional `mcp` config. Custom adapters are merged after
-built-ins, winning on name collision.
+built-ins, winning on name collision. The launch string is shell text:
+each placeholder value and each `env` value is substituted
+`shlex.quote`d, except a placeholder the template itself already wraps
+in quotes (`"{persona}"`), which is substituted raw so it is not quoted
+twice.
 
 #### Scenario: User defines a custom "aider" adapter in config.yaml
 - **WHEN** `agents.custom.aider` is configured with

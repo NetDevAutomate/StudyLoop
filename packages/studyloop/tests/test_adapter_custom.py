@@ -200,3 +200,83 @@ class TestCustomAdapterQuotesItsBinary:
         argv = self._launch(tmp_path, "'{binary}' --read {persona}")
 
         assert argv[0] == self.BINARY
+
+
+class TestCustomAdapterQuotesEveryPlaceholderAndEnv:
+    """``{persona}``, ``{session_dir}`` and ``env`` values are shell text too.
+
+    Lane B quoted only ``{binary}`` (B5). The persona lives under the session
+    directory, whose name is the learner's topic, so a space or a shell
+    metacharacter in it is routine, not hostile -- and an ``env`` value is
+    whatever the learner typed into config.yaml. Unquoted, a space splits the
+    path into two words and ``;`` runs the rest as a second command. The same
+    rule as ``{binary}``: a template that already quotes the placeholder
+    itself is substituted raw, so existing templates keep working.
+    """
+
+    # A space, parentheses and a command separator: every one of these is
+    # legal in a topic name.
+    SESSION_DIR_NAME = "sql joins (part 1); echo pwned"
+
+    def _launch(self, tmp_path, template: str, env: dict[str, str] | None = None) -> list[str]:
+        import shlex
+
+        from studyloop.adapters._custom import build_custom_adapter
+
+        config: dict[str, object] = {
+            "binary": "exampletool",
+            "strategy": "cli-flag",
+            "launch": template,
+        }
+        if env:
+            config["env"] = env
+        adapter = build_custom_adapter("exampletool", config)
+        session_dir = tmp_path / self.SESSION_DIR_NAME
+        session_dir.mkdir()
+        persona = session_dir / "persona.md"
+        persona.touch()
+        with patch("shutil.which", return_value="/usr/bin/exampletool"):
+            return shlex.split(adapter.launch_cmd(persona, False))
+
+    def test_persona_with_a_space_and_a_metacharacter_is_one_word(self, tmp_path):
+        argv = self._launch(tmp_path, "{binary} --read {persona}")
+
+        assert argv == [
+            "/usr/bin/exampletool",
+            "--read",
+            str(tmp_path / self.SESSION_DIR_NAME / "persona.md"),
+        ]
+
+    def test_session_dir_with_a_space_and_a_metacharacter_is_one_word(self, tmp_path):
+        argv = self._launch(tmp_path, "{binary} --cwd {session_dir}")
+
+        assert argv == ["/usr/bin/exampletool", "--cwd", str(tmp_path / self.SESSION_DIR_NAME)]
+
+    def test_a_template_that_quotes_the_persona_itself_is_not_quoted_twice(self, tmp_path):
+        argv = self._launch(tmp_path, '{binary} --read "{persona}"')
+
+        assert argv[2] == str(tmp_path / self.SESSION_DIR_NAME / "persona.md")
+
+    def test_env_values_are_quoted(self, tmp_path):
+        import shlex
+
+        from studyloop.adapters._custom import build_custom_adapter
+
+        value = "http://localhost:4000/v1 (local); echo pwned"
+        config: dict[str, object] = {
+            "binary": "exampletool",
+            "strategy": "cli-flag",
+            "launch": "{binary}",
+            "env": {"BASE_URL": value},
+        }
+        adapter = build_custom_adapter("exampletool", config)
+        persona = tmp_path / "persona.md"
+        persona.touch()
+        with patch("shutil.which", return_value="/usr/bin/exampletool"):
+            cmd = adapter.launch_cmd(persona, False)
+
+        # ``punctuation_chars`` makes the shell's own ``;`` a token, so the one
+        # inside the quoted value and the one joining the two commands are
+        # told apart the way /bin/sh tells them apart.
+        tokens = list(shlex.shlex(cmd, posix=True, punctuation_chars=True))
+        assert tokens == ["export", f"BASE_URL={value}", ";", "/usr/bin/exampletool"]

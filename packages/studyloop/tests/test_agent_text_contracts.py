@@ -247,17 +247,14 @@ def _installed_repo_sources() -> list[Path]:
 def _learner_facing_sources() -> list[Path]:
     """Installed sources plus the per-session persona parts the launcher assembles.
 
-    Council pass 3, D1: Codex and Grok Build no longer get a repo-root link, so
-    ``agents/codex/AGENTS.md`` is not an installed source any more; what those
-    harnesses actually read is built from ``agents/shared/personas/`` into each
-    session directory. Both sets are learner-facing and are checked together.
+    Council pass 3, D1: Codex and Grok Build no longer get a repo-root link, and
+    their tracked definition is retired (plan 4, item 2); what those harnesses
+    actually read is built from ``agents/shared/personas/`` into each session
+    directory. Both sets are learner-facing and are checked together.
     """
     files = set(_installed_repo_sources())
     personas = REPO_ROOT / "agents" / "shared" / "personas"
     files.update(p for p in personas.rglob("*") if p.is_file())
-    tracked_codex = REPO_ROOT / "agents" / "codex" / "AGENTS.md"
-    if tracked_codex.is_file():
-        files.add(tracked_codex)
     return sorted(files)
 
 
