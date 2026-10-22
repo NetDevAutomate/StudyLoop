@@ -9,6 +9,17 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- `--bind ADDRESS` on `studyloop web` and `studyloop study` serves the dashboard on one
+  address this machine has -- a Tailscale or other VPN address, where the tunnel encrypts
+  the traffic -- instead of every interface, behind the same password gate `--lan` had.
+  An address the machine lacks, or a wildcard (`0.0.0.0`, `::`), is refused with the
+  addresses it could find. The server also keeps listening on `127.0.0.1`, so
+  `studyloop drill`'s result hop and the browser on this machine work as before. The
+  setup guide's second-device section now leads with an `ssh -L` tunnel, then `--bind`.
+- `studyloop web --show-url` prints the sign-in address of the dashboard your study
+  session started -- token included -- for when the tab was closed and the address
+  printed at start has scrolled away. It refuses plainly when no server is up.
+
 - Optional learning modules (issue #53). `studyloop module new <id>` scaffolds a module -- a
   directory of data with one offline drill -- that passes `studyloop module check`, the
   conformance check with seventeen quotable rules (`MC001`-`MC017`, `--json` for CI).
@@ -119,6 +130,11 @@ experience may change before `1.0.0`.
 
 ### Deprecated
 
+- `--lan` on `studyloop web` and `studyloop study` is deprecated and is removed in the
+  next release: it serves on every interface of every network the machine joins, in
+  cleartext. Use `--bind ADDRESS` with one address. Until removal `--lan` behaves as
+  before, prints a deprecation line and its security caveats, and cannot be combined
+  with `--bind`.
 - `session-maint archive` is deprecated and will be removed in 0.7.0. It copies
   only sessions and messages into a separate file that nothing in StudyLoop
   reads. To move old sessions out of the everyday database, run
@@ -467,6 +483,22 @@ experience may change before `1.0.0`.
   renderer when only the connection is missing: a known transport with no
   connection URL now reads *The server did not return a connection for this
   session*.
+
+### Security
+
+- The web dashboard gives its cookie only to a browser that opens the sign-in address
+  the launcher or `studyloop web` prints (`…?token=…`); a bare visit to `/` shows a
+  sign-in page instead of handing the cookie to whatever process asked. The token is
+  new for each server, so a tab left open across a restart must be reopened from the new
+  address -- the page says so rather than pretending to recover. The `studyloop study`
+  launcher opens the browser at that address itself and prints it; with `--bind` or
+  `--lan` the printed address for the other device carries the token too, where it
+  used to print the address without it.
+- Course artefacts served from the dashboard (audio, video, slides) now require the
+  same cookie as the API; they were the one learner-content read outside it.
+- A browser page served from another port on this machine can no longer open the
+  dashboard's WebSockets: a loopback origin is accepted only on the server's own port.
+  `STUDYLOOP_ALLOWED_ORIGINS` remains the explicit allow-list for anything else.
 
 ## [0.5.0] - 2026-09-21
 
