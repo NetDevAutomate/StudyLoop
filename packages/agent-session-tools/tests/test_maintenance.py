@@ -29,7 +29,16 @@ from agent_session_tools.maintenance import (
 
 
 def _make_db(tmp_path: Path) -> Path:
-    """Create a minimal sessions database that matches the live schema (post-migrations)."""
+    """Create a minimal sessions database that matches the live schema (post-migrations).
+
+    It carries no ``user_version`` (0) and none of the lifecycle tables, so to
+    ``_delete_old`` it is a pre-41 schema: a delete there writes no tombstone
+    and the next export re-imports the session (F-AST-04). Since plan 4 item 7
+    such a database is refused unless ``allow_unmigrated=True`` is passed; the
+    delete tests below pass it, so they pin the pre-lifecycle branch's own
+    contract (cutoff, confirm, backup, undated sessions), not the default.
+    ``test_maintenance_pre_lifecycle.py`` pins the refusal.
+    """
     db_path = tmp_path / "sessions.db"
     conn = sqlite3.connect(db_path)
     conn.executescript("""
@@ -607,19 +616,25 @@ class TestDeleteOld:
     def test_returns_0_when_no_old_sessions(self, tmp_path):
         db_path = _make_db(tmp_path)
         _insert_session(db_path, "s1", self._recent_date())
-        result = _delete_old(db_path, days=30, confirm=True, backup=False)
+        result = _delete_old(
+            db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+        )
         assert result == 0
 
     def test_returns_1_without_confirm(self, tmp_path):
         db_path = _make_db(tmp_path)
         _insert_session(db_path, "old-1", self._old_date(100))
-        result = _delete_old(db_path, days=30, confirm=False, backup=False)
+        result = _delete_old(
+            db_path, days=30, confirm=False, backup=False, allow_unmigrated=True
+        )
         assert result == 1
 
     def test_sessions_not_deleted_without_confirm(self, tmp_path):
         db_path = _make_db(tmp_path)
         _insert_session(db_path, "old-1", self._old_date(100))
-        _delete_old(db_path, days=30, confirm=False, backup=False)
+        _delete_old(
+            db_path, days=30, confirm=False, backup=False, allow_unmigrated=True
+        )
         assert _count(db_path, "sessions") == 1
 
     def test_old_sessions_deleted_with_confirm(self, tmp_path):
@@ -628,7 +643,9 @@ class TestDeleteOld:
         _insert_session(db_path, "new-1", self._recent_date())
 
         with patch("agent_session_tools.maintenance.create_backup"):
-            result = _delete_old(db_path, days=30, confirm=True, backup=False)
+            result = _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
 
         assert result == 0
         assert _count(db_path, "sessions") == 1
@@ -640,7 +657,9 @@ class TestDeleteOld:
         _insert_message(db_path, "m2", "old-1", "also gone")
 
         with patch("agent_session_tools.maintenance.create_backup"):
-            _delete_old(db_path, days=30, confirm=True, backup=False)
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
 
         assert _count(db_path, "messages") == 0
 
@@ -652,7 +671,9 @@ class TestDeleteOld:
         _insert_message(db_path, "m-new", "new-1", "new msg")
 
         with patch("agent_session_tools.maintenance.create_backup"):
-            _delete_old(db_path, days=30, confirm=True, backup=False)
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
 
         assert _count(db_path, "messages") == 1
         conn = sqlite3.connect(db_path)
@@ -666,7 +687,9 @@ class TestDeleteOld:
 
         with patch("agent_session_tools.maintenance.create_backup") as mock_backup:
             mock_backup.return_value = tmp_path / "bak.db"
-            _delete_old(db_path, days=30, confirm=True, backup=True)
+            _delete_old(
+                db_path, days=30, confirm=True, backup=True, allow_unmigrated=True
+            )
 
         mock_backup.assert_called_once_with(db_path)
 
@@ -676,7 +699,9 @@ class TestDeleteOld:
         _insert_session(db_path, "old-1", self._old_date(100))
 
         with patch("agent_session_tools.maintenance.create_backup") as mock_backup:
-            _delete_old(db_path, days=30, confirm=False, backup=True)
+            _delete_old(
+                db_path, days=30, confirm=False, backup=True, allow_unmigrated=True
+            )
 
         mock_backup.assert_not_called()
 
@@ -720,7 +745,9 @@ class TestDeleteOldUtcCutoff:
 
         _restore_tz(tz)
         with patch("agent_session_tools.maintenance.create_backup"):
-            _delete_old(db_path, days=days, confirm=True, backup=False)
+            _delete_old(
+                db_path, days=days, confirm=True, backup=False, allow_unmigrated=True
+            )
 
         remaining = {
             r[0] for r in sqlite3.connect(db_path).execute("SELECT id FROM sessions")
@@ -756,7 +783,9 @@ class TestRequestedBackupRefused:
         with patch(
             "agent_session_tools.maintenance.create_backup", return_value=None
         ) as mock_backup:
-            rc = _delete_old(db_path, days=30, confirm=True, backup=True)
+            rc = _delete_old(
+                db_path, days=30, confirm=True, backup=True, allow_unmigrated=True
+            )
         mock_backup.assert_called_once_with(db_path)
         assert rc == 1
         assert _count(db_path, "sessions") == 1
@@ -850,7 +879,12 @@ class TestUndatedSessionsAreNotOld:
         db_path = _make_db(tmp_path)
         self._seed(db_path)
 
-        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
 
         assert _session_ids(db_path) == {"undated", "created-recent"}
         assert "1 session(s) with no timestamp" in capsys.readouterr().out
@@ -870,7 +904,12 @@ class TestUndatedSessionsAreNotOld:
         db_path = _make_db(tmp_path)
         _insert_session_dates(db_path, "undated", None, None)
 
-        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
         assert _archive(db_path, days=30, backup=False) == 0
         assert _session_ids(db_path) == {"undated"}
 

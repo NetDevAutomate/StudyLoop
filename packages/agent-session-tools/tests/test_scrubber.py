@@ -687,6 +687,44 @@ def test_prose_naming_token_prefixes_is_untouched() -> None:
 
 
 # ===========================================================================
+# Classic PATs (ghp_) and OAuth access tokens (gho_) (plan 4, D#4). GitHub's
+# 2021 token-format changelog told integrators to "plan to support tokens up
+# to 255 characters"; the classic length is 36 after the prefix, and the
+# patterns used to match exactly that, so a longer token gave zero findings
+# (the F-AST-07 shape). Every value is assembled at runtime.
+# ===========================================================================
+
+_LONG_FILL = _FILL * 2
+
+
+def _github_token(prefix: str, length: int) -> str:
+    return "gh" + prefix + "_" + _LONG_FILL[:length]
+
+
+@pytest.mark.parametrize(
+    ("kind", "prefix"), [("github_pat", "p"), ("github_oauth", "o")]
+)
+@pytest.mark.parametrize("length", [36, 40, 255])
+def test_redacts_whole_classic_github_tokens_of_documented_lengths(
+    kind: str, prefix: str, length: int
+) -> None:
+    token = _github_token(prefix, length)
+    assert len(token) == length + 4
+    result = Scrubber().scrub(f"export KEY={token}\nnext line")
+    assert result.text == f"export KEY=[{kind.upper()}-001]\nnext line"
+    assert [f["type"] for f in result.findings] == [kind]
+    assert result.findings[0]["length"] == len(token)
+
+
+@pytest.mark.parametrize("prefix", ["p", "o"])
+def test_a_short_classic_github_prefix_run_is_not_a_token(prefix: str) -> None:
+    text = f"export KEY={_github_token(prefix, 20)}\nnext line"
+    result = Scrubber().scrub(text)
+    assert result.text == text
+    assert result.findings == []
+
+
+# ===========================================================================
 # Armoured PGP private keys (plan 2, D2): the same three shapes as PEM --
 # whole block, truncated block, flattened block -- plus the armour headers
 # (Version:, Comment:) RFC 4880 allows after the BEGIN line, whose values
@@ -805,6 +843,203 @@ def test_pgp_public_key_block_is_not_a_secret() -> None:
     result = Scrubber().scrub(text)
     assert result.text == text
     assert result.findings == []
+
+
+# ===========================================================================
+# A PGP block flattened onto ONE line with its armour headers (plan 4, D#5).
+# The header values hold ".", "(", ")", "[", "]" and "/" -- not body
+# characters -- so the whole-block match stopped on them, the inline rule
+# wanted base64 straight after the armour, and the body survived with only
+# the BEGIN line redacted. The one-line rule now skips a "Name: value" run
+# that is followed by a base64 body, and takes every whitespace-separated
+# body run after it; the prose guard (a bare armour followed by words, or by
+# a header and words) stays exactly as it was.
+# ===========================================================================
+
+_INLINE_HEADER_CASES = [
+    pytest.param(("Version: GnuPG v2.0.22 (GNU/Linux)",), id="gnupg-parentheses"),
+    pytest.param(("Version: X.Y [comment]",), id="dotted-with-brackets"),
+    pytest.param(_PGP_HEADERS, id="two-headers-dotted-url"),
+]
+
+
+@pytest.mark.parametrize("headers", _INLINE_HEADER_CASES)
+def test_flattened_pgp_block_with_inline_headers_is_one_whole_redaction(
+    headers: tuple[str, ...],
+) -> None:
+    text = "My key: " + _pgp("pgp-flat-hdr", newline=" ", headers=headers)
+    result = Scrubber().scrub(text + " That was it.")
+    for line in _pem_body("pgp-flat-hdr"):
+        assert line not in result.text
+    assert _pgp_checksum("pgp-flat-hdr") not in result.text
+    for header in headers:
+        assert header not in result.text
+    assert result.text == "My key: [PRIVATE_KEY-001] That was it."
+    assert [f["type"] for f in result.findings] == ["private_key"]
+
+
+@pytest.mark.parametrize("headers", _INLINE_HEADER_CASES)
+def test_flattened_unterminated_pgp_block_with_inline_headers_leaves_no_body(
+    headers: tuple[str, ...],
+) -> None:
+    body = _pem_body("pgp-flat-hdr-cut")[:3]
+    text = (
+        "paste: "
+        + _pgp_marker("BEGIN")
+        + " "
+        + " ".join(headers)
+        + " "
+        + " ".join(body)
+        + " [cut]"
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+        assert line[:24] not in result.text
+    for header in headers:
+        assert header not in result.text
+    assert "PGP PRIVATE KEY" not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001] [cut]"
+
+
+def test_flattened_unterminated_pem_takes_every_body_run_on_the_line() -> None:
+    """A paste whose newlines became spaces leaves the body as several
+    64-character runs; the one-line rule used to take only the first."""
+    body = _pem_body("pem-flat-runs")[:3]
+    text = "paste: " + _pem_marker("BEGIN", "RSA") + " " + " ".join(body) + " [cut]"
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001] [cut]"
+
+
+def test_prose_after_an_armour_line_and_an_inline_header_is_still_prose() -> None:
+    """A header without a body after it is not key material: only the armour
+    line goes, exactly as for a bare armour line followed by words."""
+    text = (
+        "The file starts with "
+        + _pgp_marker("BEGIN")
+        + " Version: 1.0 and nothing follows it."
+    )
+    result = Scrubber().scrub(text)
+    assert result.text == (
+        "The file starts with [PRIVATE_KEY-001] Version: 1.0 and nothing follows it."
+    )
+
+
+# ===========================================================================
+# _private_key_spans cost (plan 4, D#1). The masking loop used to rebuild the
+# whole string once per matched span, so a text with many armour lines cost
+# quadratic time (20 000 bare armour lines: 1.24 s). The spans it returns
+# are a function of the text alone, so the fix must return exactly what the
+# old loop did, only in one pass per pattern.
+# ===========================================================================
+
+
+def _reference_private_key_spans(text: str) -> list[tuple[int, int]]:
+    """The pre-D#1 algorithm, kept verbatim as the oracle for the output."""
+    from agent_session_tools.scrubber import (
+        _PEM_BLOCK,
+        _PEM_BODY_CHAR,
+        _PEM_FOOT,
+        _PEM_HEAD,
+    )
+
+    if "PRIVATE KEY-----" not in text and "PRIVATE KEY BLOCK-----" not in text:
+        return []
+    spans: list[tuple[int, int]] = []
+    masked = text
+    for pattern in (_PEM_BLOCK, _PEM_HEAD):
+        for match in pattern.finditer(masked):
+            start, end = match.span()
+            spans.append((start, end))
+            masked = masked[:start] + "\0" * (end - start) + masked[end:]
+    for match in _PEM_FOOT.finditer(masked):
+        start = match.start()
+        if masked.endswith(("\n", "\\n"), 0, start):
+            while (
+                start > 0
+                and _PEM_BODY_CHAR.fullmatch(masked[start - 1])
+                and not masked.endswith("-----", 0, start)
+            ):
+                start -= 1
+        spans.append((start, match.end()))
+    return sorted(spans)
+
+
+def _many_armour_lines(count: int) -> str:
+    """``count`` bare BEGIN armour lines, each with a short inline tail."""
+    return "\n".join([_pem_marker("BEGIN", "RSA") + " " + "A" * 60] * count)
+
+
+def _mixed_key_material(groups: int) -> str:
+    """Every shape the span finder handles, repeated: whole blocks, a cut-off
+    head, a cut-off tail, a flattened paste and prose beside a bare armour."""
+    parts: list[str] = []
+    for i in range(groups):
+        parts += [
+            _pem("RSA", f"whole-{i}"),
+            _pem_marker("BEGIN", "EC") + "\n" + _pem_body(f"head-{i}")[0],
+            _pem_body(f"tail-{i}")[1] + "\n" + _pem_marker("END", "EC"),
+            "x " + _pem_marker("BEGIN", "") + "".join(_pem_body(f"flat-{i}")[:2]),
+            "prose " + _pem_marker("BEGIN", "RSA") + " and nothing follows",
+            _pgp(f"pgp-{i}", headers=_PGP_HEADERS),
+        ]
+    return "\n".join(parts)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(_many_armour_lines(2000), id="2000-armour-lines"),
+        pytest.param(_mixed_key_material(60), id="mixed-shapes"),
+    ],
+)
+def test_private_key_spans_match_the_reference_algorithm(
+    text: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import agent_session_tools.scrubber as scrubber_module
+
+    spans = scrubber_module._private_key_spans(text)
+    assert spans == _reference_private_key_spans(text)
+    assert len(spans) > 0
+    # And the redaction built on them: byte-identical output.
+    redacted = Scrubber().scrub(text).text
+    monkeypatch.setattr(
+        scrubber_module, "_private_key_spans", _reference_private_key_spans
+    )
+    assert redacted == Scrubber().scrub(text).text
+
+
+def _best_of(fn, repeats: int) -> float:
+    import time
+
+    best = float("inf")
+    for _ in range(repeats):
+        started = time.perf_counter()
+        fn()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+def test_private_key_spans_cost_grows_linearly_with_armour_lines() -> None:
+    """Ten times the armour lines may cost ten times the work, not a hundred.
+
+    Compared per line so the guard reads as a linearity check: the cost of one
+    line in a 2 000-line text must stay within 3x the cost of one line in a
+    200-line text. The old loop measured about 5.7x here (and 25x at 20 000
+    lines); one pass per pattern measures about 1x. Best of several runs, so
+    a busy machine cannot fail it by a single slow sample.
+    """
+    from agent_session_tools.scrubber import _private_key_spans
+
+    small, large = _many_armour_lines(200), _many_armour_lines(2000)
+    per_line_small = _best_of(lambda: _private_key_spans(small), 7) / 200
+    per_line_large = _best_of(lambda: _private_key_spans(large), 5) / 2000
+    assert per_line_large <= 3 * per_line_small, (
+        f"per-line cost grew {per_line_large / per_line_small:.1f}x "
+        "from 200 to 2000 armour lines; the span finder is not linear"
+    )
 
 
 class TestScrubberDeterministicPlaceholders:

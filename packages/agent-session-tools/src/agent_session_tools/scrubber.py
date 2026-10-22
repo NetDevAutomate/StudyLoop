@@ -28,9 +28,13 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
         # word boundary keep it specific enough to avoid false positives.
         r"(?i)aws.{0,20}(?:secret|key).{0,20}['\"]?[0-9a-zA-Z/+]{40}['\"]?\b"
     ),
-    "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36}\b"),
+    # Classic PATs (ghp_) and OAuth access tokens (gho_): 36 alphanumerics
+    # after the prefix today, but GitHub's token-format changelog (2021-03)
+    # tells integrators to support tokens up to 255 characters, so an exact
+    # {36} gave zero findings on a longer one (the F-AST-07 shape).
+    "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36,255}\b"),
     "github_fine_grained": re.compile(r"\bgithub_pat_\w{82}\b"),
-    "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36}\b"),
+    "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36,255}\b"),
     # GitHub App tokens: ghu_ (user-to-server) and ghs_ (installation, which
     # includes Actions' GITHUB_TOKEN). A classic one is 36 alphanumerics after
     # the prefix. Installation tokens are now stateless, ghs_<app id>_<JWT>:
@@ -109,9 +113,33 @@ _PEM_BODY = rf"(?:(?!-----){_PEM_BODY_CHAR.pattern})*+"
 _ARMOUR_HEADERS = (
     r"(?:(?:\r?\n|(?:\\r)?\\n)[A-Za-z][A-Za-z0-9-]*: (?:(?!-----)[^\r\n\\'\"])*+)*+"
 )
+# A base64 run of body length after whitespace. No word of prose is 20
+# base64 characters, so "----- and nothing follows" stays prose while a
+# flattened body line (64 characters) does not.
+_INLINE_BODY_RUN = r"[ \t]++(?=[A-Za-z0-9+/=]{20})[A-Za-z0-9+/=]*+"
+# The same armour headers when the block was flattened onto ONE line, so
+# "Version: GnuPG v2.0.22 (GNU/Linux)" or "Version: X.Y [comment]" sits
+# between the BEGIN armour and the body with spaces for line breaks (D#5).
+# Its "(", ")", "[", "]" and "." are not body characters, so without this
+# the whole-block match stopped on them and the inline rule, which wants
+# base64 straight after the armour, left the body in the text. The run is
+# admitted only when a body run follows it: a header followed by words is
+# prose. The value takes the longest stretch (at most 200 characters, never
+# a line break, backslash, quote or armour) that a body run still follows,
+# so a header holding a long word is not mistaken for the end of the
+# headers; a body run swallowed into the value is still inside the span.
+# The value ends on a non-blank character, so while the engine tries
+# shorter values the body-run lookahead walks a whitespace run once rather
+# than once per candidate (a megabyte of spaces after a header cost 0.5 s
+# without this).
+_INLINE_ARMOUR_HEADERS = (
+    r"(?:[ \t]++[A-Za-z][A-Za-z0-9-]*+: "
+    r"(?:(?:(?!-----)[^\r\n\\'\"]){0,199}(?!-----)[^\r\n\\'\" \t])?"
+    rf"(?={_INLINE_BODY_RUN}))?"
+)
 _PEM_BLOCK = re.compile(
-    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}{_PEM_BODY}"
-    rf"-----END{_PEM_LABEL}-----"
+    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}{_INLINE_ARMOUR_HEADERS}"
+    rf"{_PEM_BODY}-----END{_PEM_LABEL}-----"
 )
 # A BEGIN line whose END line never arrived (output cut off mid-key): the
 # header plus the body that followed it on the next line -- or, for a key
@@ -120,18 +148,34 @@ _PEM_BLOCK = re.compile(
 # The inline form stops at whitespace, so prose after a bare armour line
 # ("...PRIVATE KEY----- and nothing follows") is never treated as a body.
 # A flattened paste may also carry the collapsed newline as a space or tab
-# (the BEGIN armour, one space, then "MIIE..."); that form is admitted only
-# when the run is at least 20 base64 characters, which no word of prose is,
-# so "----- and nothing follows" stays prose while a real body does not.
+# (the BEGIN armour, one space, then "MIIE..."), and its later line breaks
+# too, so the body is every whitespace-separated run of body length that
+# follows (D#5: the rule used to take only the first run), after any
+# armour headers flattened onto the same line.
 _PEM_INLINE_BODY = (
-    r"(?:(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
-    r"|[ \t]++(?=[A-Za-z0-9+/=]{20})[A-Za-z0-9+/=]*+)"
+    rf"(?:(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+(?:{_INLINE_BODY_RUN})*+"
+    rf"|{_INLINE_ARMOUR_HEADERS}(?:{_INLINE_BODY_RUN})++)"
 )
 _PEM_HEAD = re.compile(
     rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}"
     rf"(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"
 )
 _PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
+
+
+def _mask(text: str, spans: list[tuple[int, int]]) -> str:
+    """Overwrite each span with NULs of the same length, in one pass.
+
+    ``spans`` are one ``finditer`` pass's matches: sorted and disjoint. The
+    length is unchanged, so every offset found so far still holds.
+    """
+    pieces: list[str] = []
+    cursor = 0
+    for start, end in spans:
+        pieces += [text[cursor:start], "\0" * (end - start)]
+        cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
 
 
 def _private_key_spans(text: str) -> list[tuple[int, int]]:
@@ -145,14 +189,19 @@ def _private_key_spans(text: str) -> list[tuple[int, int]]:
     if "PRIVATE KEY-----" not in text and "PRIVATE KEY BLOCK-----" not in text:
         return []
     spans: list[tuple[int, int]] = []
-    # Each claimed span is overwritten with NULs (same length, so offsets
-    # hold); NUL is not a body character, so later passes stop at it.
+    # Each pass runs over the text with every earlier pass's spans overwritten
+    # with NULs (same length, so offsets hold); NUL is not a body character,
+    # so later passes stop at it. A pass's own matches come from one
+    # ``finditer`` over the string as it stood before the pass, so they are
+    # masked together afterwards, once: masking inside the loop would rebuild
+    # the whole string per span and cost quadratic time in the number of
+    # armour lines (D#1) without changing a single match.
     masked = text
     for pattern in (_PEM_BLOCK, _PEM_HEAD):
-        for match in pattern.finditer(masked):
-            start, end = match.span()
-            spans.append((start, end))
-            masked = masked[:start] + "\0" * (end - start) + masked[end:]
+        found = [match.span() for match in pattern.finditer(masked)]
+        if found:
+            spans += found
+            masked = _mask(masked, found)
     for match in _PEM_FOOT.finditer(masked):
         start = match.start()
         if masked.endswith(("\n", "\\n"), 0, start):

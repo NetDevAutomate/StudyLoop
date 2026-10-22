@@ -8,6 +8,7 @@ schema inspection, and maintenance operations.
 import logging
 import os
 import sqlite3
+import stat
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -153,6 +154,110 @@ def create_backup(db_path: Path) -> Path | None:
     return backup_path
 
 
+def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
+    """Every local copy of the record, or index derived from it, the config names.
+
+    Maintenance backups (``<stem>_backup_*.db`` in ``database.backup_dir``,
+    whatever the stem: ``vacuum``/``reindex``/``delete --db`` back up any
+    database under its own stem), snapshots (``<full stem>_snapshot_*.db`` in
+    ``database.snapshot_dir``, or ``backup_dir`` when unset) and the vector
+    sidecars (``<stem>.vec.db`` beside the hot and the full database, with
+    their WAL/SHM/journal companions). The globs are non-recursive and the
+    names are the ones this package writes, so nothing outside those
+    directories, and nothing else inside them, is listed.
+    """
+    from agent_session_tools.embedding_store import sidecar_path
+    from agent_session_tools.tiering import get_full_db_path
+
+    db_cfg = cfg["database"]
+    hot = Path(db_cfg["path"])
+    full = get_full_db_path(cfg)
+    backup_dir = Path(db_cfg["backup_dir"])
+    snapshot_dir = Path(db_cfg.get("snapshot_dir") or backup_dir)
+
+    found: list[tuple[str, Path]] = []
+    if backup_dir.is_dir():
+        found += [("backup", p) for p in sorted(backup_dir.glob("*_backup_*.db"))]
+    if full is not None and snapshot_dir.is_dir():
+        found += [
+            ("snapshot", p)
+            for p in sorted(snapshot_dir.glob(f"{full.stem}_snapshot_*.db"))
+        ]
+    for db in (hot, full):
+        if db is None:
+            continue
+        sidecar = sidecar_path(db)
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            companion = sidecar.with_name(sidecar.name + suffix)
+            if companion.is_symlink() or companion.exists():
+                found.append(("sidecar", companion))
+    return found
+
+
+def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
+    """Chmod pre-existing copies of the record to 0600 and report counts (D#2).
+
+    Snapshots, backups and sidecars are created owner-only since 92186d77 /
+    R-19c; copies made before that keep the mode the umask gave them (0644
+    under 022). Only the files ``_owner_only_candidates`` lists are touched. A
+    symlink is skipped and named: a chmod through it would change a file that
+    may live outside the configured directories.
+    """
+    import shlex
+
+    from agent_session_tools.config_loader import get_endpoints
+
+    verb = "Would tighten" if dry_run else "Tightened"
+    print(f"\n{'=' * 50}")
+    print(
+        f"🔐 FIX PERMISSIONS (copies of the record -> 0600){' — DRY RUN' if dry_run else ''}"
+    )
+    print(f"{'=' * 50}")
+
+    tightened: list[Path] = []
+    already = 0
+    symlinks: list[Path] = []
+    for kind, path in _owner_only_candidates(cfg):
+        if path.is_symlink():
+            symlinks.append(path)
+            print(f"⚠️  Skipped {kind} {path}: a symlink (its target is not swept)")
+            continue
+        if not path.is_file():
+            continue
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode == 0o600:
+            already += 1
+            continue
+        print(f"{'🔍' if dry_run else '🔧'} {kind} {path}: {mode:04o} -> 0600")
+        if not dry_run:
+            os.chmod(path, 0o600)
+            logger.info("fix-perms: %s %s %04o -> 0600", kind, path, mode)
+        tightened.append(path)
+
+    if not cfg["database"].get("full_db_path"):
+        print(
+            "ℹ️  database.full_db_path is not configured: no snapshots or full-tier "
+            "sidecar to sweep."
+        )
+    summary = f"✅ {verb} {len(tightened)} file(s) to 0600; {already} already 0600"
+    if symlinks:
+        summary += f"; skipped {len(symlinks)} symlink(s)"
+    print(summary + ".")
+
+    for name, endpoint in sorted(get_endpoints(cfg).items()):
+        # The remote copy session-sync seeded takes the remote umask; this
+        # command reaches local files only, so say what to run there.
+        ip = endpoint.get("ip_address", {}).get("primary_ip") or "<host>"
+        paths = [endpoint.get("path", ""), endpoint.get("full_path", "")]
+        for remote_path in filter(None, paths):
+            print(
+                f"ℹ️  Remote copy on '{name}' is not reached from here; run: "
+                f"ssh {endpoint.get('username', '<user>')}@{ip} chmod 600 "
+                f"{shlex.quote(remote_path)}"
+            )
+    return 0
+
+
 # A session's age is its newest known timestamp. updated_at is NULL for every
 # Kiro v1 conversation (exporters/kiro.py) and for any harness that gave none;
 # such a session is of unknown age, never "older than N days", so delete and
@@ -181,6 +286,23 @@ def _sessions_older_than(conn: sqlite3.Connection, cutoff: str) -> list[sqlite3.
 def _has_lifecycle(conn: sqlite3.Connection) -> bool:
     """True for a current-schema database (tombstones, record ownership)."""
     return conn.execute("PRAGMA user_version").fetchone()[0] >= 41
+
+
+def _fts_without_delete_trigger(conn: sqlite3.Connection) -> bool:
+    """True when ``messages_fts`` exists but nothing unindexes a deleted message.
+
+    Migration v5 installs ``messages_fts_delete``; a database older than that
+    has the index and no trigger, so whoever deletes a message must remove
+    its index row too (D#7).
+    """
+    names = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master"
+            " WHERE name IN ('messages_fts', 'messages_fts_delete')"
+        )
+    }
+    return "messages_fts" in names and "messages_fts_delete" not in names
 
 
 def _without_learner_anchors(
@@ -704,12 +826,19 @@ def _delete_old(
     confirm: bool = False,
     backup: bool = True,
     forget_learner_records: bool = False,
+    allow_unmigrated: bool = False,
 ) -> int:
     """Delete sessions older than N days (requires confirmation).
 
     Sessions that own learner records are kept and counted in the summary;
     ``forget_learner_records`` destroys them and those records through
     ``purge_session`` instead (D5, council pass 3).
+
+    A pre-lifecycle schema (``user_version < 41``) records no tombstone, so
+    a session deleted there is re-imported by the next export from its native
+    transcript (F-AST-04). Such a database is refused with the migration
+    named; ``allow_unmigrated`` runs the pre-lifecycle delete anyway, with a
+    warning (plan 4, item 7).
     """
     print(f"\n{'=' * 50}")
     print(f"⚠️  DELETE SESSIONS (older than {days} days)")
@@ -728,12 +857,12 @@ def _delete_old(
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
 
-        old_sessions = _sessions_older_than(conn, cutoff_date)
         lifecycle = _has_lifecycle(conn)
         if forget_learner_records and not lifecycle:
             # Destroying learner records is only ever done by purge_session,
             # which needs the lifecycle schema; there is no bare-DELETE
-            # fallback for it.
+            # fallback for it. Checked first: --allow-unmigrated does not
+            # unlock it.
             import shlex
 
             version = conn.execute("PRAGMA user_version").fetchone()[0]
@@ -746,6 +875,33 @@ def _delete_old(
                 "migrates before it audits), then delete again."
             )
             return 1
+        if not lifecycle:
+            import shlex
+
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            migrate_hint = (
+                f"'session-maint embed-check --db {shlex.quote(str(db_path))}' "
+                "migrates before it audits"
+            )
+            if not allow_unmigrated:
+                conn.close()
+                print(
+                    f"❌ This database is at schema version {version}; delete needs "
+                    "version 41 or later, which records a tombstone for every "
+                    "deleted session so the next export cannot re-import it from "
+                    "its native transcript. Nothing was changed. Migrate it first "
+                    f"(for example {migrate_hint}), then delete again -- or pass "
+                    "--allow-unmigrated to delete without tombstones."
+                )
+                return 1
+            print(
+                f"⚠️  --allow-unmigrated: schema version {version} records no "
+                "tombstone, so the next export can re-import every session deleted "
+                f"here from its native transcript. Migrate ({migrate_hint}) to make "
+                "a deletion stick."
+            )
+
+        old_sessions = _sessions_older_than(conn, cutoff_date)
         anchored: list[sqlite3.Row] = []
         if lifecycle:
             old_sessions, anchored = _without_learner_anchors(conn, old_sessions)
@@ -839,6 +995,14 @@ def _delete_old(
 
             version = conn.execute("PRAGMA user_version").fetchone()[0]
             anchored_ids = _anchored_session_ids(conn)
+            # Before schema v5 there is no messages_fts_delete trigger, so a
+            # deleted message kept its index row: a search still found the
+            # deleted session and fts-check reported drift (D#7). The index
+            # rows are removed here by rowid, inside the session's savepoint,
+            # before the messages go (an external-content index needs the
+            # row to still exist to unindex it); rowid is the one thing every
+            # FTS shape shares, so no column of the old table is assumed.
+            clean_fts = _fts_without_delete_trigger(conn)
             deleted = deleted_messages = kept = 0
             print("\n🗑️  Deleting sessions (dependents first, foreign keys on)...")
             conn.execute("PRAGMA foreign_keys=ON")
@@ -850,6 +1014,12 @@ def _delete_old(
                         continue
                     conn.execute("SAVEPOINT pre_lifecycle_delete")
                     try:
+                        if clean_fts:
+                            conn.execute(
+                                "DELETE FROM messages_fts WHERE rowid IN "
+                                "(SELECT rowid FROM messages WHERE session_id = ?)",
+                                (session_id,),
+                            )
                         removed = conn.execute(
                             "DELETE FROM messages WHERE session_id = ?", (session_id,)
                         ).rowcount
@@ -1054,11 +1224,24 @@ def delete_cmd(
             ),
         ),
     ] = False,
+    allow_unmigrated: Annotated[
+        bool,
+        typer.Option(
+            "--allow-unmigrated",
+            help=(
+                "Delete on a database older than schema 41 anyway. Such a schema "
+                "records no tombstone, so the next export re-imports what was "
+                "deleted; without this flag the command refuses and names the "
+                "migration."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Delete old sessions permanently (requires --confirm).
 
     Sessions that own learner records are kept and counted in the summary
-    unless --forget-learner-records is given.
+    unless --forget-learner-records is given. A database older than schema
+    41 is refused unless --allow-unmigrated is given.
     """
     db_path = db if db else _get_db_path()
     exit_code = _delete_old(
@@ -1067,6 +1250,7 @@ def delete_cmd(
         confirm,
         backup=not no_backup,
         forget_learner_records=forget_learner_records,
+        allow_unmigrated=allow_unmigrated,
     )
     raise typer.Exit(exit_code)
 
@@ -1139,6 +1323,25 @@ def fts_check(
         raise typer.Exit(0 if after.healthy else 1)
     finally:
         conn.close()
+
+
+@app.command("fix-perms")
+def fix_perms(
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="List the files that would change; chmod none"),
+    ] = False,
+) -> None:
+    """Make existing snapshot, backup and sidecar files owner-only (0600).
+
+    Copies of the session record made before they were created owner-only
+    keep the mode the umask gave them. Sweeps only the files the config
+    names: <stem>_backup_*.db in database.backup_dir, <stem>_snapshot_*.db in
+    database.snapshot_dir (or backup_dir), and the <stem>.vec.db sidecar
+    beside the hot and the full database. Reports counts; never creates,
+    moves or follows a symlink.
+    """
+    raise typer.Exit(_fix_perms(_get_config(), dry_run=dry_run))
 
 
 @app.command()

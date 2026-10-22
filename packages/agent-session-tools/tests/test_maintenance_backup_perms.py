@@ -176,6 +176,8 @@ def test_archive_db_is_created_0600_under_umask_022(tmp_path, umask_022, monkeyp
 # with foreign keys off, orphaning every dependent row. Kept in this module
 # because it is the maintenance test file lane D owns; it shares the
 # pre-lifecycle fixture style above, built here through the real migrations.
+# Since plan 4 item 7 a pre-41 delete is refused by default (it writes no
+# tombstone); these tests pass allow_unmigrated=True to reach the branch.
 # ---------------------------------------------------------------------------
 
 
@@ -235,7 +237,10 @@ def test_pre_lifecycle_delete_takes_dependents_with_it(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+    assert (
+        _delete_old(db_path, days=30, confirm=True, backup=False, allow_unmigrated=True)
+        == 0
+    )
 
     assert _rows(db_path, "SELECT id FROM sessions") == [("new-1",)]
     assert _rows(db_path, "PRAGMA foreign_key_check") == []
@@ -264,7 +269,10 @@ def test_pre_lifecycle_delete_keeps_what_it_cannot_remove_whole(
     conn.commit()
     conn.close()
 
-    assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+    assert (
+        _delete_old(db_path, days=30, confirm=True, backup=False, allow_unmigrated=True)
+        == 0
+    )
 
     assert _rows(db_path, "SELECT id FROM sessions ORDER BY id") == [
         ("held",),
