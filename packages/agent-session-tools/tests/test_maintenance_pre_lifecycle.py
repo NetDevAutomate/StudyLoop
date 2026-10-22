@@ -12,8 +12,12 @@ import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from agent_session_tools.maintenance import _delete_old
+from typer.testing import CliRunner
+
+from agent_session_tools.maintenance import _delete_old, app
 from agent_session_tools.tiering import fts_integrity
+
+runner = CliRunner()
 
 
 def _old_iso(days_ago: int) -> str:
@@ -112,7 +116,12 @@ class TestPreV5DeleteCleansTheFtsIndex:
         _add_session(db_path, "new-1", 1, "a kept giraffe")
         assert _fts_hits(db_path, "zebra") == ["old-1", "old-1"]
 
-        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
 
         assert _rows(db_path, "SELECT id FROM sessions") == [("new-1",)]
         assert _rows(db_path, "SELECT COUNT(*) FROM messages") == [(1,)]
@@ -138,7 +147,12 @@ class TestPreV5DeleteCleansTheFtsIndex:
         conn.commit()
         conn.close()
 
-        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 0
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
 
         assert _rows(db_path, "SELECT id FROM sessions") == [("held",)]
         assert _fts_hits(db_path, "zebra") == ["held"]
@@ -147,3 +161,151 @@ class TestPreV5DeleteCleansTheFtsIndex:
             assert fts_integrity(conn).healthy
         finally:
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Plan 4 item 7 (coordinator decision on FOUND-NOT-FIXED §Owner decisions):
+# a pre-41 schema records no tombstone, so a session deleted there is
+# re-imported by the next export from its native transcript (F-AST-04). The
+# honest contract is to refuse by default and name the migration; the old
+# behaviour stays reachable, with a warning, behind --allow-unmigrated.
+# ---------------------------------------------------------------------------
+
+
+def _current_db(tmp_path: Path) -> Path:
+    from agent_session_tools.export_sessions import init_db
+
+    db_path = tmp_path / "current.db"
+    init_db(str(db_path)).close()
+    return db_path
+
+
+class TestPre41DeleteRefusesByDefault:
+    def test_refuses_changes_nothing_and_names_the_migration(self, tmp_path, capsys):
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+
+        assert _delete_old(db_path, days=30, confirm=True, backup=False) == 1
+
+        assert _rows(db_path, "SELECT id FROM sessions") == [("old-1",)]
+        assert _rows(db_path, "SELECT COUNT(*) FROM messages") == [(1,)]
+        out = capsys.readouterr().out
+        assert "schema version 4" in out
+        assert "41" in out
+        assert "tombstone" in out
+        assert "Nothing was changed" in out
+        assert f"session-maint embed-check --db {db_path}" in out
+        assert "--allow-unmigrated" in out
+
+    def test_refuses_the_preview_too(self, tmp_path, capsys):
+        """The refusal is about the schema, not the action: no --confirm, same answer."""
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+
+        assert _delete_old(db_path, days=30, confirm=False, backup=False) == 1
+
+        out = capsys.readouterr().out
+        assert "schema version 4" in out
+        assert "Operation cancelled" not in out
+
+    def test_allow_unmigrated_restores_the_old_behaviour_with_a_warning(
+        self, tmp_path, capsys
+    ):
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+        _add_session(db_path, "new-1", 1, "hi")
+
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
+
+        assert _rows(db_path, "SELECT id FROM sessions") == [("new-1",)]
+        out = capsys.readouterr().out
+        assert "⚠️  --allow-unmigrated" in out
+        assert "no tombstone" in out
+        assert "re-import" in out
+        assert "Deleted 1 sessions (1 messages)" in out
+
+    def test_allow_unmigrated_does_not_unlock_forget_learner_records(
+        self, tmp_path, capsys
+    ):
+        """purge_session needs schema 41+ whatever else is passed (ADR-0017)."""
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+
+        assert (
+            _delete_old(
+                db_path,
+                days=30,
+                confirm=True,
+                backup=False,
+                forget_learner_records=True,
+                allow_unmigrated=True,
+            )
+            == 1
+        )
+
+        assert _rows(db_path, "SELECT id FROM sessions") == [("old-1",)]
+        assert "--forget-learner-records needs the current schema" in (
+            capsys.readouterr().out
+        )
+
+    def test_a_current_schema_is_not_warned_about(self, tmp_path, capsys):
+        db_path = _current_db(tmp_path)
+        when = _old_iso(100)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO sessions (id, source, created_at, updated_at)"
+            " VALUES ('old-1', 'claude_code', ?, ?)",
+            (when, when),
+        )
+        conn.commit()
+        conn.close()
+
+        assert (
+            _delete_old(
+                db_path, days=30, confirm=True, backup=False, allow_unmigrated=True
+            )
+            == 0
+        )
+
+        assert _rows(db_path, "SELECT id FROM sessions") == []
+        assert _rows(db_path, "SELECT COUNT(*) FROM context_tombstones") == [(1,)]
+        assert "--allow-unmigrated" not in capsys.readouterr().out
+
+
+class TestPre41Cli:
+    def _args(self, db_path: Path, *extra: str) -> list[str]:
+        return ["delete", "--days", "30", "--db", str(db_path), "--no-backup", *extra]
+
+    def test_help_names_the_flag(self):
+        result = runner.invoke(app, ["delete", "--help"], terminal_width=200)
+        assert result.exit_code == 0
+        text = " ".join(result.output.split())
+        assert "--allow-unmigrated" in text
+        assert "tombstone" in text
+
+    def test_refused_without_the_flag(self, tmp_path):
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+
+        result = runner.invoke(app, self._args(db_path, "--confirm"))
+
+        assert result.exit_code == 1, result.output
+        assert "schema version 4" in result.output
+        assert _rows(db_path, "SELECT id FROM sessions") == [("old-1",)]
+
+    def test_deletes_with_the_flag(self, tmp_path):
+        db_path = _schema4_db(tmp_path)
+        _add_session(db_path, "old-1", 100, "hello")
+
+        result = runner.invoke(
+            app, self._args(db_path, "--confirm", "--allow-unmigrated")
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "⚠️  --allow-unmigrated" in result.output
+        assert _rows(db_path, "SELECT id FROM sessions") == []

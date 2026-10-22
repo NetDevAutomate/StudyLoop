@@ -826,12 +826,19 @@ def _delete_old(
     confirm: bool = False,
     backup: bool = True,
     forget_learner_records: bool = False,
+    allow_unmigrated: bool = False,
 ) -> int:
     """Delete sessions older than N days (requires confirmation).
 
     Sessions that own learner records are kept and counted in the summary;
     ``forget_learner_records`` destroys them and those records through
     ``purge_session`` instead (D5, council pass 3).
+
+    A pre-lifecycle schema (``user_version < 41``) records no tombstone, so
+    a session deleted there is re-imported by the next export from its native
+    transcript (F-AST-04). Such a database is refused with the migration
+    named; ``allow_unmigrated`` runs the pre-lifecycle delete anyway, with a
+    warning (plan 4, item 7).
     """
     print(f"\n{'=' * 50}")
     print(f"⚠️  DELETE SESSIONS (older than {days} days)")
@@ -850,12 +857,12 @@ def _delete_old(
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
 
-        old_sessions = _sessions_older_than(conn, cutoff_date)
         lifecycle = _has_lifecycle(conn)
         if forget_learner_records and not lifecycle:
             # Destroying learner records is only ever done by purge_session,
             # which needs the lifecycle schema; there is no bare-DELETE
-            # fallback for it.
+            # fallback for it. Checked first: --allow-unmigrated does not
+            # unlock it.
             import shlex
 
             version = conn.execute("PRAGMA user_version").fetchone()[0]
@@ -868,6 +875,33 @@ def _delete_old(
                 "migrates before it audits), then delete again."
             )
             return 1
+        if not lifecycle:
+            import shlex
+
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            migrate_hint = (
+                f"'session-maint embed-check --db {shlex.quote(str(db_path))}' "
+                "migrates before it audits"
+            )
+            if not allow_unmigrated:
+                conn.close()
+                print(
+                    f"❌ This database is at schema version {version}; delete needs "
+                    "version 41 or later, which records a tombstone for every "
+                    "deleted session so the next export cannot re-import it from "
+                    "its native transcript. Nothing was changed. Migrate it first "
+                    f"(for example {migrate_hint}), then delete again -- or pass "
+                    "--allow-unmigrated to delete without tombstones."
+                )
+                return 1
+            print(
+                f"⚠️  --allow-unmigrated: schema version {version} records no "
+                "tombstone, so the next export can re-import every session deleted "
+                f"here from its native transcript. Migrate ({migrate_hint}) to make "
+                "a deletion stick."
+            )
+
+        old_sessions = _sessions_older_than(conn, cutoff_date)
         anchored: list[sqlite3.Row] = []
         if lifecycle:
             old_sessions, anchored = _without_learner_anchors(conn, old_sessions)
@@ -1190,11 +1224,24 @@ def delete_cmd(
             ),
         ),
     ] = False,
+    allow_unmigrated: Annotated[
+        bool,
+        typer.Option(
+            "--allow-unmigrated",
+            help=(
+                "Delete on a database older than schema 41 anyway. Such a schema "
+                "records no tombstone, so the next export re-imports what was "
+                "deleted; without this flag the command refuses and names the "
+                "migration."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Delete old sessions permanently (requires --confirm).
 
     Sessions that own learner records are kept and counted in the summary
-    unless --forget-learner-records is given.
+    unless --forget-learner-records is given. A database older than schema
+    41 is refused unless --allow-unmigrated is given.
     """
     db_path = db if db else _get_db_path()
     exit_code = _delete_old(
@@ -1203,6 +1250,7 @@ def delete_cmd(
         confirm,
         backup=not no_backup,
         forget_learner_records=forget_learner_records,
+        allow_unmigrated=allow_unmigrated,
     )
     raise typer.Exit(exit_code)
 
