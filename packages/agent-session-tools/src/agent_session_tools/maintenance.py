@@ -183,6 +183,23 @@ def _has_lifecycle(conn: sqlite3.Connection) -> bool:
     return conn.execute("PRAGMA user_version").fetchone()[0] >= 41
 
 
+def _fts_without_delete_trigger(conn: sqlite3.Connection) -> bool:
+    """True when ``messages_fts`` exists but nothing unindexes a deleted message.
+
+    Migration v5 installs ``messages_fts_delete``; a database older than that
+    has the index and no trigger, so whoever deletes a message must remove
+    its index row too (D#7).
+    """
+    names = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master"
+            " WHERE name IN ('messages_fts', 'messages_fts_delete')"
+        )
+    }
+    return "messages_fts" in names and "messages_fts_delete" not in names
+
+
 def _without_learner_anchors(
     conn: sqlite3.Connection, sessions: list[sqlite3.Row]
 ) -> tuple[list[sqlite3.Row], list[sqlite3.Row]]:
@@ -839,6 +856,14 @@ def _delete_old(
 
             version = conn.execute("PRAGMA user_version").fetchone()[0]
             anchored_ids = _anchored_session_ids(conn)
+            # Before schema v5 there is no messages_fts_delete trigger, so a
+            # deleted message kept its index row: a search still found the
+            # deleted session and fts-check reported drift (D#7). The index
+            # rows are removed here by rowid, inside the session's savepoint,
+            # before the messages go (an external-content index needs the
+            # row to still exist to unindex it); rowid is the one thing every
+            # FTS shape shares, so no column of the old table is assumed.
+            clean_fts = _fts_without_delete_trigger(conn)
             deleted = deleted_messages = kept = 0
             print("\n🗑️  Deleting sessions (dependents first, foreign keys on)...")
             conn.execute("PRAGMA foreign_keys=ON")
@@ -850,6 +875,12 @@ def _delete_old(
                         continue
                     conn.execute("SAVEPOINT pre_lifecycle_delete")
                     try:
+                        if clean_fts:
+                            conn.execute(
+                                "DELETE FROM messages_fts WHERE rowid IN "
+                                "(SELECT rowid FROM messages WHERE session_id = ?)",
+                                (session_id,),
+                            )
                         removed = conn.execute(
                             "DELETE FROM messages WHERE session_id = ?", (session_id,)
                         ).rowcount
