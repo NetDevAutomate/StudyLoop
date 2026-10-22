@@ -376,3 +376,24 @@ def test_the_practice_check_hop_is_not_asked_for_the_basic_password() -> None:
     assert other.status_code == 401 and other.headers.get("www-authenticate", "").startswith(
         "Basic"
     )
+
+
+def test_only_a_post_hop_with_the_header_bypasses_basic() -> None:
+    """The exemption is one request shape: POST to the hop route carrying the capability
+    header. Any other method on that path keeps the Basic challenge, header or not; the
+    route has only a POST handler, so without this a GET with the header reached the
+    router's 404 instead of the password gate (council pass 4, gpt-6-astra).
+    """
+    from fastapi.testclient import TestClient
+
+    from studyloop.modules import hop
+    from studyloop.web.app import create_app
+
+    app = create_app(study_dirs=[], username="study", password="pw", server_secret="s" * 40)
+    client = TestClient(app, client=("127.0.0.1", 50000))
+    headers = {hop.TOKEN_HEADER: "x" * 43, "Host": "127.0.0.1:8567"}
+
+    for method in ("GET", "HEAD", "PUT", "PATCH", "DELETE", "OPTIONS"):
+        response = client.request(method, hop.ROUTE, headers=headers)
+        assert response.status_code == 401, f"{method} with the hop header bypassed Basic auth"
+        assert response.headers.get("www-authenticate", "").startswith("Basic"), method

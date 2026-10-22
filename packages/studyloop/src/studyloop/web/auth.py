@@ -45,10 +45,12 @@ class BasicAuthMiddleware:
         if scope_type == "http" and _is_practice_check_hop(scope):
             # `studyloop drill` (a CLI process, no browser, no password) posts its
             # result here with the per-session capability from the owner-only state
-            # file; the route admits loopback peers only and checks that token in
-            # constant time, which is a stronger gate than Basic on a cleartext
-            # link. Without this, every `--bind`/`--lan` session answered the hop
-            # 401 and the mentor was never told (review-4 lane K, found-not-fixed).
+            # file. The route then judges the request itself: loopback peer only,
+            # token compared in constant time against the one this process minted.
+            # That is a narrower gate than Basic (one method, one path, one peer
+            # class), not a stronger transport. Without this, every `--bind`/`--lan`
+            # session answered the hop 401 and the mentor was never told (review-4
+            # lane K, found-not-fixed).
             await self.app(scope, receive, send)
             return
 
@@ -93,9 +95,16 @@ class BasicAuthMiddleware:
 
 
 def _is_practice_check_hop(scope: Scope) -> bool:
-    """Whether this request is the loopback practice_check hop presenting its own token."""
+    """Whether this request is the practice_check hop: a POST to its route carrying its header.
+
+    Method, path and header presence together name the one request shape the password
+    gate hands through. The header's presence is not authentication: the route itself
+    admits loopback peers only and compares the token in constant time against the one
+    this process minted (``routes/modules.py``), and that guard runs for every request
+    the exemption lets past.
+    """
     from studyloop.modules.hop import ROUTE, TOKEN_HEADER
 
-    if scope.get("path") != ROUTE:
+    if scope.get("method") != "POST" or scope.get("path") != ROUTE:
         return False
     return bool(Headers(scope=scope).get(TOKEN_HEADER.lower(), ""))
