@@ -171,3 +171,32 @@ def test_script_reads_no_pomodoro_state() -> None:
 
     assert "pomodoro" not in source
     assert "pomo_" not in source
+
+
+def test_ended_session_shows_no_topic_or_energy(bash: str, tmp_path: Path) -> None:
+    """An ended session's state file keeps its last topic and energy.
+
+    ``session_state.write_session_state`` merges ``{"mode": "ended"}`` into
+    the existing file, so the old ``topic`` and ``energy_label`` stay on disk
+    until the next start. The line must not present them as current.
+    """
+    result = _render(
+        bash,
+        tmp_path,
+        state={"mode": "ended", "energy_label": "high", "topic": "Stale topic"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Stale topic" not in result.stdout
+    assert "🔋" not in result.stdout, f"energy shown for an ended session: {result.stdout!r}"
+    assert result.stdout.count(SEPARATOR) == 2, f"expected timer, context, cost: {result.stdout!r}"
+
+
+def test_live_session_still_shows_topic_and_energy(bash: str, tmp_path: Path) -> None:
+    result = _render(
+        bash, tmp_path, state={"mode": "focus", "energy_label": "high", "topic": "Live topic"}
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Live topic" in result.stdout
+    assert "High" in result.stdout

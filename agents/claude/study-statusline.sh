@@ -75,6 +75,10 @@ claude = load(sys.stdin.read)
 state = load(read_state)
 ctx = mapping(claude.get("context_window"))
 cost = mapping(claude.get("cost"))
+# An ended session keeps its last topic and energy on disk until the next
+# start (the end marker is merged in), so neither is current: send them empty
+# and the line leaves both segments out.
+live = state.get("mode") != "ended"
 
 pct = number(ctx.get("used_percentage"))
 fields = [
@@ -82,8 +86,8 @@ fields = [
     str(max(0, min(100, int(pct)))),
     format(number(cost.get("total_cost_usd")), ".4f"),
     str(int(number(cost.get("total_duration_ms"))) // 60000),
-    text(state.get("energy_label"), "-"),
-    text(state.get("topic")),
+    (text(state.get("energy_label"), "-") or "-") if live else "",
+    text(state.get("topic")) if live else "",
 ]
 sys.stdout.write("".join(field + "\0" for field in fields))
 '
@@ -111,8 +115,9 @@ esac
 
 DURATION_DISPLAY="${DURATION_MIN}m"
 
-# Energy emoji and color
+# Energy emoji and color. Empty means the session has ended: no segment.
 case "$ENERGY" in
+    '')     ENERGY_DISPLAY="" ;;
     high)   ENERGY_DISPLAY="${GREEN}🔋 High${RESET}" ;;
     medium) ENERGY_DISPLAY="${YELLOW}🔋 Med${RESET}" ;;
     low)    ENERGY_DISPLAY="${RED}🔋 Low${RESET}" ;;
@@ -137,7 +142,7 @@ fi
 # Build status line
 PARTS=()
 [[ -n "$TOPIC_DISPLAY" ]] && PARTS+=("$TOPIC_DISPLAY")
-PARTS+=("$ENERGY_DISPLAY")
+[[ -n "$ENERGY_DISPLAY" ]] && PARTS+=("$ENERGY_DISPLAY")
 PARTS+=("${DIM}⏱️ ${DURATION_DISPLAY}${RESET}")
 PARTS+=("${CTX_COLOR}📊 ${CTX_PCT}%${RESET}")
 PARTS+=("${DIM}\$${COST}${RESET}")
