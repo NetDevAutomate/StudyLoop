@@ -365,6 +365,11 @@ agents:
         format: generic
 ```
 
+`{binary}`, `{persona}` and `{session_dir}` are substituted shell-quoted (a
+path with a space arrives as one argument), as are `env` values, so do not wrap
+the placeholders in quotes yourself; a template that already quotes one
+(`"{persona}"`) is substituted raw there and still works.
+
 ### Web PWA (recommended)
 
 The study web app requires no extra dependencies — just run:
