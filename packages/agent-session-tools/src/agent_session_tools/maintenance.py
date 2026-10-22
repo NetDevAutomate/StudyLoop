@@ -15,6 +15,7 @@ from typing import Annotated
 
 import typer
 
+from agent_session_tools.replication.legacy import LegacySyncRefused
 from agent_session_tools.config_loader import (
     get_backup_dir,
     get_db_path,
@@ -1413,7 +1414,7 @@ def sync_full(
         snap = maybe_snapshot()
         if snap and not quiet:
             print(f"📸 Auto-snapshot created: {snap}")
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, FileNotFoundError, LegacySyncRefused) as exc:
         if not quiet:
             print(f"❌ {exc}")
         logger.warning("sync-full skipped: %s", exc)
@@ -1434,7 +1435,7 @@ def snapshot(
 
     try:
         path = create_snapshot(retain=retain)
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, FileNotFoundError, LegacySyncRefused) as exc:
         print(f"❌ {exc}")
         raise typer.Exit(1) from exc
     print(f"✅ Snapshot created: {path}")
@@ -1468,7 +1469,7 @@ def prune(
     print(f"{'=' * 50}")
     try:
         stats = prune_hot(days=days, hot=db, dry_run=dry_run, vacuum=not no_vacuum)
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, FileNotFoundError, LegacySyncRefused) as exc:
         print(f"❌ {exc}")
         raise typer.Exit(1) from exc
 
