@@ -608,7 +608,9 @@ session-maint archive --days N           # DEPRECATED: removed in the release af
 session-maint delete --days N --confirm   # Permanently delete old sessions; keeps sessions that own learner records
 session-maint delete --days N --confirm --forget-learner-records
                                           # ...and also deletes those sessions and their learner records
-session-maint find-duplicates|fts-check|compact  # Integrity and rescue
+session-maint delete ... --allow-unmigrated
+                                          # Delete refuses a pre-41 (no tombstone) database; this flag allows it, with a warning
+session-maint find-duplicates|fts-check|fix-perms|compact  # Integrity and rescue; fix-perms chmods existing snapshots/backups/sidecars to 0600
 session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune (prune is a dry run until --no-dry-run)
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
                                           # Migrate the DB if behind, then embed the backlog (doctor's embeddings_alignment remediation)
