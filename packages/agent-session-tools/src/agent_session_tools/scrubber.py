@@ -119,7 +119,14 @@ _PEM_BLOCK = re.compile(
 # (council pass 2: that run used to survive with only its header redacted).
 # The inline form stops at whitespace, so prose after a bare armour line
 # ("...PRIVATE KEY----- and nothing follows") is never treated as a body.
-_PEM_INLINE_BODY = r"(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
+# A flattened paste may also carry the collapsed newline as a space or tab
+# (the BEGIN armour, one space, then "MIIE..."); that form is admitted only
+# when the run is at least 20 base64 characters, which no word of prose is,
+# so "----- and nothing follows" stays prose while a real body does not.
+_PEM_INLINE_BODY = (
+    r"(?:(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
+    r"|[ \t]++(?=[A-Za-z0-9+/=]{20})[A-Za-z0-9+/=]*+)"
+)
 _PEM_HEAD = re.compile(
     rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}"
     rf"(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"

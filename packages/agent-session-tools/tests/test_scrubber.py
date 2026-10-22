@@ -423,6 +423,48 @@ def test_flattened_unterminated_pem_leaves_no_body() -> None:
     assert result.scrubbed
 
 
+@pytest.mark.parametrize("gap", [" ", "  ", "\t"])
+def test_flattened_unterminated_pem_with_a_space_before_the_body_leaves_no_body(
+    gap: str,
+) -> None:
+    """Same flattened paste, but with whitespace between the armour and the body.
+
+    Found by the coordinator while verifying lane D (2026-10-22): the inline
+    rule from ``6db996b3`` required the base64 run to start at the very next
+    character, so the BEGIN armour followed by one space and ``MIIE...`` -- the shape a
+    one-line paste of ``ssh-keygen``/``openssl`` output takes, with the
+    newline collapsed to a space -- had only its header redacted. The body is
+    key material whatever separates it from the armour.
+    """
+    body = "".join(_pem_body("flat-gap")[:3])
+    text = "paste: " + _pem_marker("BEGIN", "RSA") + gap + body + " [cut]"
+    result = Scrubber().scrub(text)
+    assert body not in result.text
+    assert body[:24] not in result.text
+    assert "PRIVATE KEY" not in result.text
+    assert result.text.startswith("paste: [PRIVATE_KEY-")
+    assert result.text.endswith(" [cut]")
+    assert result.scrubbed
+
+
+def test_prose_after_a_bare_armour_line_with_a_space_is_still_prose() -> None:
+    """The whitespace allowance must not turn ordinary words into a "body".
+
+    ``----- and nothing follows`` is prose: short words, not a base64 run of
+    body length. Only a run long enough to be key material is consumed.
+    """
+    text = (
+        "The file starts with "
+        + _pem_marker("BEGIN", "RSA")
+        + " and nothing follows it."
+    )
+    result = Scrubber().scrub(text)
+    assert (
+        result.text == "The file starts with [PRIVATE_KEY-001] and nothing follows it."
+    )
+    assert "PRIVATE KEY" not in result.text
+
+
 def test_pem_tail_without_begin_line_redacts_body_and_footer() -> None:
     """Output cut off at the front: the body before END is key material too."""
     body = _pem_body("tail")[3:]
