@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pytest
 import yaml
 
 if TYPE_CHECKING:
@@ -395,12 +396,22 @@ def _tracked_mentions(needle: str) -> list[str]:
     return proc.stdout.split()
 
 
-def test_removed_orphan_workflow_script_stays_removed() -> None:
-    """``scripts/gen_quality_workflow.js`` was referenced by nothing (no recipe,
-    workflow, doc or script) and carried a shell-injection heredoc and fixed
-    shared ``/tmp`` paths. Deleted, it must not drift back."""
-    assert not (REPO_ROOT / "scripts" / "gen_quality_workflow.js").exists()
-    assert _tracked_mentions("gen_quality_workflow") == []
+@pytest.mark.parametrize(
+    "script",
+    [
+        # Referenced by nothing (no recipe, workflow, doc or script); carried a
+        # shell-injection heredoc and fixed shared /tmp paths. F-OPS-13/14@sol.
+        "gen_quality_workflow.js",
+        # Its only caller was gen_quality_workflow.js; orphaned when that was
+        # deleted. Plan 2, C1.
+        "gen_for_workflow.py",
+    ],
+)
+def test_removed_orphan_workflow_script_stays_removed(script: str) -> None:
+    """An orphaned workflow script, once deleted, must not drift back: neither
+    the file nor any tracked mention of its name."""
+    assert not (REPO_ROOT / "scripts" / script).exists()
+    assert _tracked_mentions(Path(script).stem) == []
 
 
 def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
