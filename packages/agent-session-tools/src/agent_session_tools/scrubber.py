@@ -113,9 +113,33 @@ _PEM_BODY = rf"(?:(?!-----){_PEM_BODY_CHAR.pattern})*+"
 _ARMOUR_HEADERS = (
     r"(?:(?:\r?\n|(?:\\r)?\\n)[A-Za-z][A-Za-z0-9-]*: (?:(?!-----)[^\r\n\\'\"])*+)*+"
 )
+# A base64 run of body length after whitespace. No word of prose is 20
+# base64 characters, so "----- and nothing follows" stays prose while a
+# flattened body line (64 characters) does not.
+_INLINE_BODY_RUN = r"[ \t]++(?=[A-Za-z0-9+/=]{20})[A-Za-z0-9+/=]*+"
+# The same armour headers when the block was flattened onto ONE line, so
+# "Version: GnuPG v2.0.22 (GNU/Linux)" or "Version: X.Y [comment]" sits
+# between the BEGIN armour and the body with spaces for line breaks (D#5).
+# Its "(", ")", "[", "]" and "." are not body characters, so without this
+# the whole-block match stopped on them and the inline rule, which wants
+# base64 straight after the armour, left the body in the text. The run is
+# admitted only when a body run follows it: a header followed by words is
+# prose. The value takes the longest stretch (at most 200 characters, never
+# a line break, backslash, quote or armour) that a body run still follows,
+# so a header holding a long word is not mistaken for the end of the
+# headers; a body run swallowed into the value is still inside the span.
+# The value ends on a non-blank character, so while the engine tries
+# shorter values the body-run lookahead walks a whitespace run once rather
+# than once per candidate (a megabyte of spaces after a header cost 0.5 s
+# without this).
+_INLINE_ARMOUR_HEADERS = (
+    r"(?:[ \t]++[A-Za-z][A-Za-z0-9-]*+: "
+    r"(?:(?:(?!-----)[^\r\n\\'\"]){0,199}(?!-----)[^\r\n\\'\" \t])?"
+    rf"(?={_INLINE_BODY_RUN}))?"
+)
 _PEM_BLOCK = re.compile(
-    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}{_PEM_BODY}"
-    rf"-----END{_PEM_LABEL}-----"
+    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}{_INLINE_ARMOUR_HEADERS}"
+    rf"{_PEM_BODY}-----END{_PEM_LABEL}-----"
 )
 # A BEGIN line whose END line never arrived (output cut off mid-key): the
 # header plus the body that followed it on the next line -- or, for a key
@@ -124,12 +148,13 @@ _PEM_BLOCK = re.compile(
 # The inline form stops at whitespace, so prose after a bare armour line
 # ("...PRIVATE KEY----- and nothing follows") is never treated as a body.
 # A flattened paste may also carry the collapsed newline as a space or tab
-# (the BEGIN armour, one space, then "MIIE..."); that form is admitted only
-# when the run is at least 20 base64 characters, which no word of prose is,
-# so "----- and nothing follows" stays prose while a real body does not.
+# (the BEGIN armour, one space, then "MIIE..."), and its later line breaks
+# too, so the body is every whitespace-separated run of body length that
+# follows (D#5: the rule used to take only the first run), after any
+# armour headers flattened onto the same line.
 _PEM_INLINE_BODY = (
-    r"(?:(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
-    r"|[ \t]++(?=[A-Za-z0-9+/=]{20})[A-Za-z0-9+/=]*+)"
+    rf"(?:(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+(?:{_INLINE_BODY_RUN})*+"
+    rf"|{_INLINE_ARMOUR_HEADERS}(?:{_INLINE_BODY_RUN})++)"
 )
 _PEM_HEAD = re.compile(
     rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}"

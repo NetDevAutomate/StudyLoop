@@ -846,6 +846,88 @@ def test_pgp_public_key_block_is_not_a_secret() -> None:
 
 
 # ===========================================================================
+# A PGP block flattened onto ONE line with its armour headers (plan 4, D#5).
+# The header values hold ".", "(", ")", "[", "]" and "/" -- not body
+# characters -- so the whole-block match stopped on them, the inline rule
+# wanted base64 straight after the armour, and the body survived with only
+# the BEGIN line redacted. The one-line rule now skips a "Name: value" run
+# that is followed by a base64 body, and takes every whitespace-separated
+# body run after it; the prose guard (a bare armour followed by words, or by
+# a header and words) stays exactly as it was.
+# ===========================================================================
+
+_INLINE_HEADER_CASES = [
+    pytest.param(("Version: GnuPG v2.0.22 (GNU/Linux)",), id="gnupg-parentheses"),
+    pytest.param(("Version: X.Y [comment]",), id="dotted-with-brackets"),
+    pytest.param(_PGP_HEADERS, id="two-headers-dotted-url"),
+]
+
+
+@pytest.mark.parametrize("headers", _INLINE_HEADER_CASES)
+def test_flattened_pgp_block_with_inline_headers_is_one_whole_redaction(
+    headers: tuple[str, ...],
+) -> None:
+    text = "My key: " + _pgp("pgp-flat-hdr", newline=" ", headers=headers)
+    result = Scrubber().scrub(text + " That was it.")
+    for line in _pem_body("pgp-flat-hdr"):
+        assert line not in result.text
+    assert _pgp_checksum("pgp-flat-hdr") not in result.text
+    for header in headers:
+        assert header not in result.text
+    assert result.text == "My key: [PRIVATE_KEY-001] That was it."
+    assert [f["type"] for f in result.findings] == ["private_key"]
+
+
+@pytest.mark.parametrize("headers", _INLINE_HEADER_CASES)
+def test_flattened_unterminated_pgp_block_with_inline_headers_leaves_no_body(
+    headers: tuple[str, ...],
+) -> None:
+    body = _pem_body("pgp-flat-hdr-cut")[:3]
+    text = (
+        "paste: "
+        + _pgp_marker("BEGIN")
+        + " "
+        + " ".join(headers)
+        + " "
+        + " ".join(body)
+        + " [cut]"
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+        assert line[:24] not in result.text
+    for header in headers:
+        assert header not in result.text
+    assert "PGP PRIVATE KEY" not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001] [cut]"
+
+
+def test_flattened_unterminated_pem_takes_every_body_run_on_the_line() -> None:
+    """A paste whose newlines became spaces leaves the body as several
+    64-character runs; the one-line rule used to take only the first."""
+    body = _pem_body("pem-flat-runs")[:3]
+    text = "paste: " + _pem_marker("BEGIN", "RSA") + " " + " ".join(body) + " [cut]"
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001] [cut]"
+
+
+def test_prose_after_an_armour_line_and_an_inline_header_is_still_prose() -> None:
+    """A header without a body after it is not key material: only the armour
+    line goes, exactly as for a bare armour line followed by words."""
+    text = (
+        "The file starts with "
+        + _pgp_marker("BEGIN")
+        + " Version: 1.0 and nothing follows it."
+    )
+    result = Scrubber().scrub(text)
+    assert result.text == (
+        "The file starts with [PRIVATE_KEY-001] Version: 1.0 and nothing follows it."
+    )
+
+
+# ===========================================================================
 # _private_key_spans cost (plan 4, D#1). The masking loop used to rebuild the
 # whole string once per matched span, so a text with many armour lines cost
 # quadratic time (20 000 bare armour lines: 1.24 s). The spans it returns
