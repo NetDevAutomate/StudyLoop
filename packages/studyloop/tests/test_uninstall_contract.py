@@ -441,3 +441,84 @@ def test_status_line_removal_refuses_an_edit_it_cannot_verify(sandbox: Sandbox) 
         sandbox.uninstall()
 
     assert settings.read_text(encoding="utf-8") == planted
+
+
+def test_install_adds_the_status_line_to_an_existing_settings_file(sandbox: Sandbox) -> None:
+    """A learner who already had settings never got the status line at all.
+
+    Found while merging lane B (2026-10-22): install copied StudyLoop's template
+    only when ``~/.claude/settings.json`` did not exist, so every Claude Code
+    user with any setting of their own was silently skipped, and the leftover
+    entry an earlier uninstall used to leave behind was the only thing that
+    made a reinstall look as if it worked.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    learner = {"theme": "dark", "hooks": {"Stop": [_USER_STOP_GROUP]}}
+    settings.write_text(json.dumps(learner, indent=2) + "\n", encoding="utf-8")
+
+    sandbox.install()
+
+    loaded = json.loads(settings.read_text(encoding="utf-8"))
+    assert loaded["statusLine"] == _OUR_STATUS_LINE
+    assert loaded["theme"] == "dark"
+    # Install also merges its own Stop hook beside the learner's; the
+    # learner's group must still be there, first.
+    assert loaded["hooks"]["Stop"][0] == _USER_STOP_GROUP
+
+
+def test_install_then_uninstall_then_install_restores_the_status_line(sandbox: Sandbox) -> None:
+    """The round trip lane B's removal made honest: a reinstall must mean installed."""
+    settings = sandbox.home / ".claude/settings.json"
+    settings.unlink()
+    sandbox.install()
+    sandbox.uninstall()
+    assert "statusLine" not in json.loads(settings.read_text(encoding="utf-8"))
+
+    sandbox.install()
+
+    assert json.loads(settings.read_text(encoding="utf-8"))["statusLine"] == _OUR_STATUS_LINE
+
+
+def test_install_never_replaces_a_learners_own_status_line(sandbox: Sandbox) -> None:
+    """A learner's status line is theirs; install adds nothing beside it.
+
+    Only the ``statusLine`` member is asserted: install also merges the
+    session-export Stop hook into this file (and reflows it while doing so,
+    FOUND-NOT-FIXED lane B #2), which is a separate contract.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    planted = json.dumps({"statusLine": _LEARNER_STATUS_LINE, "theme": "dark"}, indent=2) + "\n"
+    settings.write_text(planted, encoding="utf-8")
+
+    sandbox.install()
+
+    loaded = json.loads(settings.read_text(encoding="utf-8"))
+    assert loaded["statusLine"] == _LEARNER_STATUS_LINE
+    assert loaded["theme"] == "dark"
+
+
+def test_install_adds_the_status_line_without_reflowing_the_learners_file(
+    sandbox: Sandbox,
+) -> None:
+    """The adder itself inserts one member; every other byte of the file stays.
+
+    Checked on ``_configure_claude`` directly: the session-export Stop-hook
+    installer that runs after it still reserialises the whole file
+    (FOUND-NOT-FIXED lane B #2), so the end-to-end install cannot yet promise
+    this. Hand formatting and a non-ASCII value are the tell-tales a
+    reserialising writer would destroy.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    before = '{\n    "theme": "caf\u00e9",\n    "model": "opus"\n}\n'
+    settings.write_text(before, encoding="utf-8")
+
+    installers._configure_claude(sandbox.repo, uninstall=False)
+
+    text = settings.read_text(encoding="utf-8")
+    assert '    "theme": "caf\u00e9",\n' in text
+    assert '    "model": "opus"' in text
+    assert json.loads(text)["statusLine"] == _OUR_STATUS_LINE
+
+    installers._configure_claude(sandbox.repo, uninstall=True)
+
+    assert settings.read_text(encoding="utf-8") == before

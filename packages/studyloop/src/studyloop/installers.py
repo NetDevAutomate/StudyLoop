@@ -1816,6 +1816,64 @@ def _remove_claude_statusline(settings: Path, statusline: Path) -> int:
     return 1
 
 
+def _add_claude_statusline(settings: Path, template: Path) -> int:
+    """Add StudyLoop's ``statusLine`` to an existing ``settings.json`` that has none.
+
+    Install used to copy the shipped template only when the file did not exist,
+    so a learner with any Claude Code setting of their own never received the
+    status line, and only a stale entry left by an earlier uninstall made a
+    reinstall look as if it had worked. The mirror image of
+    :func:`_remove_claude_statusline`: a learner's own ``statusLine`` is kept
+    untouched; otherwise the member is INSERTED as bytes before the closing
+    brace, every other byte stays, and the edit is parsed back and must equal
+    the original plus the entry before it is written. Returns 1 when added,
+    0 when the file already has a ``statusLine`` or cannot be read as a JSON
+    object (a file that cannot be understood is never edited).
+    """
+    import json
+
+    try:
+        raw = settings.read_bytes().decode("utf-8")
+        loaded = json.loads(raw)
+        entry = json.loads(template.read_text(encoding="utf-8"))["statusLine"]
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError):
+        return 0
+    if not isinstance(loaded, dict) or "statusLine" in loaded:
+        return 0
+    root = _json_root_object_span(raw)
+    if root is None:
+        raise InstallError(f"Cannot add StudyLoop's statusLine to {settings} without rewriting it")
+    members = _json_member_spans(raw, root) or []
+    close = root[1] - 1  # index of the closing brace
+    member = f'"statusLine": {json.dumps(entry)}'
+    if members:
+        # Join with the separator the file already uses between its last
+        # member and the closing brace (", " on one line, ",\n    " indented).
+        last_value_end = members[-1][3]
+        gap = raw[last_value_end:close]
+        # Indent the new member like the last one: the whitespace that opens
+        # the last member's own line (the gap before the brace holds the
+        # brace's indentation, which is one level shallower).
+        last_key_start = members[-1][1]
+        line_start = raw.rfind("\n", 0, last_key_start) + 1
+        indent = raw[line_start:last_key_start]
+        between = (",\n" + indent) if "\n" in gap else ", "
+        # ``gap`` is re-added after the member so the brace keeps its own line
+        # and indentation.
+        updated = raw[:last_value_end] + between + member + gap + raw[close:]
+    else:
+        updated = raw[: root[0] + 1] + member + raw[close:]
+    expected = {**loaded, "statusLine": entry}
+    try:
+        edited_ok = json.loads(updated) == expected
+    except json.JSONDecodeError:
+        edited_ok = False
+    if not edited_ok:
+        raise InstallError(f"Cannot add StudyLoop's statusLine to {settings} without rewriting it")
+    settings.write_bytes(updated.encode("utf-8"))
+    return 1
+
+
 def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     claude_home = _HOME / ".claude"
     statusline = claude_home / "study-statusline.sh"
@@ -1835,9 +1893,12 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     shutil.copy2(repo_root / "agents/claude/study-statusline.sh", statusline)
     statusline.chmod(0o755)
     changed += 1
+    template = repo_root / "agents/claude/settings.json"
     if not settings.exists():
-        shutil.copy2(repo_root / "agents/claude/settings.json", settings)
+        shutil.copy2(template, settings)
         changed += 1
+    else:
+        changed += _add_claude_statusline(settings, template)
     return changed
 
 
