@@ -185,22 +185,56 @@ def _has_lifecycle(conn: sqlite3.Connection) -> bool:
 
 def _without_learner_anchors(
     conn: sqlite3.Connection, sessions: list[sqlite3.Row]
-) -> list[sqlite3.Row]:
-    """Drop sessions that own learner records, and say how many were kept.
+) -> tuple[list[sqlite3.Row], list[sqlite3.Row]]:
+    """Split sessions into (deletable, anchored): anchored ones own learner records.
 
     A permanent delete writes a tombstone, and a tombstone forgets every
     learner record its session owns (study sessions, teach-backs, parked
     topics, notes). Prune never evicts such a session
     (tiering._anchored_session_ids); an age-based delete keeps it too rather
-    than erase learner progress.
+    than erase learner progress, unless the caller asked for exactly that
+    (``delete --forget-learner-records``, D5).
     """
     from agent_session_tools.tiering import _anchored_session_ids
 
     anchored = _anchored_session_ids(conn)
-    kept = sum(1 for s in sessions if s["id"] in anchored)
-    if kept:
-        print(f"ℹ️  Kept {kept} session(s) that own learner records.")
-    return [s for s in sessions if s["id"] not in anchored]
+    return (
+        [s for s in sessions if s["id"] not in anchored],
+        [s for s in sessions if s["id"] in anchored],
+    )
+
+
+def _learner_records(
+    conn: sqlite3.Connection, session_ids: list[str]
+) -> dict[str, int]:
+    """Learner rows ``purge_session`` destroys for these sessions, counted by table.
+
+    Uses the purge's own selection (lifecycle.selected_records) so the count
+    names exactly what the purge deletes, SET NULL tables included: the purge
+    deletes those rows explicitly rather than letting the foreign key detach
+    them. A row reachable from two of the sessions is counted once. The
+    selection writes only TEMP tables; the caller commits before it changes
+    pragmas or opens its own transaction.
+    """
+    from agent_session_tools.context.lifecycle import selected_records
+
+    rows: set[tuple[str, str]] = set()
+    for session_id in session_ids:
+        with selected_records(conn, session_id) as selected:
+            rows.update(
+                (r[0], r[1])
+                for r in conn.execute(f"SELECT table_name, row_id FROM {selected}")
+            )
+    counts: dict[str, int] = {}
+    for table, _ in rows:
+        counts[table] = counts.get(table, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _describe_records(counts: dict[str, int]) -> str:
+    total = sum(counts.values())
+    detail = ", ".join(f"{table}: {n}" for table, n in counts.items())
+    return f"{total} learner record(s)" + (f" ({detail})" if detail else "")
 
 
 def _archivable(
@@ -665,9 +699,18 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
 
 
 def _delete_old(
-    db_path: Path, days: int, confirm: bool = False, backup: bool = True
+    db_path: Path,
+    days: int,
+    confirm: bool = False,
+    backup: bool = True,
+    forget_learner_records: bool = False,
 ) -> int:
-    """Delete sessions older than N days (requires confirmation)."""
+    """Delete sessions older than N days (requires confirmation).
+
+    Sessions that own learner records are kept and counted in the summary;
+    ``forget_learner_records`` destroys them and those records through
+    ``purge_session`` instead (D5, council pass 3).
+    """
     print(f"\n{'=' * 50}")
     print(f"⚠️  DELETE SESSIONS (older than {days} days)")
     print(f"{'=' * 50}")
@@ -687,11 +730,43 @@ def _delete_old(
 
         old_sessions = _sessions_older_than(conn, cutoff_date)
         lifecycle = _has_lifecycle(conn)
+        if forget_learner_records and not lifecycle:
+            # Destroying learner records is only ever done by purge_session,
+            # which needs the lifecycle schema; there is no bare-DELETE
+            # fallback for it.
+            import shlex
+
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            conn.close()
+            print(
+                "❌ --forget-learner-records needs the current schema (version 41 "
+                f"or later, which records tombstones); this database is at version "
+                f"{version}. Nothing was changed. Migrate it first (for example "
+                f"'session-maint embed-check --db {shlex.quote(str(db_path))}' "
+                "migrates before it audits), then delete again."
+            )
+            return 1
+        anchored: list[sqlite3.Row] = []
         if lifecycle:
-            old_sessions = _without_learner_anchors(conn, old_sessions)
+            old_sessions, anchored = _without_learner_anchors(conn, old_sessions)
+            if forget_learner_records:
+                old_sessions += anchored
+            elif anchored:
+                print(
+                    f"ℹ️  Kept {len(anchored)} session(s) that own learner records "
+                    "(study sessions, teach-backs, parked topics, notes). "
+                    "--forget-learner-records deletes them and those records."
+                )
+        kept = 0 if forget_learner_records else len(anchored)
 
         if not old_sessions:
-            print(f"✅ No sessions older than {days} days found")
+            if kept:
+                print(
+                    f"✅ Deleted 0 session(s); kept {kept} that own learner records "
+                    "(--forget-learner-records deletes them)."
+                )
+            else:
+                print(f"✅ No sessions older than {days} days found")
             conn.close()
             return 0
 
@@ -705,6 +780,13 @@ def _delete_old(
 
         print(f"Found {len(old_sessions)} sessions ({message_count} messages)")
         print(f"Cutoff date: {cutoff_date}")
+        if forget_learner_records and anchored:
+            would = _learner_records(conn, [s["id"] for s in anchored])
+            conn.commit()  # end the TEMP-table selection before any pragma
+            print(
+                f"⚠️  --forget-learner-records: {len(anchored)} of them own learner "
+                f"records. Would destroy {_describe_records(would)}."
+            )
         print("\n⚠️  THIS OPERATION CANNOT BE UNDONE!")
 
         if not confirm:
@@ -716,19 +798,24 @@ def _delete_old(
             conn.close()
             return _backup_refused(db_path)
 
+        destroyed: dict[str, int] = {}
         if lifecycle:
             # Permanent means permanent (F-AST-04): purge_session writes a
             # context_tombstones row, which the exporters honour, so the next
             # export cannot re-import the session from its native transcript.
             # It also removes every dependent row (notes, tags, file
             # references, evidence, ownership) that a bare DELETE with foreign
-            # keys off left orphaned (F-AST-02).
+            # keys off left orphaned (F-AST-02), and with
+            # --forget-learner-records the session's learner records (D5).
             from agent_session_tools.context.lifecycle import purge_session
 
             print("\n🗑️  Deleting sessions (tombstoned against re-import)...")
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("BEGIN IMMEDIATE")
             try:
+                if forget_learner_records and anchored:
+                    # Counted inside the write transaction: exactly what goes.
+                    destroyed = _learner_records(conn, [s["id"] for s in anchored])
                 for session_id in session_ids:
                     purge_session(conn, session_id, permanent=True)
                 conn.commit()
@@ -749,8 +836,25 @@ def _delete_old(
             conn.commit()
         conn.close()
 
-        print(f"✅ Deleted {len(old_sessions)} sessions ({message_count} messages)")
-        logger.info(f"Deleted {len(old_sessions)} old sessions")
+        if destroyed:
+            print(f"🗑️  Destroyed {_describe_records(destroyed)}.")
+        summary = (
+            f"✅ Deleted {len(old_sessions)} session(s) ({message_count} messages)"
+        )
+        if forget_learner_records and anchored:
+            summary += f", including {len(anchored)} that owned learner records"
+        elif kept:
+            summary += (
+                f"; kept {kept} that own learner records "
+                "(--forget-learner-records deletes them)"
+            )
+        print(summary + ".")
+        logger.info(
+            "Deleted %d old sessions (%d owned learner records); kept %d",
+            len(old_sessions),
+            len(anchored) if forget_learner_records else 0,
+            kept,
+        )
         return 0
 
     except Exception as e:
@@ -880,17 +984,45 @@ def archive(
 @app.command("delete")
 def delete_cmd(
     days: Annotated[
-        int, typer.Option("--days", help="Delete sessions older than N days")
+        int,
+        typer.Option(
+            "--days",
+            help=(
+                "Delete sessions older than N days. Sessions that own learner "
+                "records (study sessions, teach-backs, parked topics, notes) are "
+                "kept unless --forget-learner-records is given."
+            ),
+        ),
     ],
     db: Annotated[Path | None, db_option] = None,
     confirm: Annotated[
         bool, typer.Option("--confirm", help="Confirm deletion (required)")
     ] = False,
     no_backup: Annotated[bool, no_backup_option] = False,
+    forget_learner_records: Annotated[
+        bool,
+        typer.Option(
+            "--forget-learner-records",
+            help=(
+                "Also delete old sessions that own learner records, destroying "
+                "those records (tombstoned, listed by table). Still needs --confirm."
+            ),
+        ),
+    ] = False,
 ) -> None:
-    """Delete old sessions permanently (requires --confirm)."""
+    """Delete old sessions permanently (requires --confirm).
+
+    Sessions that own learner records are kept and counted in the summary
+    unless --forget-learner-records is given.
+    """
     db_path = db if db else _get_db_path()
-    exit_code = _delete_old(db_path, days, confirm, backup=not no_backup)
+    exit_code = _delete_old(
+        db_path,
+        days,
+        confirm,
+        backup=not no_backup,
+        forget_learner_records=forget_learner_records,
+    )
     raise typer.Exit(exit_code)
 
 
