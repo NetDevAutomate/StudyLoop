@@ -90,6 +90,34 @@ def tree(tmp_path: Path) -> dict[str, object]:
 
 
 class TestFixPerms:
+    def test_a_file_that_cannot_be_tightened_is_reported_and_the_sweep_continues(
+        self, tree, capsys, monkeypatch
+    ):
+        """One unwritable copy (another user's file, a read-only volume) must not
+        abort the sweep: the other copies are still tightened, the failure is named,
+        and the exit code says the sweep was not clean (council pass 4, kimi-k3)."""
+        import os
+
+        victim = tree["targets"][0]
+        real_chmod = os.chmod
+
+        def flaky_chmod(path, mode, *args, **kwargs):
+            if Path(path) == victim:
+                raise PermissionError(13, "Operation not permitted", str(path))
+            return real_chmod(path, mode, *args, **kwargs)
+
+        monkeypatch.setattr(os, "chmod", flaky_chmod)
+
+        assert _fix_perms(tree["cfg"]) == 1
+
+        assert _mode(victim) == 0o644
+        for path in tree["targets"][1:]:
+            assert _mode(path) == 0o600, path
+        out = capsys.readouterr().out
+        assert str(victim) in out and "Operation not permitted" in out
+        assert "Tightened 5 file(s) to 0600" in out
+        assert "1 could not be changed" in out
+
     def test_tightens_only_the_configured_copies_and_reports_counts(self, tree, capsys):
         assert _fix_perms(tree["cfg"]) == 0
 

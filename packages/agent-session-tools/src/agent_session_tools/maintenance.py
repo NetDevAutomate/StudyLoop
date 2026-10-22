@@ -216,6 +216,7 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
     print(f"{'=' * 50}")
 
     tightened: list[Path] = []
+    failed: list[Path] = []
     already = 0
     symlinks: list[Path] = []
     for kind, path in _owner_only_candidates(cfg):
@@ -231,7 +232,17 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
             continue
         print(f"{'🔍' if dry_run else '🔧'} {kind} {path}: {mode:04o} -> 0600")
         if not dry_run:
-            os.chmod(path, 0o600)
+            try:
+                os.chmod(path, 0o600)
+            except OSError as exc:
+                # One unwritable copy (another user's file, a read-only volume)
+                # must not abort the sweep: name it, keep going, exit non-zero.
+                failed.append(path)
+                print(f"❌ {kind} {path}: could not be changed ({exc.strerror or exc})")
+                logger.warning(
+                    "fix-perms: %s %s left at %04o: %s", kind, path, mode, exc
+                )
+                continue
             logger.info("fix-perms: %s %s %04o -> 0600", kind, path, mode)
         tightened.append(path)
 
@@ -243,7 +254,11 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
     summary = f"✅ {verb} {len(tightened)} file(s) to 0600; {already} already 0600"
     if symlinks:
         summary += f"; skipped {len(symlinks)} symlink(s)"
+    if failed:
+        summary += f"; {len(failed)} could not be changed"
     print(summary + ".")
+    if failed:
+        return 1
 
     for name, endpoint in sorted(get_endpoints(cfg).items()):
         # The remote copy session-sync seeded takes the remote umask; this
