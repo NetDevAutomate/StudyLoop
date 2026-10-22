@@ -420,3 +420,36 @@ def test_no_tracked_file_documents_overwriting_the_changelog() -> None:
     ``git cliff --output CHANGELOG.md`` tells the reader to replace that curated
     history with commit subjects (``chore`` commits skipped). F-OPS-21@claude."""
     assert _tracked_mentions("--output CHANGELOG.md") == []
+
+
+# --- Dependency audit: pinned tool, runner-private temp (plan 2, C4) ---------
+
+#: ``uv tool run pip-audit@X.Y.Z`` -- an exact release, not whatever is latest.
+_PINNED_PIP_AUDIT = re.compile(r"\buv tool run pip-audit@\d+\.\d+\.\d+\s")
+
+
+def _audit_step() -> dict[str, Any]:
+    steps = _workflow()["jobs"]["audit"]["steps"]
+    audit = [
+        step for step in steps if isinstance(step, dict) and "pip-audit" in str(step.get("run", ""))
+    ]
+    assert len(audit) == 1, "expected exactly one pip-audit step in the audit job"
+    return audit[0]
+
+
+def test_dependency_audit_pins_pip_audit() -> None:
+    """An unpinned ``uv tool run pip-audit`` resolves the newest release on every
+    run: the gate's own behaviour (and its supply chain) changes with no commit."""
+    run = _audit_step()["run"]
+    assert "pip-audit" in run
+    assert _PINNED_PIP_AUDIT.search(run), f"pip-audit is not pinned to a release: {run!r}"
+
+
+def test_dependency_audit_writes_no_shared_tmp_path() -> None:
+    """A fixed ``/tmp`` path is shared by every job on a self-hosted runner, so a
+    concurrent or earlier job can pre-plant the requirements file the audit
+    reads. ``runner.temp`` is emptied per job."""
+    step = _audit_step()
+    assert "/tmp" not in step["run"]
+    assert "/tmp" not in str(step.get("env", {}))
+    assert "${{ runner.temp }}" in str(step.get("env", {})) + step["run"]
