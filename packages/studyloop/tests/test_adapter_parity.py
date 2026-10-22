@@ -263,9 +263,9 @@ def test_agent_launcher_reexports_the_kiro_launch_instead_of_redefining() -> Non
     already drifted from the adapter's (it lacked the F-CLI-23 quoting). One
     body, re-exported, cannot drift (review F-CLI-20).
 
-    The launcher's other copies (``_opencode_mcp``, ``_mcp_command``) are dead
-    too but are still imported by ``test_agent_launcher.py``; they are recorded
-    as found-not-fixed rather than deleted under that file.
+    The launcher's other copies (``_opencode_mcp``, ``_mcp_command``, the kiro
+    wrappers, its own ``detect_agents``) were removed by remediation plan 4
+    lane O; this pin stays as the contract that no copy comes back.
     """
     from studyloop import agent_launcher
     from studyloop.adapters import kiro

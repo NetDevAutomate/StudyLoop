@@ -1,7 +1,7 @@
 """Tests for studyloop.session.active — module-level singleton with asyncio.Lock.
 
 Focuses on lock semantics (TOCTOU safety), idempotency, failure-path cleanup,
-and session_state.json writes. Uses StubTransport (conftest.py) so we never
+and session_state.json writes. Uses StubTransport (_stub_transport.py) so we never
 touch pty.fork() here — PTY end-to-end coverage lives in test_pty_transport.py.
 
 Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.4
@@ -25,13 +25,13 @@ from studyloop.session.transport import (
     Stopped,
 )
 
-# Make ``conftest`` importable regardless of pytest's rootdir (uv run pytest
+# Make ``_stub_transport`` importable regardless of pytest's rootdir (uv run pytest
 # from repo root vs. from packages/studyloop both need to work).
 _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
+from _stub_transport import StubTransport  # noqa: E402
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -189,7 +189,7 @@ class TestAcquireSingleSessionInvariant:
         """
 
         class ExplodingTransport(StubTransport):
-            async def start(self, cfg):
+            async def start(self, config: SessionConfig) -> None:
                 raise FileNotFoundError("binary not on PATH")
 
         with pytest.raises(FileNotFoundError):

@@ -66,7 +66,7 @@ _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
+from _stub_transport import StubTransport  # noqa: E402
 
 FIXTURE_MODULE = Path(__file__).parent / "fixtures" / "modules" / "valid-scaffold"
 FIXTURE_DECK = json.loads((FIXTURE_MODULE / "decks" / "echo-basics.json").read_text("utf-8"))

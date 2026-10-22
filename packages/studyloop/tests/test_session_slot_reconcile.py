@@ -49,7 +49,7 @@ _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
+from _stub_transport import StubTransport  # noqa: E402
 
 SESSION_ID = "study-slot-1"
 

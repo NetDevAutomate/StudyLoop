@@ -24,7 +24,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -97,8 +96,10 @@ os.environ["TERM"] = "dumb"
 # and this block leaves them alone. Under ``--import-mode=importlib`` a test
 # module's ``from conftest import ...`` executes this file a SECOND time, and
 # re-pointing the sandbox then would move it out from under code that already
-# bound the first one (``studyloop.settings._CONFIG_PATH``, below). When that
-# import sits inside a test function (test_readiness_scaling.py), it would also
+# bound the first one (``studyloop.settings._CONFIG_PATH``, below). The 13
+# modules that imported ``StubTransport`` this way now take it from
+# ``_stub_transport``; the import still sits inside test functions in
+# test_readiness_scaling.py (it tests these hooks), where it would also
 # overwrite the test's own monkeypatched values behind monkeypatch's back. A
 # child process inherits the marker with its parent's pid, so it redirects again.
 _SANDBOX_OWNER_ENV = "_STUDYLOOP_SUITE_SANDBOX_PID"
@@ -121,11 +122,6 @@ if _CLAIM_SANDBOX:
 if _CLAIM_SANDBOX:
     os.environ["STUDYLOOP_CONFIG"] = str(_TEST_STATE_ROOT / "config.yaml")
     os.environ[_SANDBOX_OWNER_ENV] = str(os.getpid())
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Sequence
-
-    from studyloop.session.transport import SessionConfig, TransportEventT
 
 
 @pytest.fixture(autouse=True)
@@ -414,61 +410,6 @@ def pytest_sessionstart(session) -> None:
 
     os.environ["TMUX_TMPDIR"] = str(_TMUX_TMPDIR_ROOT)
     os.environ.pop("TMUX", None)
-
-
-class StubTransport:
-    """In-memory ``AgentSessionTransport`` for unit tests.
-
-    Satisfies the Protocol without spawning a real PTY. Preloaded events
-    are yielded from ``events()``; method calls are recorded on public
-    attributes for assertions.
-
-    Usage::
-
-        stub = StubTransport(events=[Started(agent="claude")])
-        await stub.start(config)
-        async for event in stub.events(): ...
-        assert stub.start_calls == [config]
-    """
-
-    def __init__(self, events: Sequence[TransportEventT] = ()) -> None:
-        self._events: list[TransportEventT] = list(events)
-        self.start_calls: list[SessionConfig] = []
-        self.sent_input: list[bytes] = []
-        self.resize_calls: list[tuple[int, int]] = []
-        self.cancel_calls: int = 0
-        self.end_calls: int = 0
-        # Recorded send_permission_response calls.
-        # Each entry: (request_id, outcome_dict)
-        self.permission_calls: list[tuple[str | int, dict]] = []
-
-    async def start(self, config: SessionConfig) -> None:
-        self.start_calls.append(config)
-
-    async def send_input(self, data: bytes) -> None:
-        self.sent_input.append(data)
-
-    async def resize(self, cols: int, rows: int) -> None:
-        self.resize_calls.append((cols, rows))
-
-    async def events(self) -> AsyncIterator[TransportEventT]:
-        for event in self._events:
-            yield event
-
-    async def send_permission_response(self, request_id: str | int, outcome: dict) -> None:
-        self.permission_calls.append((request_id, outcome))
-
-    async def cancel(self) -> None:
-        self.cancel_calls += 1
-
-    async def end(self) -> None:
-        self.end_calls += 1
-
-    async def __aenter__(self) -> StubTransport:
-        return self
-
-    async def __aexit__(self, *exc_info: object) -> None:
-        await self.end()
 
 
 # ---------------------------------------------------------------------------
