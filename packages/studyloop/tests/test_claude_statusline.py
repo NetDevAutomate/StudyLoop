@@ -157,3 +157,17 @@ def test_segments_are_joined_with_box_drawing_separator(bash: str, tmp_path: Pat
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count(SEPARATOR) == 4, f"segments not joined by │: {result.stdout!r}"
+
+
+def test_script_reads_no_pomodoro_state() -> None:
+    """The ``pomodoro`` segment had no writer, so it could never render.
+
+    Nothing puts a ``pomodoro`` object in ``session-state.json``: the web
+    timer is a browser-local Alpine store, and the only persisted
+    pomodoro-related key is ``timer_mode``. A segment reading a key no writer
+    produces is dead code that implies a feature the line does not have.
+    """
+    source = SCRIPT.read_text(encoding="utf-8").lower()
+
+    assert "pomodoro" not in source
+    assert "pomo_" not in source

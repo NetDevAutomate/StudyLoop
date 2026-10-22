@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # study-statusline.sh — Claude Code status line for StudyLoop
-# Shows: energy level, session timer, pomodoro phase, context usage
+# Shows: study topic, energy level, session timer, context usage, cost
 #
 # Claude Code pipes JSON to stdin with: model, cost, context_window, session_id, etc.
 # We also read study session state from a state file.
@@ -24,14 +24,12 @@ RESET=$'\033[0m'
 # ever parsed as shell code.
 STATE_FILE="${HOME}/.config/studyloop/session-state.json"
 
-# Defaults, kept when python3 is missing or its output is not all 8 fields.
+# Defaults, kept when python3 is missing or its output is not all 6 fields.
 CTX_PCT=0
 CTX_INT=0
 COST=0
 DURATION_MIN=0
 ENERGY="-"
-POMO_PHASE="-"
-POMO_REMAINING=""
 TOPIC=""
 
 # Single-quoted, so the shell expands nothing inside it: the Python uses
@@ -77,7 +75,6 @@ claude = load(sys.stdin.read)
 state = load(read_state)
 ctx = mapping(claude.get("context_window"))
 cost = mapping(claude.get("cost"))
-pomo = mapping(state.get("pomodoro"))
 
 pct = number(ctx.get("used_percentage"))
 fields = [
@@ -86,8 +83,6 @@ fields = [
     format(number(cost.get("total_cost_usd")), ".4f"),
     str(int(number(cost.get("total_duration_ms"))) // 60000),
     text(state.get("energy_label"), "-"),
-    text(pomo.get("phase"), "-") if pomo else "-",
-    format(number(pomo.get("remaining_min")), "g") + "m" if pomo else "",
     text(state.get("topic")),
 ]
 sys.stdout.write("".join(field + "\0" for field in fields))
@@ -98,15 +93,13 @@ if command -v python3 >/dev/null 2>&1; then
     while IFS= read -r -d '' field; do
         FIELDS+=("$field")
     done < <(python3 -c "$FIELDS_PY" "$STATE_FILE" 2>/dev/null)
-    if (( ${#FIELDS[@]} == 8 )); then
+    if (( ${#FIELDS[@]} == 6 )); then
         CTX_PCT=${FIELDS[0]}
         CTX_INT=${FIELDS[1]}
         COST=${FIELDS[2]}
         DURATION_MIN=${FIELDS[3]}
         ENERGY=${FIELDS[4]}
-        POMO_PHASE=${FIELDS[5]}
-        POMO_REMAINING=${FIELDS[6]}
-        TOPIC=${FIELDS[7]}
+        TOPIC=${FIELDS[5]}
     fi
 fi
 
@@ -135,19 +128,6 @@ else
     CTX_COLOR="$GREEN"
 fi
 
-# Pomodoro display
-if [[ "$POMO_PHASE" != "-" && -n "$POMO_PHASE" ]]; then
-    case "$POMO_PHASE" in
-        review)    POMO_DISPLAY="🔄 Review ${POMO_REMAINING}" ;;
-        focus)     POMO_DISPLAY="🍅 Focus ${POMO_REMAINING}" ;;
-        summarise) POMO_DISPLAY="📝 Summary ${POMO_REMAINING}" ;;
-        break)     POMO_DISPLAY="☕ Break ${POMO_REMAINING}" ;;
-        *)         POMO_DISPLAY="" ;;
-    esac
-else
-    POMO_DISPLAY=""
-fi
-
 # Topic display
 TOPIC_DISPLAY=""
 if [[ -n "$TOPIC" ]]; then
@@ -158,7 +138,6 @@ fi
 PARTS=()
 [[ -n "$TOPIC_DISPLAY" ]] && PARTS+=("$TOPIC_DISPLAY")
 PARTS+=("$ENERGY_DISPLAY")
-[[ -n "$POMO_DISPLAY" ]] && PARTS+=("$POMO_DISPLAY")
 PARTS+=("${DIM}⏱️ ${DURATION_DISPLAY}${RESET}")
 PARTS+=("${CTX_COLOR}📊 ${CTX_PCT}%${RESET}")
 PARTS+=("${DIM}\$${COST}${RESET}")
