@@ -158,9 +158,10 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 
 - Run `studyloop clean --dry-run` if tmux study sessions ever feel “stuck”.
 - Set `studyloop backup` before big config experiments.
-- Skim [Web UI Guide](web-ui-guide.md) for LAN mode (`studyloop web --lan`) if
-  you review from a tablet or another laptop on the same trusted network. Phone
-  screens are not supported.
+- Skim [Web UI Guide](web-ui-guide.md#use-it-from-another-device) if you
+  review from a tablet or another laptop: an `ssh -L` tunnel, or
+  `studyloop web --bind <your VPN address>` with the printed sign-in address
+  and password. `--lan` is deprecated. Phone screens are not supported.
 
 ## What to defer
 

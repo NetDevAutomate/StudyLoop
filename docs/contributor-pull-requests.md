@@ -78,7 +78,7 @@ each, delete nothing (F3):
    and whether an AI assistant helped (the [AI usage page](contributor-ai.md) says how).
 3. Which automated checks passed, and where? — name the gates and the evidence paths.
 4. Which live or manual journey did you check yourself? — for a web change, `uv run studyloop web`
-   (port 8567, loopback only unless `--lan`) is the app you walk.
+   (port 8567, loopback only unless `--bind`; open the printed sign-in address) is the app you walk.
 5. What remains unverified?
 
 Automated green and a manual check are separate claims; state both. "Nothing" under 5 is fine when
