@@ -116,15 +116,17 @@ def test_every_studyloop_command_in_the_agent_protocols_resolves() -> None:
 
 
 def test_the_summary_mirrors_are_in_step_with_the_protocol() -> None:
-    """Three other files summarise the wind-down; each must mention the offer.
+    """Two other files summarise the wind-down; each must mention the offer.
 
-    Without this, the protocol grows a step and the three summaries silently keep
+    Without this, the protocol grows a step and the summaries silently keep
     describing the previous version — the exact drift the docs guards exist for.
+    (The retired Codex/Grok definition was a third mirror; the per-session
+    persona those harnesses now read does not carry the offer -- recorded in
+    reviews/.../lanes/review4-J-harness-small.md.)
     """
     mirrors = (
         AGENTS / "shared" / "session-protocol.md",
         AGENTS / "claude" / "socratic-mentor.md",
-        AGENTS / "codex" / "AGENTS.md",
     )
     for path in mirrors:
         assert path.is_file(), path

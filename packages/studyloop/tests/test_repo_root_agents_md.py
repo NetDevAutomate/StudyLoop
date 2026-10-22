@@ -2,8 +2,8 @@
 
 Council pass 3, ruling D1: the AGENTS.md convention is instructions for agents
 working *in this repository*. The root file used to be a symlink to the learner
-persona (``agents/codex/AGENTS.md``), and ``studyloop install agents --tool
-codex`` / ``--tool grok`` linked it there, so uninstall ``unlink()``-ed a
+persona (the since-retired ``agents/codex/AGENTS.md``), and ``studyloop install
+agents --tool codex`` / ``--tool grok`` linked it there, so uninstall ``unlink()``-ed a
 git-tracked path and every coding agent opened in the checkout was told it was
 a Socratic study mentor. The launch path never used the root link: the Codex and
 Grok adapters write the persona into the session directory they launch in.
@@ -75,8 +75,10 @@ def test_root_agents_md_is_a_regular_contributor_file() -> None:
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
     assert _MENTOR_IDENTITY not in text
-    # The persona has not moved: it is the source the launcher delivers per session.
-    assert _MENTOR_IDENTITY in (root / "agents/codex/AGENTS.md").read_text(encoding="utf-8")
+    # The identity line left the contributor file for the mentor definitions,
+    # not for nowhere: every installed prose definition still carries it.
+    for relative in ("agents/claude/socratic-mentor.md", "agents/pi/AGENTS.md"):
+        assert _MENTOR_IDENTITY in (root / relative).read_text(encoding="utf-8"), relative
 
 
 def test_root_agents_md_points_contributors_at_the_gates_and_the_two_trip_wires() -> None:
@@ -92,7 +94,7 @@ def test_root_agents_md_points_contributors_at_the_gates_and_the_two_trip_wires(
         "agents/manifest.json",
         "reviews/",
         # Where the learner persona really lives, and how it reaches a session.
-        "agents/codex/AGENTS.md",
+        "agents/shared/personas/",
     ):
         assert pointer in text, f"AGENTS.md does not mention {pointer!r}"
 

@@ -29,7 +29,9 @@ TRACKED_FILES: dict[str, list[str]] = {
         "opencode/study-plan-architect.md",
         "opencode/plugins/studyloop-session-export.js",
     ],
-    "codex": ["codex/AGENTS.md"],
+    # Codex and Grok Build have no tracked definition: the launcher writes their
+    # persona from shared/personas/ into each session directory (ADR-0013;
+    # remediation plan 4, item 2 retired agents/codex/AGENTS.md).
     "pi": [
         "pi/AGENTS.md",
         "pi/extensions/studyloop-session-export.ts",

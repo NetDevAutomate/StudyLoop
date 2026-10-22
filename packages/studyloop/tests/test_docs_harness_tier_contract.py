@@ -181,10 +181,10 @@ class TestRecordingProtocol:
         "agents/kiro/study-mentor/persona.md",
         "agents/claude/socratic-mentor.md",
         "agents/opencode/study-mentor.md",
-        "agents/codex/AGENTS.md",
         "agents/pi/AGENTS.md",
         # The LIVE personas: ``build_canonical_persona`` renders these into every
         # adapter's session document, whatever the installed definition says.
+        # Codex and Grok Build have no installed definition; these are theirs.
         "agents/shared/personas/study.md",
         "agents/shared/personas/co-study.md",
     )
