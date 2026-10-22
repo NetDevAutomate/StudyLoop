@@ -31,14 +31,86 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
     return tuple(hosts)
 
 
+def _is_local_address(address: str) -> bool:
+    """Whether *address* is assigned to one of this machine's interfaces.
+
+    Asks the kernel rather than enumerating interfaces: binding a socket to an
+    address the machine does not have fails (``EADDRNOTAVAIL``), portably.
+    """
+    family = socket.AF_INET6 if ":" in address else socket.AF_INET
+    with contextlib.suppress(OSError), socket.socket(family, socket.SOCK_STREAM) as probe:
+        probe.bind((address, 0))
+        return True
+    return False
+
+
+def _validated_bind_address(value: str) -> str:
+    """The ``--bind`` value as a canonical IP literal this machine owns (D7).
+
+    Refuses (exit 2) a value that is not an IP literal, a wildcard (that is
+    ``--lan``'s every-interface exposure the ruling removes), or an address no
+    interface of this machine carries, naming the candidates it can find.
+    """
+    import ipaddress
+
+    def refuse(reason: str) -> click.BadParameter:
+        candidates = ", ".join(dict.fromkeys(("127.0.0.1", *_candidate_lan_hosts())))
+        return click.BadParameter(
+            f"{value!r} {reason}. Addresses this machine reports: {candidates} "
+            "(and any VPN address, e.g. `tailscale ip -4`).",
+            param_hint="'--bind'",
+        )
+
+    try:
+        address = ipaddress.ip_address(value.strip())
+    except ValueError:
+        raise refuse("is not an IP address") from None
+    if address.is_unspecified:
+        raise refuse(
+            "binds every interface; name one address instead (the deprecated --lan still "
+            "does this for one release)"
+        )
+    if not _is_local_address(str(address)):
+        raise refuse("is not an address of this machine")
+    return str(address)
+
+
+#: Printed by the deprecated ``--lan`` (D7), the same five caveats the setup
+#: guide's second-device section carries.
+_LAN_CAVEATS = (
+    "Basic authentication does not encrypt the password, requests, responses or terminal traffic.",
+    "LAN peers or intermediaries able to observe traffic may steal credentials and study "
+    "content; active intermediaries may tamper with traffic.",
+    "Never reuse a password, expose this mode directly to the Internet, or treat public/shared "
+    "Wi-Fi as trusted.",
+    "Prefer loopback access through an authenticated encrypted tunnel, or a correctly "
+    "configured HTTPS/WSS reverse proxy with the application bound to loopback.",
+    "0.0.0.0 exposes every IPv4 interface unless a firewall restricts access.",
+)
+
+
 @click.command()
 @click.option("--port", "-p", default=8567, help="Port for web server")
-@click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
+@click.option(
+    "--bind",
+    "bind_address",
+    default=None,
+    metavar="ADDRESS",
+    help="Serve on this one IP address of this machine instead of 127.0.0.1, e.g. its "
+    "Tailscale/VPN address, where the tunnel encrypts the traffic. A non-loopback address "
+    "requires the Basic-auth password (generated when unset).",
+)
+@click.option(
+    "--lan",
+    is_flag=True,
+    help="Deprecated: binds every interface (0.0.0.0) in cleartext; use --bind ADDRESS. "
+    "Removed in the next release.",
+)
 @click.option(
     "--password",
     default="",
     envvar="STUDYLOOP_WEB_PASSWORD",
-    help="Password for HTTP Basic Auth (LAN protection). Also settable via "
+    help="Password for HTTP Basic Auth (--bind/--lan protection). Also settable via "
     "STUDYLOOP_WEB_PASSWORD (used internally when `studyloop study --web --lan` "
     "spawns this command, so the password never appears in this process's argv).",
 )
@@ -50,15 +122,16 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 )
 def web(
     port: int,
+    bind_address: str | None,
     lan: bool,
     password: str,
     dev: bool,
 ) -> None:
     """Launch the study PWA in your browser.
 
-    Serves flashcard and quiz review as a web app accessible from any
-    device on the network. Installable as a PWA (add to home screen).
-    Includes OpenDyslexic font toggle for accessibility.
+    Serves flashcard and quiz review as a web app on this machine (another
+    device can reach it with --bind). Installable as a PWA (add to home
+    screen). Includes OpenDyslexic font toggle for accessibility.
 
     Requires: uv pip install 'studyloop[web]'
     """
@@ -87,6 +160,21 @@ def web(
             "(A-Z, a-z, 0-9, '-', '_'); refusing to start with it."
         )
         raise click.ClickException(msg)
+
+    # D7 (council pass 3): one validated address instead of every interface.
+    if lan and bind_address is not None:
+        msg = "--lan and --bind cannot be combined; use --bind ADDRESS (--lan is deprecated)."
+        raise click.UsageError(msg)
+    if lan:
+        host = "0.0.0.0"
+    elif bind_address is not None:
+        host = _validated_bind_address(bind_address)
+    else:
+        host = "127.0.0.1"
+    import ipaddress as _ipaddress
+
+    # Anything but loopback reaches other machines, and gets the password gate.
+    exposed = lan or not _ipaddress.ip_address(host).is_loopback
 
     try:
         import uvicorn
@@ -119,11 +207,27 @@ def web(
     except Exception:
         pass
 
-    if lan and not password:
+    if exposed and not password:
         password = secrets.token_urlsafe(16)
         password_generated = True
 
-    if lan and password:
+    if lan:
+        console.print(
+            "[bold yellow]--lan is deprecated[/bold yellow] and is removed in the next release: "
+            "it binds 0.0.0.0, every interface on every network this machine joins. Use "
+            "--bind ADDRESS with one address, ideally a Tailscale/VPN address where the "
+            "tunnel encrypts the traffic (docs/setup-guide.md, Remote Study)."
+        )
+        console.print("[bold yellow]Security caveats for --lan:[/bold yellow]")
+        for caveat in _LAN_CAVEATS:
+            console.print(f"  - {caveat}")
+    elif exposed:
+        console.print(
+            "[yellow]Basic auth is a password gate, not encryption:[/yellow] serve "
+            f"{host} only on a link that encrypts (Tailscale/VPN), or use ssh -L instead."
+        )
+
+    if exposed and password:
         for line in format_lan_credential_lines(
             LanCredentialFeedback(
                 username=username,
@@ -148,7 +252,6 @@ def web(
         renderer_label = "ghostty-web (canvas renderer)"
         console.print(f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}")
 
-    host = "0.0.0.0" if lan else "127.0.0.1"
     # Per-process server secret (F-WEB-20, 2026-10-21 review): `/api/*` plus both
     # WebSockets require it as an HttpOnly, SameSite=Strict cookie, and `/` hands
     # that cookie only to a browser presenting the secret as `?token=` (D2,
@@ -173,8 +276,14 @@ def web(
         path=f"/?{BOOTSTRAP_QUERY}={server_secret}",
     )
     # soft_wrap: a sign-in URL folded across two lines cannot be copied or clicked.
-    for line in format_web_access_lines(access_info):
-        console.print(line, soft_wrap=True)
+    if lan or not exposed:
+        for line in format_web_access_lines(access_info):
+            console.print(line, soft_wrap=True)
+    else:
+        # --bind <address>: the one address served is the one to open, on this
+        # machine and on the other device alike; loopback is not listening.
+        console.print("[bold]Study PWA[/bold]")
+        console.print(f"  Address: {access_info.local_url}", soft_wrap=True)
     console.print(
         "  [dim]Open that address to sign a browser in; the token is new each time "
         "studyloop web starts.[/dim]"
