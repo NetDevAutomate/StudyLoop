@@ -43,3 +43,36 @@ def test_sync_recipes_preserve_existing_extras() -> None:
         assert syncs, f"{name} no longer runs uv sync?"
         exact = [line for line in syncs if "--inexact" not in line.split()]
         assert exact == [], f"{name} would remove extras the developer synced: {exact}"
+
+
+AUDIT_RECIPES = ("audit", "audit-full")
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+
+
+def _ci_pip_audit_pin() -> str:
+    """The ``pip-audit@<version>`` CI runs; the recipes must run the same release."""
+    pins = set(re.findall(r"pip-audit@(\d+\.\d+\.\d+)", CI_WORKFLOW.read_text(encoding="utf-8")))
+    assert len(pins) == 1, f"ci.yml must pin pip-audit once, found {sorted(pins)}"
+    return pins.pop()
+
+
+def test_audit_recipes_match_the_ci_audit_jobs() -> None:
+    """``just audit`` / ``just audit-full`` are the local mirror of CI's ``audit`` and
+    ``audit-full`` jobs. Three ways they used to disagree, each of which makes a
+    local pass worthless as evidence that CI would pass: an unpinned
+    ``uv tool run pip-audit`` (CI pins the release), a fixed ``/tmp`` path shared
+    by every concurrent run on the machine (CI uses the per-job ``runner.temp``),
+    and an ``--ignore-vuln`` that CI does not pass (the recipe was green on an
+    advisory CI was red on)."""
+    bodies = _recipe_bodies()
+    missing = [name for name in AUDIT_RECIPES if name not in bodies]
+    assert missing == [], f"audit recipes not found in the Justfile: {missing}"
+    pin = _ci_pip_audit_pin()
+
+    for name in AUDIT_RECIPES:
+        body = " ".join(bodies[name])
+        assert f"pip-audit@{pin}" in body, f"{name} must run pip-audit@{pin}, CI's release: {body}"
+        assert "/tmp/" not in body, f"{name} still writes a fixed /tmp path: {body}"
+        assert "--ignore-vuln" not in body, (
+            f"{name} ignores an advisory CI does not; add it to CI with a reason or drop it: {body}"
+        )

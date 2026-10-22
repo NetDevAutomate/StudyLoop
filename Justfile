@@ -167,13 +167,13 @@ spec-check:
     fi
 
 audit:
-    uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o /tmp/studyloop-requirements.txt
-    uv tool run pip-audit -r /tmp/studyloop-requirements.txt --strict --no-deps --disable-pip
+    # Local mirror of ci.yml's `audit` job: same pip-audit release, no fixed /tmp
+    # path (two concurrent runs would share it), no advisory CI does not ignore.
+    tmp="$(mktemp -d)" && trap 'rm -rf "$tmp"' EXIT && uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o "$tmp/requirements.txt" && uv tool run pip-audit@2.10.1 -r "$tmp/requirements.txt" --strict --no-deps --disable-pip
 
 audit-full:
-    uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o /tmp/studyloop-requirements-full.txt
-    # Torch has no fixed release for PYSEC-2026-139 yet; keep the ignore explicit.
-    uv tool run pip-audit -r /tmp/studyloop-requirements-full.txt --strict --no-deps --disable-pip --ignore-vuln PYSEC-2026-139
+    # Local mirror of ci.yml's `audit-full` job (the --all-extras surface).
+    tmp="$(mktemp -d)" && trap 'rm -rf "$tmp"' EXIT && uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o "$tmp/requirements-full.txt" && uv tool run pip-audit@2.10.1 -r "$tmp/requirements-full.txt" --strict --no-deps --disable-pip
 
 smoke-installed:
     ./scripts/build-release.sh
