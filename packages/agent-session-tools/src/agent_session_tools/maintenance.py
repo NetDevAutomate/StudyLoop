@@ -439,8 +439,30 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
         return 1
 
 
+# D4 (council pass 3): the two-table file `archive` writes has no reader, and
+# the schema it hand-writes drifts from the canonical one. The supported path
+# differs in what it moves and what it checks, so the notice says how rather
+# than calling it a replacement. Removal release recorded in CHANGELOG.md.
+_ARCHIVE_DEPRECATION = (
+    "⚠️  'session-maint archive' is deprecated and will be removed in StudyLoop "
+    "0.7.0.\n"
+    "   Use 'session-maint sync-full' then 'session-maint prune' instead (both "
+    "need database.full_db_path set).\n"
+    "   That is not a drop-in replacement. sync-full copies whole sessions "
+    "(every column, every message,\n"
+    "   file references) into the full database, which has the same schema as "
+    "this one; prune then removes\n"
+    "   from this database only the sessions it has verified there, keeps any "
+    "session that owns learner\n"
+    "   records, and is a dry run until --no-dry-run. This command copies "
+    "sessions and messages only,\n"
+    "   into a two-table file that nothing in StudyLoop reads."
+)
+
+
 def _archive(db_path: Path, days: int, backup: bool = True) -> int:
-    """Archive sessions older than N days to separate database."""
+    """Archive sessions older than N days to separate database (deprecated, D4)."""
+    print(_ARCHIVE_DEPRECATION)
     print(f"\n{'=' * 50}")
     print(f"ARCHIVE SESSIONS (older than {days} days)")
     print(f"{'=' * 50}")
@@ -837,7 +859,7 @@ def reindex(
     raise typer.Exit(exit_code)
 
 
-@app.command()
+@app.command(deprecated=True)
 def archive(
     days: Annotated[
         int, typer.Option("--days", help="Archive sessions older than N days")
@@ -845,7 +867,11 @@ def archive(
     db: Annotated[Path | None, db_option] = None,
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
-    """Archive old sessions to separate database."""
+    """Archive old sessions to a separate two-table database.
+
+    Deprecated; removed in StudyLoop 0.7.0. Use 'session-maint sync-full' then
+    'session-maint prune', which move whole sessions and verify them first.
+    """
     db_path = db if db else _get_db_path()
     exit_code = _archive(db_path, days, backup=not no_backup)
     raise typer.Exit(exit_code)

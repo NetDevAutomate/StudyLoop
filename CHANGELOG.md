@@ -117,6 +117,18 @@ experience may change before `1.0.0`.
   their "not done" notes were written), so `openspec validate --archived
   --all` is green for the first time since the release guard was added.
 
+### Deprecated
+
+- `session-maint archive` is deprecated and will be removed in 0.7.0. It copies
+  only sessions and messages into a separate file that nothing in StudyLoop
+  reads. To move old sessions out of the everyday database, run
+  `session-maint sync-full` and then `session-maint prune` (both need
+  `database.full_db_path`). That is not a drop-in replacement: it copies whole
+  sessions into the full database, removes from the everyday one only the
+  sessions it has verified there, and keeps any session that holds learner
+  records. Until removal, `archive` prints this notice and otherwise behaves as
+  before.
+
 ### Fixed
 
 - A sessions database last written by an older release could never reach the
