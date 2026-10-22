@@ -1752,6 +1752,70 @@ def detect_available_agent_tools() -> list[str]:
     return available
 
 
+def _claude_statusline_is_ours(command: object, statusline: Path) -> bool:
+    """Whether a ``statusLine`` command runs the script install copies to ~/.claude/.
+
+    The shipped template's ``~`` spelling, and the two spellings it expands to
+    (``$HOME`` and the absolute path). Anything else is the learner's own.
+    """
+    if not isinstance(command, str):
+        return False
+    ours = {"~/.claude/study-statusline.sh", "$HOME/.claude/study-statusline.sh", str(statusline)}
+    return command.strip() in ours
+
+
+def _remove_claude_statusline(settings: Path, statusline: Path) -> int:
+    """Remove Claude Code's ``statusLine`` entry when it runs StudyLoop's script.
+
+    Uninstall deletes the script, so an entry left pointing at it runs a
+    missing command on every render. Ownership is judged the way the other
+    removers judge theirs: the entry is StudyLoop's only when its command is
+    the script install points it at; a learner's own status line is kept.
+    Byte-preserving like :func:`_remove_json_mcp_entries`: the member is cut
+    with the separator that joined it, every other byte stays, and the edit
+    is parsed back and must equal the original minus ``statusLine`` before it
+    is written. Returns 1 when removed; 0 for a missing, malformed or
+    learner-owned entry.
+    """
+    import json
+
+    try:
+        raw = settings.read_bytes().decode("utf-8")
+        loaded = json.loads(raw)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return 0
+    if not isinstance(loaded, dict):
+        return 0
+    entry = loaded.get("statusLine")
+    if not isinstance(entry, dict) or not _claude_statusline_is_ours(
+        entry.get("command"), statusline
+    ):
+        return 0
+    root = _json_root_object_span(raw)
+    members = _json_member_spans(raw, root) if root is not None else None
+    index = next((i for i, m in enumerate(members or []) if m[0] == "statusLine"), None)
+    updated = None
+    if root is not None and members is not None and index is not None:
+        _, key_start, _, value_end = members[index]
+        if len(members) == 1:
+            updated = raw[: root[0] + 1] + raw[root[1] - 1 :]
+        elif index > 0:
+            updated = raw[: members[index - 1][3]] + raw[value_end:]
+        else:
+            updated = raw[:key_start] + raw[members[1][1] :]
+    expected = {key: value for key, value in loaded.items() if key != "statusLine"}
+    try:
+        edited_ok = updated is not None and json.loads(updated) == expected
+    except json.JSONDecodeError:
+        edited_ok = False
+    if updated is None or not edited_ok:
+        raise InstallError(
+            f"Cannot remove StudyLoop's statusLine from {settings} without rewriting it"
+        )
+    settings.write_bytes(updated.encode("utf-8"))
+    return 1
+
+
 def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     claude_home = _HOME / ".claude"
     statusline = claude_home / "study-statusline.sh"
@@ -1759,6 +1823,9 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     changed = 0
 
     if uninstall:
+        # The entry first: if it cannot be removed cleanly, the script it
+        # points at is still there.
+        changed += _remove_claude_statusline(settings, statusline)
         if statusline.exists():
             statusline.unlink()
             changed += 1

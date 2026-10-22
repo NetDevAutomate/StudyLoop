@@ -245,6 +245,13 @@ def _owned_residue(box: Sandbox) -> list[str]:
         found += [f"mcp codex: {name}" for name in _OWNED_MCP if name in servers]
     registered = box.grok_registry.read_text(encoding="utf-8").split()
     found += [f"mcp grok: {name}" for name in _OWNED_MCP if name in registered]
+    claude_settings = box.home / ".claude/settings.json"
+    if claude_settings.exists():
+        status_line = json.loads(claude_settings.read_text(encoding="utf-8")).get("statusLine")
+        if isinstance(status_line, dict) and "study-statusline.sh" in str(
+            status_line.get("command", "")
+        ):
+            found.append(f"statusLine claude: {status_line['command']}")
     return found
 
 
@@ -333,3 +340,104 @@ def test_uninstall_keeps_an_edited_mandate_as_a_backup(sandbox: Sandbox) -> None
 
     assert not steering.exists()
     assert steering.with_name("session-db.md.bak").read_text(encoding="utf-8") == edited
+
+
+# StudyLoop's status line: install points Claude Code's ``statusLine`` at the
+# script it copies to ~/.claude/, which uninstall deletes. An entry left behind
+# runs a missing command on every render.
+_OUR_STATUS_LINE = {"type": "command", "command": "~/.claude/study-statusline.sh"}
+_LEARNER_STATUS_LINE = {"type": "command", "command": "~/bin/my-status-line.sh"}
+
+
+def test_uninstall_removes_the_status_line_install_created(sandbox: Sandbox) -> None:
+    settings = sandbox.home / ".claude/settings.json"
+    settings.unlink()  # no settings yet: install writes StudyLoop's template
+    sandbox.install()
+    assert json.loads(settings.read_text(encoding="utf-8"))["statusLine"] == _OUR_STATUS_LINE
+
+    sandbox.uninstall()
+
+    assert not (sandbox.home / ".claude/study-statusline.sh").exists()
+    assert "statusLine" not in json.loads(settings.read_text(encoding="utf-8"))
+    assert _owned_residue(sandbox) == []
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["~/.claude/study-statusline.sh", "$HOME/.claude/study-statusline.sh", "{home}"],
+)
+def test_uninstall_removes_studyloops_status_line_and_keeps_every_other_member(
+    sandbox: Sandbox, command: str
+) -> None:
+    """Install's template spelling and the two a learner may expand it to."""
+    if command == "{home}":
+        command = str(sandbox.home / ".claude/study-statusline.sh")
+    settings = sandbox.home / ".claude/settings.json"
+    learner = {"theme": "dark", "hooks": {"Stop": [_USER_STOP_GROUP]}}
+    with_ours = {"statusLine": {**_OUR_STATUS_LINE, "command": command}, **learner}
+    settings.write_text(json.dumps(with_ours, indent=2) + "\n", encoding="utf-8")
+    sandbox.install()
+
+    sandbox.uninstall()
+
+    assert settings.read_text(encoding="utf-8") == json.dumps(learner, indent=2) + "\n"
+
+
+def test_uninstall_keeps_a_learners_own_status_line_byte_for_byte(sandbox: Sandbox) -> None:
+    settings = sandbox.home / ".claude/settings.json"
+    planted = (
+        json.dumps(
+            {
+                "theme": "dark",
+                "statusLine": _LEARNER_STATUS_LINE,
+                "hooks": {"Stop": [_USER_STOP_GROUP]},
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    settings.write_text(planted, encoding="utf-8")
+
+    sandbox.install()
+    sandbox.uninstall()
+
+    assert settings.read_text(encoding="utf-8") == planted
+
+
+def test_status_line_removal_keeps_the_learners_formatting(sandbox: Sandbox) -> None:
+    """With no Stop hook to rewrite the file, only the statusLine member's bytes go.
+
+    A hand-formatted file with a non-ASCII value: a reserialising writer would
+    reflow the indentation and escape the character.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    ours = json.dumps(_OUR_STATUS_LINE)
+    settings.write_text(
+        f'{{\n    "theme": "caf\u00e9",\n    "statusLine": {ours},\n    "model": "opus"\n}}\n',
+        encoding="utf-8",
+    )
+
+    sandbox.uninstall()
+
+    assert settings.read_text(encoding="utf-8") == (
+        '{\n    "theme": "caf\u00e9",\n    "model": "opus"\n}\n'
+    )
+
+
+def test_status_line_removal_refuses_an_edit_it_cannot_verify(sandbox: Sandbox) -> None:
+    """Duplicate keys: JSON keeps the last, the byte walk would cut the first.
+
+    The parse-back check sees the learner's entry would go instead of
+    StudyLoop's and refuses, leaving the file as it was.
+    """
+    settings = sandbox.home / ".claude/settings.json"
+    planted = (
+        f'{{"statusLine": {json.dumps(_LEARNER_STATUS_LINE)}, '
+        f'"statusLine": {json.dumps(_OUR_STATUS_LINE)}}}\n'
+    )
+    settings.write_text(planted, encoding="utf-8")
+
+    with pytest.raises(installers.InstallError, match="statusLine"):
+        sandbox.uninstall()
+
+    assert settings.read_text(encoding="utf-8") == planted
