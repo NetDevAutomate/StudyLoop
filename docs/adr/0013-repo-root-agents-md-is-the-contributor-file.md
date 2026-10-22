@@ -1,11 +1,10 @@
 # ADR-0013: The repo-root `AGENTS.md` is the contributor file; the installer never links into the checkout
 
-**Status:** Proposed · **Date:** 2026-10-22 · **Deciders:** council pass 3 of the 2026-10-21
-full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6, deepseek-r1,
-mistral-large-3), arbitrated by argument by the review coordinator under the owner's standing
-delegation; Andy Taylor (owner) has not yet reviewed. Accepted when the owner has read this record
-and the arbitration; the release-consistency check refuses a tagged release that still says
-Proposed. · **Change:** 2026-10-22 council pass 3, ruling D1 (vote 5–0 for the option taken);
+**Status:** Accepted, 2026-10-22 (proposed and implemented the same day; the owner accepted the
+eight pass-3 records together at 16:36 BST) · **Date:** 2026-10-22 · **Deciders:** council pass 3
+of the 2026-10-21 full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6,
+deepseek-r1, mistral-large-3), arbitrated by argument by the review coordinator under the owner's
+standing delegation; accepted by Andy Taylor (owner). · **Change:** 2026-10-22 council pass 3, ruling D1 (vote 5–0 for the option taken);
 implemented in `309074c7` (lane F's patch, landed by the coordinator with the doctor and test
 changes the lane did not own).
 

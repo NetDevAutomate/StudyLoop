@@ -1,11 +1,10 @@
 # ADR-0020: `log_topic` reports a failed spaced-repetition write as a typed partial result, not an error
 
-**Status:** Proposed · **Date:** 2026-10-22 · **Deciders:** council pass 3 of the 2026-10-21
-full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6, deepseek-r1,
-mistral-large-3), arbitrated by argument by the review coordinator under the owner's standing
-delegation; Andy Taylor (owner) has not yet reviewed. Accepted when the owner has read this record
-and the arbitration; the release-consistency check refuses a tagged release that still says
-Proposed. · **Change:** 2026-10-22 council pass 3, ruling D9.3 (4–1); implemented in `12f53ab2`,
+**Status:** Accepted, 2026-10-22 (proposed and implemented the same day; the owner accepted the
+eight pass-3 records together at 16:36 BST) · **Date:** 2026-10-22 · **Deciders:** council pass 3
+of the 2026-10-21 full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6,
+deepseek-r1, mistral-large-3), arbitrated by argument by the review coordinator under the owner's
+standing delegation; accepted by Andy Taylor (owner). · **Change:** 2026-10-22 council pass 3, ruling D9.3 (4–1); implemented in `12f53ab2`,
 merge `b5a222ac` (lane I, `mcp-log-topic-partial`).
 
 The council record (`reviews/2026-10-21-full-repo-review/`, gitignored, owner's machine only)

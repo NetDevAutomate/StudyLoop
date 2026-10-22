@@ -1,11 +1,10 @@
 # ADR-0014: The dashboard cookie is issued only to a browser presenting the launcher's sign-in token; course artefacts and loopback origins sit inside the same boundary
 
-**Status:** Proposed · **Date:** 2026-10-22 · **Deciders:** council pass 3 of the 2026-10-21
-full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6, deepseek-r1,
-mistral-large-3), arbitrated by argument by the review coordinator under the owner's standing
-delegation; Andy Taylor (owner) has not yet reviewed. Accepted when the owner has read this record
-and the arbitration; the release-consistency check refuses a tagged release that still says
-Proposed. · **Change:** 2026-10-22 council pass 3, rulings D2 (5–0), D9.1 (4–1) and D9.2 (4–1);
+**Status:** Accepted, 2026-10-22 (proposed and implemented the same day; the owner accepted the
+eight pass-3 records together at 16:36 BST) · **Date:** 2026-10-22 · **Deciders:** council pass 3
+of the 2026-10-21 full-repository review (five no-tool seats: kimi-k3, gpt-6-astra, grok-4.6,
+deepseek-r1, mistral-large-3), arbitrated by argument by the review coordinator under the owner's
+standing delegation; accepted by Andy Taylor (owner). · **Change:** 2026-10-22 council pass 3, rulings D2 (5–0), D9.1 (4–1) and D9.2 (4–1);
 implemented in `96a10e10` (token), `bd0ac0f1` (artefacts), `4b4e41fa` (origins), `cd31ae2f`
 (real-server test clients); merge `c10c5096` (lane E, `web-bootstrap-token`).
 
