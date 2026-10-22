@@ -12,6 +12,7 @@ substrate driven by the real model; this one is what CI runs on every commit.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import struct
 from importlib.resources import files
@@ -387,6 +388,80 @@ def test_sidecar_sits_beside_the_database_and_never_inside_it():
         "/tmp/x/sessions.vec.db"
     )
     assert store.sidecar_path("/tmp/x/hot.sqlite3") == Path("/tmp/x/hot.vec.db")
+
+
+@pytest.fixture
+def umask_022():
+    previous = os.umask(0o022)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+def _attach_watching_sidecar(
+    conn: sqlite3.Connection, sidecar: Path, monkeypatch
+) -> list[tuple[int, int] | None]:
+    """Run ``_attach_sidecar`` and report the sidecar as ``ATTACH`` began.
+
+    The trace callback runs when the statement starts, before SQLite opens
+    the attached file. The extension load is stubbed: creating the file is
+    ATTACH's doing, not sqlite-vec's, so this runs without the extra.
+    """
+    seen: list[tuple[int, int] | None] = []
+
+    def record(statement: str) -> None:
+        if statement.lstrip().upper().startswith("ATTACH"):
+            seen.append(
+                (sidecar.stat().st_mode & 0o777, sidecar.stat().st_size)
+                if sidecar.exists()
+                else None
+            )
+
+    monkeypatch.setattr(store, "_load_extension", lambda _conn: None)
+    conn.set_trace_callback(record)
+    try:
+        store._attach_sidecar(conn)
+    finally:
+        conn.set_trace_callback(None)
+    return seen
+
+
+def test_sidecar_is_created_0600_before_sqlite_writes_it(
+    tmp_path: Path, umask_022, monkeypatch
+):
+    """The index holds message-derived vectors of the 0600 record (F-AST-14)."""
+    conn, db_path = _db(tmp_path)
+    sidecar = store.sidecar_path(db_path)
+    assert not sidecar.exists()
+
+    seen = _attach_watching_sidecar(conn, sidecar, monkeypatch)
+
+    assert seen == [(0o600, 0)]
+    conn.execute("CREATE TABLE vec.probe (x)")
+    conn.commit()
+    assert sidecar.stat().st_mode & 0o777 == 0o600
+    conn.close()
+
+
+def test_an_existing_sidecar_is_attached_untouched(
+    tmp_path: Path, umask_022, monkeypatch
+):
+    """Creation only: a sidecar that is already there keeps its bytes."""
+    conn, db_path = _db(tmp_path)
+    sidecar = store.sidecar_path(db_path)
+    other = sqlite3.connect(sidecar)
+    other.execute("CREATE TABLE kept (x)")
+    other.execute("INSERT INTO kept VALUES (1)")
+    other.commit()
+    other.close()
+    before = sidecar.read_bytes()
+
+    _attach_watching_sidecar(conn, sidecar, monkeypatch)
+
+    assert conn.execute("SELECT x FROM vec.kept").fetchall() == [(1,)]
+    conn.close()
+    assert sidecar.read_bytes() == before
 
 
 def test_chunk_key_round_trips_even_when_the_id_contains_the_separator():

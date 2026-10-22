@@ -1,6 +1,8 @@
 """Tests for sync module — unit tests for functions that don't need SSH."""
 
+import os
 import sqlite3
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -482,3 +484,75 @@ class TestRoundTrip:
         )
         target_conn.close()
         target_path.unlink()
+
+
+# --- _seed_remote_db: the first-sync seed is owner-only from its first byte ---
+
+
+@pytest.fixture
+def umask_022():
+    previous = os.umask(0o022)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+def test_seed_snapshot_is_0600_before_sqlite_writes_it(
+    tmp_path, umask_022, monkeypatch
+):
+    """F-AST-14 remainder: the seed is a whole copy of the 0600 record.
+
+    ``sqlite3.connect`` used to create it under the umask (0644 under 022).
+    The private temp directory hides that locally, but scp creates the
+    remote copy with the local file's mode, so the remote record was
+    world-readable. The spy reads the seed when SQLite opens it and again
+    when scp is handed it.
+    """
+    from agent_session_tools import sync
+
+    local = tmp_path / "local.db"
+    conn = sqlite3.connect(local)
+    conn.executescript(
+        "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT);"
+        "INSERT INTO sessions VALUES ('s1', 'test');"
+    )
+    conn.commit()
+    conn.close()
+    os.chmod(local, 0o600)
+
+    def _state(path: Path) -> tuple[int, int] | None:
+        if not path.exists():
+            return None
+        return path.stat().st_mode & 0o777, path.stat().st_size
+
+    opened: list[tuple[int, int] | None] = []
+    handed_to_scp: list[tuple[int, int] | None] = []
+    real_connect = sqlite3.connect
+
+    def spy_connect(database, *args, **kwargs):
+        path = Path(str(database))
+        if path.name == "sessions.db" and path.parent.name.startswith(
+            "session-sync-seed-"
+        ):
+            opened.append(_state(path))
+        return real_connect(database, *args, **kwargs)
+
+    def fake_run(argv, *args, **kwargs):
+        if argv[0] == "scp":
+            handed_to_scp.append(_state(Path(argv[-2])))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(sync, "_ensure_mux_dir", lambda: None)
+    monkeypatch.setattr(sync.sqlite3, "connect", spy_connect)
+    monkeypatch.setattr(sync.subprocess, "run", fake_run)
+
+    assert sync._seed_remote_db("host", "/remote/sessions.db", local) is True
+
+    # Owner-only and empty when SQLite first opened it; still owner-only
+    # (and now holding the copy) when scp read its mode.
+    assert opened == [(0o600, 0)]
+    assert len(handed_to_scp) == 1
+    assert handed_to_scp[0] is not None
+    assert handed_to_scp[0][0] == 0o600
+    assert handed_to_scp[0][1] > 0

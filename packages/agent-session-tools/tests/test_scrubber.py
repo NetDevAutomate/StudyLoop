@@ -147,8 +147,8 @@ class TestSecretPatterns:
         assert not SECRET_PATTERNS["generic_secret"].search("token = 'abc'")
 
     def test_pattern_count(self):
-        """Ensure we have exactly 13 named patterns (no silent additions/removals)."""
-        assert len(SECRET_PATTERNS) == 13
+        """Ensure we have exactly 17 named patterns (no silent additions/removals)."""
+        assert len(SECRET_PATTERNS) == 17
 
 
 # ===========================================================================
@@ -549,6 +549,220 @@ def test_prose_beside_an_armour_line_on_the_same_line_survives() -> None:
     assert result.text.startswith("The first line reads [PRIVATE_KEY-")
     assert "] and nothing follows it.\nThe last line reads [PRIVATE_KEY-" in result.text
     assert result.text.endswith("] in the file.")
+
+
+# ===========================================================================
+# GitHub App / refresh tokens and Slack user / workspace tokens (plan 2, D2).
+# Classic GitHub tokens are 36 alphanumerics after the prefix; installation
+# tokens are now stateless, ghs_<app id>_<JWT>, about 520 characters with two
+# dots, so nothing may assume a fixed length. Every value is synthetic and
+# assembled at runtime so no committed literal looks like a credential.
+# ===========================================================================
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _stateless_installation_token() -> str:
+    header = _b64url(b'{"alg":"RS256","typ":"JWT"}')
+    claims = ",".join(
+        f'"c{i}":"{hashlib.sha256(bytes([i])).hexdigest()}"' for i in range(5)
+    )
+    payload = _b64url(("{" + claims + "}").encode())
+    signature = _b64url(b"".join(hashlib.sha256(bytes([i])).digest() for i in range(8)))
+    return "gh" + "s_" + "1234567_" + header + "." + payload + "." + signature
+
+
+def _slack(prefix: str, *segments: str) -> str:
+    return "xo" + "x" + prefix + "-" + "-".join(segments)
+
+
+def _token_cases() -> list[tuple[str, str, str]]:
+    hexa = hashlib.sha256(b"slack-user").hexdigest()[:32]
+    return [
+        ("github-installation-classic", "github_app_token", "gh" + "s_" + _FILL[:36]),
+        (
+            "github-installation-stateless",
+            "github_app_token",
+            _stateless_installation_token(),
+        ),
+        ("github-user-to-server", "github_app_token", "gh" + "u_" + _FILL[3:39]),
+        ("github-refresh-36", "github_refresh_token", "gh" + "r_" + _FILL[5:41]),
+        ("github-refresh-long", "github_refresh_token", "gh" + "r_" + _FILL[:76]),
+        (
+            "slack-user",
+            "slack_user_token",
+            _slack("p", "1234567890", "2345678901", "3456789012345", hexa),
+        ),
+        (
+            "slack-workspace-numbered",
+            "slack_workspace_token",
+            _slack("a", "2", _FILL[10:50]),
+        ),
+        (
+            "slack-workspace-dashed",
+            "slack_workspace_token",
+            _slack("a", "2", "1234567890", "2345678901", "3456789012345", hexa),
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("kind", "token"),
+    [pytest.param(kind, token, id=name) for name, kind, token in _token_cases()],
+)
+def test_redacts_whole_github_app_and_slack_user_tokens(kind: str, token: str) -> None:
+    result = Scrubber().scrub(f"export KEY={token}\nnext line")
+    assert result.text == f"export KEY=[{kind.upper()}-001]\nnext line"
+    assert [f["type"] for f in result.findings] == [kind]
+    assert result.findings[0]["length"] == len(token)
+
+
+def test_stateless_installation_token_is_long_and_dotted() -> None:
+    """The fixture really has the shape GitHub announced, not a classic token."""
+    token = _stateless_installation_token()
+    assert len(token) > 400
+    assert token.count(".") == 2
+
+
+def test_a_token_ending_a_sentence_keeps_the_full_stop() -> None:
+    token = "gh" + "s_" + _FILL[:36]
+    result = Scrubber().scrub(f"It printed {token}. Then it stopped.")
+    assert result.text == "It printed [GITHUB_APP_TOKEN-001]. Then it stopped."
+
+
+def test_prose_naming_token_prefixes_is_untouched() -> None:
+    """False-positive guard: a bare prefix, or a word after it, is not a token."""
+    prose = (
+        "GitHub App tokens start with ghs_ or ghu_, refresh tokens with ghr_, "
+        "and Slack user tokens with xoxp- (workspace apps used xoxa-tokens). "
+        "A ghs_short value or xoxp-1234 is not a credential."
+    )
+    result = Scrubber().scrub(prose)
+    assert result.text == prose
+    assert result.findings == []
+
+
+# ===========================================================================
+# Armoured PGP private keys (plan 2, D2): the same three shapes as PEM --
+# whole block, truncated block, flattened block -- plus the armour headers
+# (Version:, Comment:) RFC 4880 allows after the BEGIN line, whose values
+# hold characters outside the base64 body class. Armour assembled at runtime
+# so the detect-private-key hook does not read this file as a leaked key.
+# ===========================================================================
+
+
+def _pgp_marker(kind: str, what: str = "PRIVATE") -> str:
+    return "-----" + " ".join([kind, "PGP", what, "KEY", "BLOCK"]) + "-----"
+
+
+def _pgp_checksum(seed: str) -> str:
+    return "=" + base64.b64encode(hashlib.sha256(seed.encode()).digest()[:3]).decode()
+
+
+_PGP_HEADERS = ("Version: OpenPGP.js v4.10.10", "Comment: https://openpgpjs.org")
+
+
+def _pgp(
+    seed: str,
+    *,
+    newline: str = "\n",
+    headers: tuple[str, ...] = (),
+    what: str = "PRIVATE",
+) -> str:
+    lines = [_pgp_marker("BEGIN", what), *headers, ""]
+    lines += [*_pem_body(seed), _pgp_checksum(seed), _pgp_marker("END", what)]
+    return newline.join(lines)
+
+
+@pytest.mark.parametrize(
+    ("seed", "newline", "headers"),
+    [
+        pytest.param("pgp", "\n", (), id="plain"),
+        pytest.param("pgp-headers", "\n", _PGP_HEADERS, id="armour-headers"),
+        pytest.param("pgp-crlf", "\r\n", _PGP_HEADERS, id="crlf"),
+        pytest.param("pgp-json", "\\n", _PGP_HEADERS, id="json-escaped-newlines"),
+    ],
+)
+def test_pgp_private_key_block_is_one_whole_redaction(
+    seed: str, newline: str, headers: tuple[str, ...]
+) -> None:
+    text = "My key:\n" + _pgp(seed, newline=newline, headers=headers) + "\nThat was it."
+    result = Scrubber().scrub(text)
+    for line in _pem_body(seed):
+        assert line not in result.text
+    assert _pgp_checksum(seed) not in result.text
+    assert "PGP PRIVATE KEY" not in result.text
+    for header in headers:
+        assert header not in result.text
+    assert result.text == "My key:\n[PRIVATE_KEY-001]\nThat was it."
+    assert [f["type"] for f in result.findings] == ["private_key"]
+
+
+def test_unterminated_pgp_block_with_a_dotted_header_leaves_no_body() -> None:
+    """Cut off before END: the header's '.' must not stop the body redaction."""
+    body = _pem_body("pgp-cut")[:3]
+    text = "\n".join(
+        [
+            "output:",
+            _pgp_marker("BEGIN"),
+            *_PGP_HEADERS,
+            "",
+            *body,
+            "[output truncated]",
+        ]
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert "PGP PRIVATE KEY" not in result.text
+    assert result.text.startswith("output:\n")
+    assert result.text.endswith("[output truncated]")
+    assert result.scrubbed
+
+
+def test_flattened_unterminated_pgp_block_leaves_no_body() -> None:
+    body = "".join(_pem_body("pgp-flat")[:3])
+    text = "paste: " + _pgp_marker("BEGIN") + body + " [cut]"
+    result = Scrubber().scrub(text)
+    assert body not in result.text
+    assert body[:24] not in result.text
+    assert result.text.startswith("paste: [PRIVATE_KEY-")
+    assert result.text.endswith(" [cut]")
+
+
+def test_pgp_tail_without_begin_line_redacts_body_and_footer() -> None:
+    body = _pem_body("pgp-tail")[3:]
+    text = "...\n" + "\n".join([*body, _pgp_checksum("pgp-tail"), _pgp_marker("END")])
+    result = Scrubber().scrub(text + "\nnext")
+    for line in body:
+        assert line not in result.text
+    assert "PGP PRIVATE KEY" not in result.text
+    assert result.text.startswith("...")
+    assert result.text.endswith("\nnext")
+
+
+def test_pgp_block_inside_sql_dump_keeps_statement_structure() -> None:
+    sql = (
+        "INSERT INTO messages VALUES('m1','"
+        + _pgp("pgp-row", newline="\\n", headers=_PGP_HEADERS)
+        + "');\nINSERT INTO messages VALUES('m2','ok');"
+    )
+    out, report = Scrubber().scrub_sql(sql)
+    assert out == (
+        "INSERT INTO messages VALUES('m1','[PRIVATE_KEY-001]');\n"
+        "INSERT INTO messages VALUES('m2','ok');"
+    )
+    assert report.findings_by_type == {"private_key": 1}
+
+
+def test_pgp_public_key_block_is_not_a_secret() -> None:
+    """False-positive guard: only PRIVATE armour is key material."""
+    text = "Import this:\n" + _pgp("pgp-pub", what="PUBLIC") + "\ndone"
+    result = Scrubber().scrub(text)
+    assert result.text == text
+    assert result.findings == []
 
 
 class TestScrubberDeterministicPlaceholders:

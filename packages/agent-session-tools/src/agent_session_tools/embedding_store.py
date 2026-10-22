@@ -843,7 +843,29 @@ def _attach_sidecar(conn: sqlite3.Connection) -> None:
     # SQLite a private temporary database, which is the right lifetime for a
     # derived index belonging to a database that will not outlive the process.
     target = str(sidecar_path(main_file)) if main_file else ""
+    if target:
+        _create_sidecar_owner_only(Path(target))
     conn.execute(f"ATTACH DATABASE ? AS {SIDECAR_SCHEMA}", (target,))
+
+
+def _create_sidecar_owner_only(sidecar: Path) -> None:
+    """Create an absent sidecar as an empty 0600 file before ``ATTACH`` opens it.
+
+    The index holds vectors derived from every message of the 0600 record
+    (F-AST-14). Left to ``ATTACH``, SQLite creates the file under the umask
+    (0644 under 022) and writes the index into it. Creating it here, owner-only
+    and empty, means SQLite writes every byte into an owner-only file; its
+    journal and WAL files take the database file's mode. An existing sidecar
+    is left exactly as it is (O_EXCL), so this never truncates an index.
+    """
+    try:
+        fd = os.open(sidecar, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return
+    try:
+        os.fchmod(fd, 0o600)
+    finally:
+        os.close(fd)
 
 
 def _vec_table_sql(conn: sqlite3.Connection) -> str | None:

@@ -426,6 +426,90 @@ class TestSnapshot:
         assert _counts(snap) == (2, 4, 4)
 
 
+@pytest.fixture
+def umask_022():
+    previous = os.umask(0o022)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+def _mode(path: Path) -> int:
+    return path.stat().st_mode & 0o777
+
+
+class TestSnapshotPermissions:
+    """A snapshot is a full copy of the 0600 record (F-AST-14 remainder).
+
+    ``VACUUM INTO`` let SQLite create the file under the process umask, so
+    under the usual 022 every snapshot of an owner-only database was
+    world-readable. The spy reads the destination when the ``VACUUM INTO``
+    statement starts (the trace callback runs before SQLite opens the INTO
+    file), so a fix that chmods after the copy is written still fails.
+    """
+
+    def test_snapshot_is_0600_before_sqlite_writes_it(
+        self, tiered_config, umask_022, monkeypatch
+    ):
+        _make_hot_db(tiered_config["hot"], sessions=1)
+        sync_to_full()
+        backup_dir = tiered_config["backup_dir"]
+        seen: dict[str, tuple[int, int]] = {}
+        started: list[str] = []
+        real_connect = sqlite3.connect
+
+        def record(statement: str) -> None:
+            if statement.lstrip().upper().startswith("VACUUM INTO"):
+                started.append(statement)
+                for path in backup_dir.glob("*_snapshot_*.db"):
+                    seen[path.name] = (_mode(path), path.stat().st_size)
+
+        def spy(*args, **kwargs):
+            conn = real_connect(*args, **kwargs)
+            conn.set_trace_callback(record)
+            return conn
+
+        monkeypatch.setattr(tiering.sqlite3, "connect", spy)
+        snap = create_snapshot()
+        monkeypatch.undo()
+
+        assert started, "the snapshot is taken with VACUUM INTO"
+        # Owner-only and still empty when SQLite began the copy.
+        assert seen.get(snap.name) == (0o600, 0)
+        assert _mode(snap) == 0o600
+        assert _counts(snap) == (1, 2, 2)
+
+    def test_failed_snapshot_leaves_no_empty_file_behind(
+        self, tiered_config, umask_022, monkeypatch
+    ):
+        """An empty leftover would read as the newest snapshot to maybe_snapshot."""
+        _make_hot_db(tiered_config["hot"], sessions=1)
+        sync_to_full()
+        real_connect = sqlite3.connect
+
+        class _Refusing:
+            def __init__(self, conn):
+                self._conn = conn
+
+            def execute(self, sql, *args):
+                raise sqlite3.DatabaseError("disk I/O error")
+
+            def close(self):
+                self._conn.close()
+
+        monkeypatch.setattr(
+            tiering.sqlite3,
+            "connect",
+            lambda *a, **k: _Refusing(real_connect(*a, **k)),
+        )
+        with pytest.raises(sqlite3.DatabaseError):
+            create_snapshot()
+        monkeypatch.undo()
+
+        assert list(tiered_config["backup_dir"].glob("*_snapshot_*.db")) == []
+
+
 # ---------------------------------------------------------------------------
 # Mount-safety + config helpers
 # ---------------------------------------------------------------------------
