@@ -82,7 +82,8 @@ An Architecture Decision Record captures a choice a reasonable engineer could ha
 differently, where the reason would otherwise be lost. `docs/adr/README.md` is the index and the
 rulebook:
 
-1. File name `docs/adr/NNNN-kebab-case-title.md`, zero-padded, never reused (0001-0011 exist).
+1. File name `docs/adr/NNNN-kebab-case-title.md`, zero-padded, never reused (the index in
+   `docs/adr/README.md` lists what exists; take the next number).
 2. Status moves `Proposed` → `Accepted` → `Superseded by ADR-NNNN` or `Deprecated`. An accepted
    ADR is never edited except on its status line; a changed mind is a new ADR that supersedes it.
 3. Every ADR names the change that motivated it, so the context is recoverable from
