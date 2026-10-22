@@ -257,8 +257,6 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
     if failed:
         summary += f"; {len(failed)} could not be changed"
     print(summary + ".")
-    if failed:
-        return 1
 
     for name, endpoint in sorted(get_endpoints(cfg).items()):
         # The remote copy session-sync seeded takes the remote umask; this
@@ -271,7 +269,7 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
                 f"ssh {endpoint.get('username', '<user>')}@{ip} chmod 600 "
                 f"{shlex.quote(remote_path)}"
             )
-    return 0
+    return 1 if failed else 0
 
 
 # A session's age is its newest known timestamp. updated_at is NULL for every
