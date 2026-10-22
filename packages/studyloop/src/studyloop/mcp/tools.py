@@ -601,11 +601,15 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         learns, or has an insight about a concept — especially after 2+ rounds
         without breakthrough (status='struggling').
 
-        ``logged`` covers the session-topics.md entry. For the learning-signal
-        statuses a failed study_progress write adds ``progress``:
-        ``"not saved: <reason>"`` -- tell the learner it was not saved for
-        spaced repetition. No ``progress`` field means the row was written
-        (or, for ``parked``, that none was due).
+        ``logged`` says which writes landed. ``"true"``: every write this
+        status needs landed -- the session-topics.md entry and, for the
+        learning-signal statuses, the study_progress row (``parked`` writes no
+        row). ``"partial"``: the session-topics.md entry IS recorded but the
+        study_progress write failed; the response then also carries
+        ``failed: "study_progress"`` and ``reason`` (why, with the fix). Do NOT
+        call log_topic again for a partial result -- that duplicates the
+        session-topics entry. Tell the learner the topic was logged for this
+        session but not saved for spaced repetition, and pass on ``reason``.
 
         Args:
             topic: The concept or topic the user is engaging with.
@@ -625,9 +629,13 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         confidence = confidence_map.get(status)
         if confidence is not None:
-            # The session-topics entry above stands even if this second write
-            # fails, but the response must say so: record_progress returns False
-            # for a missing database/table and raises on a lock (F-LRN-10).
+            # The session-topics entry above is an independent file append, so
+            # it stands whatever happens next: a failed second write is a
+            # partial result, never an error (a ToolError would invite a retry
+            # that duplicates the entry) and never ``logged: "true"`` (D9.3).
+            # record_progress returns False for a missing database/table and
+            # raises on a lock (F-LRN-10).
+            reason: str | None = None
             try:
                 saved = record_progress(
                     topic=topic,
@@ -641,13 +649,17 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
                     topic,
                     status,
                 )
-                result["progress"] = f"not saved: {exc} -- run `studyloop doctor`"
+                reason = f"{type(exc).__name__}: {exc} -- run `studyloop doctor`"
             else:
                 if not saved:
-                    result["progress"] = (
-                        "not saved: the sessions database or its study_progress table "
+                    reason = (
+                        "the sessions database or its study_progress table "
                         "is missing -- run `studyloop doctor`"
                     )
+            if reason is not None:
+                result["logged"] = "partial"
+                result["failed"] = "study_progress"
+                result["reason"] = reason
 
         return result
 
