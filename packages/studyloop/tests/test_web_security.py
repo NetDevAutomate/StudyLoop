@@ -17,10 +17,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from _helpers import run_async
+from _stub_transport import StubTransport
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from conftest import StubTransport  # pyright: ignore[reportAttributeAccessIssue]
 from studyloop.session import active
 from studyloop.session.transport import SessionConfig, Started
 from studyloop.web.app import create_app

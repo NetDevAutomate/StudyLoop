@@ -23,10 +23,10 @@ import pytest
 pytest.importorskip("fastapi")
 
 from _helpers import run_async
+from _stub_transport import StubTransport
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 from starlette.websockets import WebSocketDisconnect
 
-from conftest import StubTransport  # pyright: ignore[reportAttributeAccessIssue]
 from studyloop.session import active
 from studyloop.session.transport import SessionConfig, Started
 from studyloop.web.app import create_app
