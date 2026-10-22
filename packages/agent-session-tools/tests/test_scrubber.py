@@ -687,6 +687,44 @@ def test_prose_naming_token_prefixes_is_untouched() -> None:
 
 
 # ===========================================================================
+# Classic PATs (ghp_) and OAuth access tokens (gho_) (plan 4, D#4). GitHub's
+# 2021 token-format changelog told integrators to "plan to support tokens up
+# to 255 characters"; the classic length is 36 after the prefix, and the
+# patterns used to match exactly that, so a longer token gave zero findings
+# (the F-AST-07 shape). Every value is assembled at runtime.
+# ===========================================================================
+
+_LONG_FILL = _FILL * 2
+
+
+def _github_token(prefix: str, length: int) -> str:
+    return "gh" + prefix + "_" + _LONG_FILL[:length]
+
+
+@pytest.mark.parametrize(
+    ("kind", "prefix"), [("github_pat", "p"), ("github_oauth", "o")]
+)
+@pytest.mark.parametrize("length", [36, 40, 255])
+def test_redacts_whole_classic_github_tokens_of_documented_lengths(
+    kind: str, prefix: str, length: int
+) -> None:
+    token = _github_token(prefix, length)
+    assert len(token) == length + 4
+    result = Scrubber().scrub(f"export KEY={token}\nnext line")
+    assert result.text == f"export KEY=[{kind.upper()}-001]\nnext line"
+    assert [f["type"] for f in result.findings] == [kind]
+    assert result.findings[0]["length"] == len(token)
+
+
+@pytest.mark.parametrize("prefix", ["p", "o"])
+def test_a_short_classic_github_prefix_run_is_not_a_token(prefix: str) -> None:
+    text = f"export KEY={_github_token(prefix, 20)}\nnext line"
+    result = Scrubber().scrub(text)
+    assert result.text == text
+    assert result.findings == []
+
+
+# ===========================================================================
 # Armoured PGP private keys (plan 2, D2): the same three shapes as PEM --
 # whole block, truncated block, flattened block -- plus the armour headers
 # (Version:, Comment:) RFC 4880 allows after the BEGIN line, whose values

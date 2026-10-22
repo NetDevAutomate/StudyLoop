@@ -28,9 +28,13 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
         # word boundary keep it specific enough to avoid false positives.
         r"(?i)aws.{0,20}(?:secret|key).{0,20}['\"]?[0-9a-zA-Z/+]{40}['\"]?\b"
     ),
-    "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36}\b"),
+    # Classic PATs (ghp_) and OAuth access tokens (gho_): 36 alphanumerics
+    # after the prefix today, but GitHub's token-format changelog (2021-03)
+    # tells integrators to support tokens up to 255 characters, so an exact
+    # {36} gave zero findings on a longer one (the F-AST-07 shape).
+    "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36,255}\b"),
     "github_fine_grained": re.compile(r"\bgithub_pat_\w{82}\b"),
-    "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36}\b"),
+    "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36,255}\b"),
     # GitHub App tokens: ghu_ (user-to-server) and ghs_ (installation, which
     # includes Actions' GITHUB_TOKEN). A classic one is 36 alphanumerics after
     # the prefix. Installation tokens are now stateless, ghs_<app id>_<JWT>:
