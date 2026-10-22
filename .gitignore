@@ -663,9 +663,13 @@ scripts/local/
 # repo. Public-facing conclusions belong in docs/ or an ADR instead.
 /reviews/
 
-# Internal planning, handoffs, audits, research and evidence live in the private
-# repo (~/code/personal/tools/studyloop-private), never here. Public docs are the
-# mkdocs.yml allowlist plus docs/adr and docs/architecture.
+# Internal planning, handoffs, audits, research and evidence are working material,
+# not part of the public repository; where they are kept is the maintainer's
+# concern, not this file's. Public docs are the mkdocs.yml allowlist plus
+# docs/adr and docs/architecture; a conclusion that must ship goes to docs/, an
+# ADR or the changelog (AGENTS.md §2). Four files under docs/handoffs/ and
+# docs/superpowers/plans/ were tracked before these rules and stay tracked: an
+# ignore rule never untracks a file (`git ls-files -i -c` lists them).
 docs/handoffs/
 docs/archive/
 docs/audit/
