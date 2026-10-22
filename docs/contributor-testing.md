@@ -197,6 +197,14 @@ archives or Kubernetes contexts belong in the default suite. Live tests need exp
 a named disposable target, timeouts, cleanup of only test-owned resources and a clear cost boundary.
 Do not weaken a guard simply because it catches your new test.
 
+Secret scanning runs server-side too. On a pull request, the `secrets` CI job runs detect-secrets
+over the checkout, then trufflehog over the pull request's own commits. A verified or
+unverifiable credential fails the job, and so does a base commit the job cannot resolve. To run
+the same range through the redacting wrapper first, use
+`uv run --group dev python scripts/security/trufflehog_redacted.py --base origin/main --head HEAD`.
+The local run is stricter than CI: it also fails on revoked or fake keys. For the pins and their
+limits, see `docs/security/trufflehog-ci.md` in the repository.
+
 ## Pull-request template
 
 The template is the five questions on [Raising a pull request](contributor-pull-requests.md); this

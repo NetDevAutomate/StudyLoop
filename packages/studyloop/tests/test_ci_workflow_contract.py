@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -366,6 +368,191 @@ def test_ci_runs_every_commit_gate_secret_hook() -> None:
         for hook in repo.get("hooks", [])
     }
     assert set(SECRET_HOOK_IDS) <= configured, "CI must run hooks the commit gate defines"
+
+
+# --- trufflehog over a pull request's own commits (ARBITRATION-pass3 D6) ----
+#
+# The commit gate's trufflehog layer (provider-specific detectors, with live
+# verification) runs only where a contributor kept the hook. The secrets job
+# runs the official action over the pull request's commits, base..head, pinned
+# by commit, and refuses to scan a range it cannot resolve.
+
+SCRIPT = REPO_ROOT / "scripts" / "security" / "trufflehog_redacted.py"
+TRUFFLEHOG_ACTION = re.compile(r"^trufflesecurity/trufflehog@([0-9a-f]{40})$")
+PINNED_SCANNER_IMAGE = re.compile(r"^(\d+\.\d+\.\d+)@sha256:[0-9a-f]{64}$")
+PR_ONLY = "github.event_name == 'pull_request'"
+PR_BASE = "${{ github.event.pull_request.base.sha }}"
+PR_HEAD = "${{ github.event.pull_request.head.sha }}"
+GUARD = "scripts/security/trufflehog_redacted.py --check-range"
+
+
+def _secrets_job() -> dict[str, Any]:
+    return _workflow()["jobs"]["secrets"]
+
+
+def _secrets_steps() -> list[dict[str, Any]]:
+    return [step for step in _secrets_job()["steps"] if isinstance(step, dict)]
+
+
+def _trufflehog_step() -> dict[str, Any]:
+    steps = [
+        step
+        for step in _secrets_steps()
+        if str(step.get("uses", "")).startswith("trufflesecurity/trufflehog@")
+    ]
+    assert len(steps) == 1, "the secrets job must run the official trufflehog action once"
+    return steps[0]
+
+
+def _guard_step() -> dict[str, Any]:
+    steps = [step for step in _secrets_steps() if GUARD in str(step.get("run", ""))]
+    assert len(steps) == 1, "the secrets job must resolve the PR range before scanning it"
+    return steps[0]
+
+
+def test_secrets_job_scans_the_pull_request_range_with_trufflehog() -> None:
+    step = _trufflehog_step()
+    assert step.get("if") == PR_ONLY, "PR-scoped: base..head only exists on a pull request"
+    assert step["with"]["base"] == PR_BASE
+    assert step["with"]["head"] == PR_HEAD
+    assert not step.get("continue-on-error"), "a finding must fail the job"
+    assert not _secrets_job().get("continue-on-error")
+
+
+def test_trufflehog_action_and_its_scanner_image_are_both_pinned() -> None:
+    """The action is pinned by commit; its ``version`` input defaults to
+    ``latest`` (action.yml), so without a pinned image the SHA-pinned action
+    would still run whatever scanner was published last. The image is pinned by
+    digest to the same release the action's commit is tagged with."""
+    step = _trufflehog_step()
+    match = TRUFFLEHOG_ACTION.match(step["uses"])
+    assert match, f"pin the action by its full 40-hex commit, not a tag: {step['uses']!r}"
+
+    lines = [
+        line for line in WORKFLOW.read_text(encoding="utf-8").splitlines() if step["uses"] in line
+    ]
+    assert len(lines) == 1
+    tag = re.search(r"#\s*v(\d+\.\d+\.\d+)\s*$", lines[0])
+    assert tag, "record the release tag beside the pinned commit"
+
+    image = PINNED_SCANNER_IMAGE.match(str(step["with"].get("version", "")))
+    assert image, "pin the scanner image as <version>@sha256:<digest>, never `latest`"
+    assert image.group(1) == tag.group(1), "the image and the action must be the same release"
+
+
+def test_trufflehog_keeps_unknown_results_and_is_not_narrowed_to_verified() -> None:
+    """``--results=verified,unknown`` fails on live credentials and on ones the
+    scanner could not verify. ``--only-verified`` must NOT be added beside it:
+    trufflehog's main.go replaces ``--results`` with ``verified`` whenever
+    ``--only-verified`` is set, so the pair silently drops every unknown result
+    (probed against the pinned image: the pair exited 0 on a planted token the
+    lone ``--results`` flag failed with 183)."""
+    args = str(_trufflehog_step()["with"].get("extra_args", "")).split()
+    assert "--results=verified,unknown" in args
+    assert "--only-verified" not in args
+    assert not any(arg.startswith("--since-commit") for arg in args), (
+        "the range comes from base/head; a second --since-commit would override it"
+    )
+
+
+def test_secrets_job_is_read_only_and_checks_out_full_history() -> None:
+    job = _secrets_job()
+    assert job.get("permissions") == {"contents": "read"}
+    checkouts = [
+        step
+        for step in _secrets_steps()
+        if str(step.get("uses", "")).startswith("actions/checkout@")
+    ]
+    assert len(checkouts) == 1
+    assert PINNED_ACTION.match(checkouts[0]["uses"])
+    options = checkouts[0].get("with") or {}
+    assert options.get("fetch-depth") == 0, "a shallow clone has no base commit to scan from"
+    assert options.get("persist-credentials") is False, (
+        "the scanner container mounts the workspace; keep the job token out of .git/config"
+    )
+
+
+def test_no_ci_secret_scan_is_scoped_to_since_head() -> None:
+    """``--since-commit=HEAD`` is the local hook's scope. In CI, HEAD is the
+    commit under test, so HEAD..HEAD would scan nothing and still pass."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "--since-commit=HEAD" not in text
+    assert not re.search(r"--since-commit\s+HEAD\b", text)
+
+
+def test_pr_range_guard_runs_first_from_the_event_shas_and_blocks() -> None:
+    steps = _secrets_steps()
+    guard = _guard_step()
+    assert steps.index(guard) < steps.index(_trufflehog_step()), "resolve the range before the scan"
+    assert guard.get("if") == PR_ONLY
+    assert not guard.get("continue-on-error")
+    assert guard["env"] == {"PR_BASE": PR_BASE, "PR_HEAD": PR_HEAD}, (
+        "pass the event SHAs through env, never interpolated into the script"
+    )
+    assert guard["run"] == (
+        "uv run --group dev python scripts/security/trufflehog_redacted.py"
+        ' --check-range --base "$PR_BASE" --head "$PR_HEAD"'
+    )
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=ci-contract",
+            "-c",
+            "user.email=ci-contract@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+
+def test_pr_range_guard_as_written_fails_closed_on_a_missing_base(tmp_path: Path) -> None:
+    """Run the guard step's own command (with this interpreter in place of
+    ``uv run``) in a two-commit repository: a real range passes, and an empty or
+    unknown base fails the step instead of degrading to a whole-history or
+    HEAD..HEAD scan."""
+    _git(tmp_path, "init", "-q")
+    for name in ("one", "two"):
+        (tmp_path / name).write_text(name, encoding="utf-8")
+        _git(tmp_path, "add", name)
+        _git(tmp_path, "commit", "-q", "-m", name)
+    base = _git(tmp_path, "rev-parse", "HEAD~1")
+    head = _git(tmp_path, "rev-parse", "HEAD")
+
+    prefix = "uv run --group dev python scripts/security/trufflehog_redacted.py"
+    run = _guard_step()["run"]
+    assert run.startswith(prefix)
+    command = f"{shlex.quote(sys.executable)} {shlex.quote(str(SCRIPT))}{run[len(prefix) :]}"
+
+    def guard(pr_base: str, pr_head: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-c", command],
+            cwd=tmp_path,
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": str(tmp_path),
+                "PR_BASE": pr_base,
+                "PR_HEAD": pr_head,
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    assert guard(base, head).returncode == 0
+    for missing in ("", "0" * 40, "ab" * 20):
+        proc = guard(missing, head)
+        assert proc.returncode == 2, (missing, proc.stdout, proc.stderr)
+        assert "base" in proc.stderr
 
 
 # --- Removed orphans stay removed (ledger 13, F-OPS-13/14@sol) ---------------

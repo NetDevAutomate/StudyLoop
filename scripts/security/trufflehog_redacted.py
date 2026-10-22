@@ -15,6 +15,18 @@ Usage (from the repo root)::
 
     uv run python scripts/security/trufflehog_redacted.py            # staged/uncommitted changes
     uv run python scripts/security/trufflehog_redacted.py --history  # whole git history
+    uv run python scripts/security/trufflehog_redacted.py --base origin/main --head HEAD
+                                                                     # a pull request's commits
+
+``--base``/``--head`` scan exactly the commits in ``base..head`` -- what CI's
+pull-request step scans (``.github/workflows/ci.yml``, job ``secrets``), but
+with all three result types, so it is the stricter of the two. Both ends must
+resolve to commits in this clone; a missing, all-zero or unresolvable end, or
+an empty range, is exit 2 before anything is scanned -- never a fallback to the
+``--since-commit=HEAD`` scope (in CI that is HEAD..HEAD: nothing scanned, a
+silent pass) or to a whole-history walk. ``--check-range`` performs only that
+check and needs no trufflehog binary: it is CI's fail-closed guard in front of
+the official action.
 
 Findings are reported as ``verified`` (the credential authenticated against
 its provider), ``unknown`` (could not attempt verification) or ``unverified``
@@ -36,6 +48,50 @@ import subprocess
 import sys
 
 REDACT_KEYS = {"Raw", "RawV2", "Redacted"}
+
+
+class RangeError(ValueError):
+    """A pull-request range that cannot be scanned as given."""
+
+
+def _resolve_commit(ref: str | None) -> str | None:
+    """Return the full SHA of the commit ``ref`` names in the repository here.
+
+    Anything git cannot resolve to a commit is ``None``: git's all-zero "no
+    commit" placeholder, a SHA a shallow clone never fetched, a typo. Empty and
+    option-shaped values are refused before git sees them.
+    """
+    if not ref or not ref.strip() or ref.startswith("-"):
+        return None
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    sha = proc.stdout.strip()
+    return sha if proc.returncode == 0 and sha else None
+
+
+def _pr_range(base: str | None, head: str | None) -> tuple[str, str]:
+    """Resolve a pull request's ``base..head`` to two distinct commits.
+
+    Raises :class:`RangeError` rather than returning anything that would scan
+    less than the range: a scan of the wrong range that finds nothing reads
+    exactly like a clean pull request.
+    """
+    base_sha = _resolve_commit(base)
+    if base_sha is None:
+        raise RangeError(
+            f"no usable base commit ({base!r}) -- the pull request's base must be a commit "
+            "in this clone (CI checks out with fetch-depth: 0)"
+        )
+    head_sha = _resolve_commit(head)
+    if head_sha is None:
+        raise RangeError(f"no usable head commit ({head!r})")
+    if base_sha == head_sha:
+        raise RangeError(f"base and head are the same commit ({base_sha[:10]}): empty range")
+    return base_sha, head_sha
 
 
 def _mapping(value: object) -> dict:
@@ -85,8 +141,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--history", action="store_true", help="scan the whole git history (default: since HEAD)"
     )
+    parser.add_argument("--base", help="pull-request scan: the commit the PR is based on")
+    parser.add_argument("--head", help="pull-request scan: the PR's head commit")
+    parser.add_argument(
+        "--check-range",
+        action="store_true",
+        help="only check that --base..--head is a scannable range (no trufflehog needed)",
+    )
     parser.add_argument("--max-rows", type=int, default=50)
     args = parser.parse_args(argv)
+
+    pr_range: tuple[str, str] | None = None
+    if args.base is not None or args.head is not None or args.check_range:
+        try:
+            if args.history:
+                raise RangeError("--history and a --base/--head range are different scans")
+            pr_range = _pr_range(args.base, args.head)
+        except RangeError as exc:
+            print(f"trufflehog PR scan refused: {exc}", file=sys.stderr)
+            return 2
+        if args.check_range:
+            print(f"PR range ok: {pr_range[0][:10]}..{pr_range[1][:10]}")
+            return 0
 
     binary = shutil.which("trufflehog")
     if binary is None:
@@ -104,7 +180,9 @@ def main(argv: list[str] | None = None) -> int:
         # this wrapper parsing the JSON, so 183 with no parsed row is caught.
         "--fail",
     ]
-    if not args.history:
+    if pr_range is not None:
+        cmd += [f"--since-commit={pr_range[0]}", f"--branch={pr_range[1]}"]
+    elif not args.history:
         cmd.append("--since-commit=HEAD")
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     findings, unrecognised = _rows(proc.stdout)
@@ -127,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
 
     by = collections.Counter((f["detector"], f["verified"]) for f in findings)
     scope = "history" if args.history else "since HEAD"
+    if pr_range is not None:
+        scope = f"PR range {pr_range[0][:10]}..{pr_range[1][:10]}"
     print(f"trufflehog findings: {len(findings)} ({scope})")
     for (det, ver), count in by.most_common():
         print(f"  {count:>4}  {det}  verified={ver}")
