@@ -8,9 +8,32 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
-import pytest
+# Writable-state isolation at IMPORT time, before any agent_session_tools import.
+#
+# A path-scoped run (``pytest packages/agent-session-tools/tests``, or ``pytest
+# tests`` from this package) takes this package's pyproject as its config, so
+# the workspace-root conftest.py -- which hard-assigns these three -- is never
+# loaded. The autouse fixtures below redirect them per test, but test-module
+# imports, collection hooks and session-scoped fixtures run before any of them
+# and saw whatever the caller's shell exported: a learner's real sessions.db,
+# state dir and config.
+#
+# Hard-assign, never ``setdefault``, once per process under the same pid marker
+# the workspace-root conftest uses: in a workspace run that file has already
+# claimed the sandbox and this block leaves it alone, so the two never disagree.
+# A child process inherits the marker with its parent's pid, so it redirects
+# again.
+_SANDBOX_OWNER_ENV = "_STUDYLOOP_SUITE_SANDBOX_PID"
+if os.environ.get(_SANDBOX_OWNER_ENV) != str(os.getpid()):
+    _TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="agent-session-tools-test-state-"))
+    os.environ["STUDYLOOP_STATE_DIR"] = str(_TEST_STATE_ROOT / "state")
+    os.environ["STUDYLOOP_DB"] = str(_TEST_STATE_ROOT / "sessions.db")
+    os.environ["STUDYLOOP_CONFIG"] = str(_TEST_STATE_ROOT / "config.yaml")
+    os.environ[_SANDBOX_OWNER_ENV] = str(os.getpid())
 
-from agent_session_tools.migrations import migrate
+import pytest  # noqa: E402
+
+from agent_session_tools.migrations import migrate  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
