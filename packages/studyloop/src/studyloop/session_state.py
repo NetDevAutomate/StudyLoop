@@ -21,7 +21,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-SESSION_DIR = Path(os.environ.get("STUDYLOOP_SESSION_DIR", Path.home() / ".config" / "studyloop"))
+# ``or``, not a default argument: a set-but-empty STUDYLOOP_SESSION_DIR would
+# otherwise become ``Path("")``, the current directory. The status-line script
+# reads the same variable with ``${STUDYLOOP_SESSION_DIR:-...}``, which also
+# treats empty as unset; the two must resolve to the same file.
+SESSION_DIR = Path(os.environ.get("STUDYLOOP_SESSION_DIR") or Path.home() / ".config" / "studyloop")
 STATE_FILE = SESSION_DIR / "session-state.json"
 TOPICS_FILE = SESSION_DIR / "session-topics.md"
 PARKING_FILE = SESSION_DIR / "session-parking.md"

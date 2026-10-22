@@ -759,3 +759,59 @@ def test_try_claim_session_no_prior_claim_still_writes_exactly_the_reservation(
 
     assert result is None
     assert read_session_state() == reservation
+
+
+# ---------------------------------------------------------------------------
+# SESSION_DIR resolution: ``STUDYLOOP_SESSION_DIR`` is read once, at import.
+# ---------------------------------------------------------------------------
+
+
+def _session_dir_in_a_fresh_interpreter(home: Path, env_value: str | None) -> str:
+    """``str(session_state.SESSION_DIR)`` as a fresh interpreter resolves it.
+
+    The constant is bound at import time, so the only way to see what a
+    given environment yields is to import the module in a child process.
+    """
+    import subprocess
+    import sys
+
+    env = {k: v for k, v in os.environ.items() if k not in ("STUDYLOOP_SESSION_DIR", "HOME")}
+    env["HOME"] = str(home)
+    if env_value is not None:
+        env["STUDYLOOP_SESSION_DIR"] = env_value
+    result = subprocess.run(
+        [sys.executable, "-c", "import studyloop.session_state as s; print(s.SESSION_DIR)"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def test_session_dir_follows_studyloop_session_dir(tmp_path: Path) -> None:
+    custom = tmp_path / "custom session dir"
+
+    assert _session_dir_in_a_fresh_interpreter(tmp_path, str(custom)) == str(custom)
+
+
+def test_session_dir_unset_uses_the_default_under_home(tmp_path: Path) -> None:
+    assert _session_dir_in_a_fresh_interpreter(tmp_path, None) == str(
+        tmp_path / ".config" / "studyloop"
+    )
+
+
+def test_empty_studyloop_session_dir_is_treated_as_unset(tmp_path: Path) -> None:
+    """``STUDYLOOP_SESSION_DIR=`` (set, empty) must mean the default, not ``Path("")``.
+
+    ``os.environ.get(name, default)`` returns ``""`` for a set-but-empty
+    variable, and ``Path("")`` is the current directory: a session started
+    from a shell that exported the variable empty would write its state files
+    into whatever directory it happened to be in. The status-line script
+    already treats empty as unset (``${STUDYLOOP_SESSION_DIR:-...}``); the
+    Python side must agree or the two read different files.
+    """
+    assert _session_dir_in_a_fresh_interpreter(tmp_path, "") == str(
+        tmp_path / ".config" / "studyloop"
+    )
