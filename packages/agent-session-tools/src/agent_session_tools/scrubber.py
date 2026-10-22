@@ -31,6 +31,23 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
     "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36}\b"),
     "github_fine_grained": re.compile(r"\bgithub_pat_\w{82}\b"),
     "github_oauth": re.compile(r"\bgho_[0-9a-zA-Z]{36}\b"),
+    # GitHub App tokens: ghu_ (user-to-server) and ghs_ (installation, which
+    # includes Actions' GITHUB_TOKEN). A classic one is 36 alphanumerics after
+    # the prefix. Installation tokens are now stateless, ghs_<app id>_<JWT>:
+    # about 520 characters with two dots and "-"/"_" inside, and GitHub says
+    # the length varies. The match runs over the whole token (alphanumerics,
+    # "-", "_" and dot-joined segments) with no upper bound, so no tail is left
+    # behind (the F-AST-07 failure mode), and once it starts it never fails,
+    # so a long crafted run costs one pass. The lookahead keeps a short
+    # "ghs_..." word in prose out; a full stop after a token is not a segment.
+    # This entry sits before "jwt" so the JWT inside a stateless token is
+    # never matched on its own.
+    "github_app_token": re.compile(
+        r"\bgh[su]_(?=[A-Za-z0-9_.-]{36})[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*"
+    ),
+    # GitHub refresh tokens: 36 or more alphanumerics; GitHub documents no
+    # fixed length, so the body runs to the end of the token.
+    "github_refresh_token": re.compile(r"\bghr_[A-Za-z0-9]{36,}"),
     # OpenAI: sk-proj-/sk-svcacct-/sk-admin- plus 120-160 characters that can
     # include "-" and "_", or legacy sk- plus 48 alphanumerics with
     # "T3BlbkFJ" (base64 "OpenAI") at offset 20. Anthropic: sk-ant-api03- or
@@ -53,6 +70,16 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
     "gcp_api_key": re.compile(r"\bAIza[\w-]{35}\b"),
     "stripe_key": re.compile(r"\b(?:sk|rk)_(?:test|live|prod)_[a-zA-Z0-9]{10,99}\b"),
     "slack_bot_token": re.compile(r"\bxoxb-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b"),
+    # Slack user (xoxp-) and legacy workspace-app (xoxa-) OAuth tokens: a
+    # dash-separated run that starts with a digit (xoxp-<team>-<user>-<id>-
+    # <hex>, xoxa-2-...). The match takes the whole run, ending on its last
+    # alphanumeric; ten or more characters keep "xoxp-1234" in prose out.
+    "slack_user_token": re.compile(
+        r"\bxoxp-(?=\d[0-9A-Za-z-]{9})[0-9A-Za-z-]*[0-9A-Za-z]"
+    ),
+    "slack_workspace_token": re.compile(
+        r"\bxoxa-(?=\d[0-9A-Za-z-]{9})[0-9A-Za-z-]*[0-9A-Za-z]"
+    ),
     "generic_secret": re.compile(
         r"(?i)(?:password|secret|token|api_key|apikey|api-key)"
         r"\s*[=:]\s*['\"][^\s'\"]{8,}['\"]"
@@ -67,11 +94,24 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
 # character, so a span never crosses the end of the SQL or JSON string that
 # contains it, and it stops at "-----", so it never runs through the next
 # armour line.
-_PEM_LABEL = r"[ A-Z0-9_-]{0,100}PRIVATE KEY"
+_PEM_LABEL = r"[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?"
 _PEM_BODY_CHAR = re.compile(r"[A-Za-z0-9+/=,:\\ \t\r\n\f\v-]")
 _PEM_BODY = rf"(?:(?!-----){_PEM_BODY_CHAR.pattern})*+"
+# Armour headers: "Name: value" lines straight after the BEGIN line. An
+# armoured PGP private key ("... PGP PRIVATE KEY BLOCK" armour, RFC 4880 §6.2)
+# may carry Version:/Comment: headers whose values hold ".", "(", "@" and the
+# like, which are not body characters, so without this the whole-block match
+# failed on them and a block cut off before its END kept its body. A value
+# stops at a line break (real or written "\n"), a backslash, a quote or an
+# armour run of five dashes, so it never leaves its line or the SQL/JSON
+# string around it and never swallows an END line. PEM's own
+# Proc-Type:/DEK-Info: lines have the same shape.
+_ARMOUR_HEADERS = (
+    r"(?:(?:\r?\n|(?:\\r)?\\n)[A-Za-z][A-Za-z0-9-]*: (?:(?!-----)[^\r\n\\'\"])*+)*+"
+)
 _PEM_BLOCK = re.compile(
-    rf"-----BEGIN{_PEM_LABEL}-----{_PEM_BODY}-----END{_PEM_LABEL}-----"
+    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}{_PEM_BODY}"
+    rf"-----END{_PEM_LABEL}-----"
 )
 # A BEGIN line whose END line never arrived (output cut off mid-key): the
 # header plus the body that followed it on the next line -- or, for a key
@@ -81,7 +121,8 @@ _PEM_BLOCK = re.compile(
 # ("...PRIVATE KEY----- and nothing follows") is never treated as a body.
 _PEM_INLINE_BODY = r"(?=[A-Za-z0-9+/])[A-Za-z0-9+/=]*+"
 _PEM_HEAD = re.compile(
-    rf"-----BEGIN{_PEM_LABEL}-----(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"
+    rf"-----BEGIN{_PEM_LABEL}-----{_ARMOUR_HEADERS}"
+    rf"(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"
 )
 _PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
 
@@ -94,7 +135,7 @@ def _private_key_spans(text: str) -> list[tuple[int, int]]:
     line and the body before it. Truncated key material is still key
     material, so a cut-off block is redacted as far as it goes.
     """
-    if "PRIVATE KEY-----" not in text:
+    if "PRIVATE KEY-----" not in text and "PRIVATE KEY BLOCK-----" not in text:
         return []
     spans: list[tuple[int, int]] = []
     # Each claimed span is overwritten with NULs (same length, so offsets
