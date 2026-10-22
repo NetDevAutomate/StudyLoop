@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
 # Inline fixtures only (no conftest.py — pluggy conflict)
 
@@ -64,18 +66,6 @@ class TestAgentRegistry:
         assert AGENTS["opencode"].mcp_setup is not None
         assert AGENTS["claude"].mcp_setup is None
 
-    def test_get_adapter(self):
-        from studyloop.agent_launcher import get_adapter
-
-        adapter = get_adapter("claude")
-        assert adapter.name == "claude"
-
-    def test_get_adapter_unknown_raises(self):
-        from studyloop.agent_launcher import get_adapter
-
-        with pytest.raises(KeyError):
-            get_adapter("nonexistent")
-
 
 # ---------------------------------------------------------------------------
 # Agent detection
@@ -123,9 +113,8 @@ class TestDetectAgents:
     def test_detect_env_var_not_installed_returns_empty(self):
         from studyloop.agent_launcher import detect_agents
 
-        # The name must be a REGISTERED harness: detect_agents() only takes the
-        # env-override branch when STUDYLOOP_AGENT is in AGENTS, so an unknown
-        # name would fall through and pass for the wrong reason.
+        # A registered harness named by STUDYLOOP_AGENT but absent from PATH:
+        # explicit intent is honoured, nothing else is offered in its place.
         with (
             patch("studyloop.agent_launcher.shutil.which", return_value=None),
             patch.dict(os.environ, {"STUDYLOOP_AGENT": "grok"}),
@@ -133,19 +122,51 @@ class TestDetectAgents:
             agents = detect_agents()
             assert agents == []
 
-    def test_get_default_agent(self):
-        from studyloop.agent_launcher import get_default_agent
+    def test_detect_env_var_unknown_name_returns_empty_not_a_fallback(self):
+        """``STUDYLOOP_AGENT`` naming an unregistered harness yields nothing.
+
+        The launcher used to fall through to ordinary detection here and launch
+        whatever it found, silently ignoring a typo'd explicit choice. The
+        registry's contract (pinned in ``test_adapter_registry.py``) returns
+        ``[]`` so the caller reports the miss; the launcher now has one body
+        with it.
+        """
+        from studyloop.agent_launcher import detect_agents
+
+        with (
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch.dict(os.environ, {"STUDYLOOP_AGENT": "no-such-harness"}),
+        ):
+            assert detect_agents() == []
+
+    def test_detects_a_harness_added_to_the_registry_after_import(self, monkeypatch):
+        """A harness that enters the adapters registry is detected by the
+        launcher without a second list.
+
+        The launcher's ``AGENTS`` is the dict the registry handed it at import.
+        A registry rebuild (``reset_registry()`` + first access, which is how a
+        custom adapter module appears) produces a NEW dict; a ``detect_agents``
+        that walks the import-time snapshot never sees the newcomer.
+        """
+        from studyloop.adapters import registry
+        from studyloop.adapters._protocol import AgentAdapter
+        from studyloop.agent_launcher import detect_agents
+
+        fake = AgentAdapter(
+            name="fakeharness",
+            binary="fakeharness-bin",
+            setup=lambda c, d: d / "p",
+            launch_cmd=lambda p, r: "fakeharness",
+        )
+        rebuilt = {**registry.get_all_adapters(), "fakeharness": fake}
+        monkeypatch.setattr(registry, "_registry", rebuilt)
+        monkeypatch.delenv("STUDYLOOP_AGENT", raising=False)
 
         with patch("studyloop.agent_launcher.shutil.which") as mock_which:
-            mock_which.side_effect = lambda b: "/usr/local/bin/claude" if b == "claude" else None
-            assert get_default_agent() == "claude"
-
-    def test_get_default_agent_none_available(self):
-        from studyloop.agent_launcher import get_default_agent
-
-        with patch("studyloop.agent_launcher.shutil.which") as mock_which:
-            mock_which.return_value = None
-            assert get_default_agent() is None
+            mock_which.side_effect = lambda b: (
+                "/opt/bin/fakeharness-bin" if b == "fakeharness-bin" else None
+            )
+            assert detect_agents() == ["fakeharness"]
 
 
 # ---------------------------------------------------------------------------
@@ -222,93 +243,6 @@ class TestBuildCanonicalPersona:
 
 
 # ---------------------------------------------------------------------------
-# Backward-compatible wrappers
-# ---------------------------------------------------------------------------
-
-
-class TestBuildPersonaFile:
-    def test_creates_temp_file(self):
-        from studyloop.agent_launcher import build_persona_file
-
-        path = build_persona_file("study", "Python Decorators", 7)
-        try:
-            assert path.exists()
-            assert path.suffix == ".md"
-            content = path.read_text()
-            assert "Python Decorators" in content
-            assert "7/10" in content
-            assert "study" in content.lower()
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_file_permissions_0600(self):
-        from studyloop.agent_launcher import build_persona_file
-
-        path = build_persona_file("study", "Test Topic", 5)
-        try:
-            mode = oct(os.stat(path).st_mode & 0o777)
-            assert mode == "0o600"
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_co_study_persona(self):
-        from studyloop.agent_launcher import build_persona_file
-
-        path = build_persona_file("co-study", "Spark Internals", 3)
-        try:
-            content = path.read_text()
-            assert "co-study" in content.lower() or "companion" in content.lower()
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_uses_persona_file_when_available(self, tmp_path):
-        from studyloop.agent_launcher import build_persona_file
-
-        # Create a test persona file
-        persona_content = "# Test Persona\nThis is a test."
-        with (
-            patch.object(Path, "exists", return_value=True),
-            patch.object(Path, "read_text", return_value=persona_content),
-        ):
-            path = build_persona_file("study", "Test", 5)
-            try:
-                content = path.read_text()
-                assert "Test Persona" in content
-            finally:
-                path.unlink(missing_ok=True)
-
-
-class TestGetLaunchCommand:
-    def test_claude_command(self, tmp_path):
-        from studyloop.agent_launcher import get_launch_command
-
-        persona = tmp_path / "persona.md"
-        persona.touch()
-
-        cmd = get_launch_command("claude", persona)
-        assert "claude" in cmd
-        assert "--append-system-prompt-file" in cmd
-        assert str(persona) in cmd
-
-    def test_claude_resume_command(self, tmp_path):
-        from studyloop.agent_launcher import get_launch_command
-
-        persona = tmp_path / "persona.md"
-        persona.touch()
-
-        cmd = get_launch_command("claude", persona, resume=True)
-        assert "-r" in cmd
-        assert "--append-system-prompt-file" in cmd
-
-    def test_unknown_agent_raises(self, tmp_path):
-        from studyloop.agent_launcher import get_launch_command
-
-        persona = tmp_path / "persona.md"
-        with pytest.raises(KeyError):
-            get_launch_command("unknown-agent", persona)
-
-
-# ---------------------------------------------------------------------------
 # Claude adapter functions directly
 # ---------------------------------------------------------------------------
 
@@ -342,89 +276,14 @@ class TestClaudeAdapter:
 
 
 # ---------------------------------------------------------------------------
-# Kiro adapter
+# Kiro adapter — the compat re-export of the launch builder only. Setup and
+# teardown (persona file, agent JSON swap, backup, stale-backup recovery) are
+# covered against the one body in test_adapter_builtins.py::TestKiroAdapter;
+# the launcher's wrappers that this file used to pin were test-only and gone.
 # ---------------------------------------------------------------------------
 
 
 class TestKiroAdapter:
-    def test_setup_writes_persona_temp_file(self, tmp_path, monkeypatch):
-        from studyloop.agent_launcher import _kiro_setup
-
-        # Redirect Kiro agents dir to tmp_path
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        path = _kiro_setup("# Kiro Test", tmp_path)
-        try:
-            assert path.exists()
-            assert path.read_text() == "# Kiro Test"
-        finally:
-            path.unlink(missing_ok=True)
-
-    def test_setup_writes_agent_json(self, tmp_path, monkeypatch):
-        import json
-
-        from studyloop.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        persona_path = _kiro_setup("# Test Content", tmp_path)
-        try:
-            agent_json = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-            assert agent_json.exists()
-            data = json.loads(agent_json.read_text())
-            assert data["prompt"] == f"file://{persona_path}"
-            assert data["name"] == KIRO_AGENT_NAME
-        finally:
-            persona_path.unlink(missing_ok=True)
-
-    def test_setup_creates_backup(self, tmp_path, monkeypatch):
-        from studyloop.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        # Pre-existing agent JSON
-        existing = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        existing.write_text('{"name": "study-mentor", "prompt": "original"}')
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        persona_path = _kiro_setup("# New Content", tmp_path)
-        try:
-            backup = fake_kiro / f"{KIRO_AGENT_NAME}.json.studyloop-backup"
-            assert backup.exists()
-            assert '"original"' in backup.read_text()
-        finally:
-            persona_path.unlink(missing_ok=True)
-
-    def test_teardown_restores_backup(self, tmp_path, monkeypatch):
-        from studyloop.agent_launcher import KIRO_AGENT_NAME, _kiro_teardown
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        target.write_text('{"prompt": "file:///tmp/studyloop-kiro-persona-x.md"}')
-        backup = target.with_suffix(target.suffix + ".studyloop-backup")
-        backup.write_text('{"prompt": "original"}')
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        _kiro_teardown(tmp_path)
-
-        assert target.read_text() == '{"prompt": "original"}'
-        assert not backup.exists()
-
-    def test_teardown_noop_without_backup(self, tmp_path, monkeypatch):
-        from studyloop.agent_launcher import _kiro_teardown
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        # Should not raise
-        _kiro_teardown(tmp_path)
-
     def test_launch_new_session(self):
         from studyloop.agent_launcher import _kiro_launch
 
@@ -440,84 +299,6 @@ class TestKiroAdapter:
         cmd = _kiro_launch(Path("/tmp/persona.md"), resume=True)
         assert "--resume" in cmd
         assert "study-mentor" in cmd
-
-    def test_setup_recovers_stale_backup(self, tmp_path, monkeypatch):
-        """Stale backup from a crash is restored before new setup proceeds."""
-        import json
-
-        from studyloop.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        # Simulate crash: backup exists but target was overwritten by studyloop
-        target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        target.write_text('{"prompt": "file:///tmp/studyloop-kiro-persona-x.md"}')
-        backup = target.with_suffix(target.suffix + ".studyloop-backup")
-        backup.write_text('{"prompt": "user-original"}')
-
-        # Run setup — should recover the backup first, then proceed normally
-        persona_path = _kiro_setup("# New Session", tmp_path)
-        try:
-            # The new agent JSON should have the new session's persona
-            data = json.loads(target.read_text())
-            assert "file://" in data["prompt"]
-
-            # A NEW backup should exist — of the RESTORED original, not the stale studyloop one
-            assert backup.exists()
-            restored = json.loads(backup.read_text())
-            assert restored["prompt"] == "user-original"
-        finally:
-            persona_path.unlink(missing_ok=True)
-
-    def test_setup_no_stale_backup_proceeds_normally(self, tmp_path, monkeypatch):
-        """Normal setup works when no stale backup exists."""
-        import json
-
-        from studyloop.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
-
-        fake_kiro = tmp_path / ".kiro" / "agents"
-        fake_kiro.mkdir(parents=True)
-        monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
-
-        persona_path = _kiro_setup("# Fresh Session", tmp_path)
-        try:
-            target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-            assert target.exists()
-            data = json.loads(target.read_text())
-            assert "file://" in data["prompt"]
-            # No backup should exist (no pre-existing file to back up)
-            backup = target.with_suffix(target.suffix + ".studyloop-backup")
-            assert not backup.exists()
-        finally:
-            persona_path.unlink(missing_ok=True)
-
-
-# ---------------------------------------------------------------------------
-# _mcp_command() helper
-# ---------------------------------------------------------------------------
-
-
-class TestMcpCommand:
-    """Tests for the shared _mcp_command() helper."""
-
-    def test_uses_installed_binary_when_available(self):
-        from studyloop.agent_launcher import _mcp_command
-
-        fake = "/usr/local/bin/studyloop-mcp"
-        with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
-            cmd = _mcp_command()
-            assert cmd == [fake]
-
-    def test_falls_back_to_uv_run_in_dev(self):
-        from studyloop.agent_launcher import _mcp_command
-
-        with patch("studyloop.agent_launcher.shutil.which", return_value=None):
-            cmd = _mcp_command()
-            assert cmd[0] == "uv"
-            assert "run" in cmd
-            assert "studyloop-mcp" in cmd
 
 
 class TestCodexAdapter:
@@ -597,26 +378,6 @@ class TestOpenCodeAdapter:
 
         path = _opencode_setup("# test", tmp_path)
         assert ".opencode/agents/study-mentor.md" in str(path)
-
-    def test_mcp_writes_opencode_json_with_correct_schema(self, tmp_path):
-        import json
-
-        from studyloop.agent_launcher import _opencode_mcp
-
-        fake = "/usr/local/bin/studyloop-mcp"
-        with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
-            _opencode_mcp(tmp_path)
-        config_path = tmp_path / ".opencode" / "opencode.json"
-        assert config_path.exists()
-        data = json.loads(config_path.read_text())
-
-        mcp = data["mcp"]["studyloop-mcp"]
-        assert isinstance(mcp["command"], list), "OpenCode command must be array"
-        assert mcp["command"] == ["/usr/local/bin/studyloop-mcp"]
-        assert mcp["enabled"] is True
-        assert mcp["type"] == "local"
-        assert "environment" not in mcp  # removed unnecessary key
-        assert "env" not in mcp
 
     def test_launch_new_session(self):
         from studyloop.agent_launcher import _opencode_launch

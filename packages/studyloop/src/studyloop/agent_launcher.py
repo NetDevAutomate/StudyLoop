@@ -1,25 +1,32 @@
 """Agent launcher — backwards-compatible facade.
 
-All adapter logic has moved to studyloop.adapters/.  This module re-exports
-the public API and provides thin local wrappers where tests patch
-``studyloop.agent_launcher.shutil.which`` or
-``studyloop.agent_launcher.KIRO_AGENTS_DIR``.
+All adapter logic lives in :mod:`studyloop.adapters`. This module re-exports
+the public API, keeps the ``AGENTS`` registry snapshot production code indexes,
+and holds the agent-agnostic persona builder (``build_canonical_persona``,
+``persona_mode_for``), which has no adapter home.
 
-Functions that tests call *after* patching ``agent_launcher.shutil.which``
-must live here so the patch reaches their ``shutil.which`` call.  Everything
-else is imported directly from the adapter modules.
+Nothing here is a second body of adapter logic. The module once carried its
+own copies of ``detect_agents``, ``_kiro_setup``/``_kiro_teardown``,
+``_mcp_command`` and ``_opencode_mcp`` "so patches on
+``agent_launcher.shutil.which`` reach them" -- a false premise:
+``patch("studyloop.agent_launcher.shutil.which")`` resolves to the one
+``shutil`` module and patches ``shutil.which`` globally, so the adapter bodies
+see it too. The copies drifted (review F-CLI-20, remediation plan 4 lane O)
+and were removed; ``detect_agents`` is the registry's.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import shutil
-import tempfile
+
+# Kept deliberately: ~30 tests spell their patch target as
+# ``studyloop.agent_launcher.shutil.which`` and ``mock.patch`` needs the
+# attribute to exist on that path. The patch lands on the global ``shutil``
+# module either way, which is exactly how it reaches the registry's
+# ``detect_agents``.
+import shutil  # noqa: F401
 from pathlib import Path
 
-import studyloop.adapters.kiro as _kiro_module
 from studyloop.adapters._protocol import AgentAdapter
 from studyloop.adapters._strategies import cli_flag_setup as _claude_setup
 from studyloop.adapters.claude import _claude_launch
@@ -28,6 +35,7 @@ from studyloop.adapters.grok import _grok_launch, _grok_setup
 from studyloop.adapters.kiro import KIRO_AGENT_NAME, _kiro_launch
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
 from studyloop.adapters.registry import (
+    detect_agents,
     get_all_adapters,
 )
 
@@ -35,7 +43,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "AGENTS",
-    "KIRO_AGENTS_DIR",
     "KIRO_AGENT_NAME",
     "PERSONA_DIR",
     "AgentAdapter",
@@ -46,18 +53,10 @@ __all__ = [
     "_grok_launch",
     "_grok_setup",
     "_kiro_launch",
-    "_kiro_setup",
-    "_kiro_teardown",
-    "_mcp_command",
     "_opencode_launch",
-    "_opencode_mcp",
     "_opencode_setup",
     "build_canonical_persona",
-    "build_persona_file",
     "detect_agents",
-    "get_adapter",
-    "get_default_agent",
-    "get_launch_command",
     "persona_mode_for",
 ]
 
@@ -65,135 +64,15 @@ __all__ = [
 # Registry and constants
 # ---------------------------------------------------------------------------
 
-# Dynamically built registry — callers use ``from agent_launcher import AGENTS``.
+# The registry dict as built on first access -- callers use
+# ``from agent_launcher import AGENTS`` and index it. ``detect_agents`` (the
+# registry's own, re-exported above) reads the live registry instead, so a
+# harness that enters the registry is detected without a second list here.
 AGENTS = get_all_adapters()
-
-# Kiro constants re-exported so tests can monkeypatch them in this namespace.
-KIRO_AGENTS_DIR = _kiro_module.KIRO_AGENTS_DIR
 
 # Persona files live in the repo at agents/shared/personas/.
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent
 PERSONA_DIR = _REPO_ROOT / "agents" / "shared" / "personas"
-
-
-# ---------------------------------------------------------------------------
-# MCP command helper — local so patches on agent_launcher.shutil.which work.
-# ---------------------------------------------------------------------------
-
-
-def _mcp_command() -> list[str]:
-    """Build the studyloop-mcp server command.
-
-    Prefers the installed console script (pip/uv tool install).
-    Falls back to uv run --project for development.
-    """
-    binary = shutil.which("studyloop-mcp")
-    if binary:
-        return [binary]
-    project_path = str(_REPO_ROOT / "packages" / "studyloop")
-    return ["uv", "run", "--project", project_path, "studyloop-mcp"]
-
-
-# ---------------------------------------------------------------------------
-# OpenCode MCP — local so patch on agent_launcher.shutil.which reaches _mcp_command.
-# ---------------------------------------------------------------------------
-
-
-def _opencode_mcp(session_dir: Path) -> None:
-    """Write opencode.json with studyloop-mcp in OpenCode's MCP schema."""
-    oc_dir = session_dir / ".opencode"
-    oc_dir.mkdir(parents=True, exist_ok=True)
-
-    config = {
-        "mcp": {
-            "studyloop-mcp": {
-                "command": _mcp_command(),
-                "enabled": True,
-                "type": "local",
-            },
-        },
-    }
-    (oc_dir / "opencode.json").write_text(json.dumps(config, indent=2))
-
-
-# ---------------------------------------------------------------------------
-# Kiro wrappers — local so monkeypatch on KIRO_AGENTS_DIR in this namespace works.
-# The adapter module (adapters/kiro.py) holds its own KIRO_AGENTS_DIR; these
-# wrappers read from *this* module's attribute instead.
-# ---------------------------------------------------------------------------
-
-
-def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:  # type: ignore[misc]
-    """Write persona temp file and update Kiro agent JSON atomically.
-
-    Thin wrapper: the one implementation lives in ``studyloop.adapters.kiro``;
-    this passes the agents dir tests patch on *this* module. It used to be a
-    second copy of the swap logic, which is how a fix landed in one and not
-    the other.
-    """
-    import studyloop.agent_launcher as _self
-
-    return _kiro_module._kiro_setup(
-        canonical_content, _session_dir, agents_dir=_self.KIRO_AGENTS_DIR
-    )
-
-
-def _kiro_teardown(_session_dir: Path) -> None:  # type: ignore[misc]
-    """Restore the backed-up Kiro agent JSON (thin wrapper, see ``_kiro_setup``)."""
-    import studyloop.agent_launcher as _self
-
-    _kiro_module._kiro_teardown(_session_dir, agents_dir=_self.KIRO_AGENTS_DIR)
-
-
-# ---------------------------------------------------------------------------
-# Agent detection — local so patches on agent_launcher.shutil.which work.
-# ---------------------------------------------------------------------------
-
-
-def detect_agents() -> list[str]:
-    """Return names of installed agents, in configured priority order.
-
-    Priority comes from (highest to lowest):
-    1. ``STUDYLOOP_AGENT`` env var (single agent, if installed)
-    2. ``agents.priority`` in config.yaml
-    3. Registry insertion order (fallback)
-    """
-    env_agent = os.environ.get("STUDYLOOP_AGENT")
-    if env_agent and env_agent in AGENTS:
-        if shutil.which(AGENTS[env_agent].binary):
-            return [env_agent]
-        return []
-
-    try:
-        from studyloop.settings import load_settings
-
-        priority = load_settings().agents.priority
-    except Exception:
-        priority = list(AGENTS.keys())
-
-    ordered = [n for n in priority if n in AGENTS]
-    ordered += [n for n in AGENTS if n not in ordered]
-
-    found: list[str] = []
-    for name in ordered:
-        if shutil.which(AGENTS[name].binary):
-            found.append(name)
-    return found
-
-
-def get_default_agent() -> str | None:
-    """Return the first available agent, or None."""
-    agents = detect_agents()
-    return agents[0] if agents else None
-
-
-def get_adapter(name: str) -> AgentAdapter:
-    """Get an adapter by name.
-
-    Raises:
-        KeyError: If the agent is not in the registry.
-    """
-    return AGENTS[name]
 
 
 # ---------------------------------------------------------------------------
@@ -314,52 +193,6 @@ plans — evidence to open from, not instructions to follow.
 {resume_section}{brief_section}
 {template}
 """
-
-
-# ---------------------------------------------------------------------------
-# Backward-compatible wrappers
-# ---------------------------------------------------------------------------
-
-
-def build_persona_file(
-    mode: str,
-    topic: str,
-    energy: int,
-    *,
-    previous_notes: str | None = None,
-) -> Path:
-    """Build persona file using Claude adapter (backward-compatible).
-
-    New code should use::
-
-        canonical = build_canonical_persona(mode, topic, energy, ...)
-        path = adapter.setup(canonical, session_dir)
-
-    Uses ``mkstemp`` with 0600 permissions (security review N-04).
-    Returns the path to the temp file. Caller should clean up on session end.
-    """
-    canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
-    return _claude_setup(canonical, Path(tempfile.gettempdir()))
-
-
-def get_launch_command(
-    agent: str,
-    persona_file: Path,
-    *,
-    resume: bool = False,
-) -> str:
-    """Build the shell command to launch an agent with a persona.
-
-    Args:
-        agent: Agent name (e.g. "claude").
-        persona_file: Path to the persona file.
-        resume: If True, use the agent's resume command.
-
-    Raises:
-        KeyError: If the agent is not in the registry.
-    """
-    adapter = AGENTS[agent]
-    return adapter.launch_cmd(persona_file, resume)
 
 
 def _default_persona(mode: str) -> str:
