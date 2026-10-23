@@ -104,14 +104,17 @@ def _dependent_tables(conn):
     table added by a later migration -- or by the learner -- is covered
     without a list to keep in step.
     """
-    parents = {*records.TABLES, *_PURGED_TABLES}
+    parents = {name.lower() for name in (*records.TABLES, *_PURGED_TABLES)}
     dependents = []
     for (table,) in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
     ):
         quoted = '"' + table.replace('"', '""') + '"'
+        # ``foreign_key_list`` reports the parent as written in the FK clause,
+        # and SQLite identifiers are case-insensitive: compare them that way
+        # (council pass 6 -- ``REFERENCES SESSIONS(id)`` was missed before).
         if any(
-            row[2] in parents
+            str(row[2]).lower() in parents
             for row in conn.execute(f"PRAGMA foreign_key_list({quoted})")
         ):
             dependents.append(table)

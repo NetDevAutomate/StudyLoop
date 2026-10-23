@@ -186,6 +186,30 @@ class TestPreExistingOrphansDoNotStrandTheLearner:
 
 
 class TestAnOrphanThePurgeWouldCreateIsStillRefused:
+    def test_a_dependent_declared_with_the_parent_in_another_case_is_still_in_scope(
+        self, tmp_path
+    ):
+        """SQLite identifiers are case-insensitive and ``PRAGMA foreign_key_list``
+        reports the parent as written in the FK clause, so ``REFERENCES
+        SESSIONS(id)`` named a parent the scoped check compared case-sensitively
+        and missed (council pass 6). The dependent set must include it."""
+        from agent_session_tools.context.lifecycle import _dependent_tables
+
+        path = _db(tmp_path)
+        _plant(
+            path,
+            _session("held")
+            + [
+                "CREATE TABLE shouty_ref(session_id TEXT NOT NULL REFERENCES SESSIONS(id))",
+                "INSERT INTO shouty_ref VALUES('held')",
+            ],
+        )
+        conn = sqlite3.connect(path)
+        try:
+            assert "shouty_ref" in _dependent_tables(conn)
+        finally:
+            conn.close()
+
     def test_a_dependent_the_schema_does_not_cascade_names_its_table(self, tmp_path):
         """SQLite's own refusal, re-raised as the same type (the replication
         withdrawal path rolls back on IntegrityError) with the table named."""
