@@ -351,3 +351,58 @@ studyloop doctor --category database
 If the database check fails, fix that first. If it passes but the Generate
 panel's **Topic I'm struggling on** list is empty, confirm that the relevant
 struggle is inside the selected window and has `confidence='struggling'`.
+
+## `session-maint sync-full` Refuses
+
+`sync-full` keeps `database.full_db_path` as a one-way mirror of the everyday database (see
+[Setup Guide](setup-guide.md#database-too-large)). When it cannot do that safely it prints `❌`, a
+reason code and the fix, and copies no session into the full database. The background sync that
+runs after exports prints nothing, so run it by hand to see the reason:
+
+```bash
+session-maint sync-full
+```
+
+Each reason, and what to do:
+
+- **`unbound_full`** — the full database already holds sessions but was never bound to this
+  everyday database: an older StudyLoop's `sync-full` made it, or it is a copy, or another
+  machine's. Keep that file (it may hold sessions that are nowhere else), point
+  `database.full_db_path` at a new file, and run `sync-full` again; the first run binds the new
+  file. Adopting an existing full database is not supported yet.
+- **`instance_mismatch`** — the full database is bound to a different everyday database: another
+  machine's, or this machine's before it was rebuilt (`session-maint compact` gives the rebuilt
+  file a new identity). Same fix: keep the old file, point `database.full_db_path` at a new one.
+  Rebinding is not supported yet.
+- **`peer_ledger_present`** — this everyday database has replicated with a peer through
+  `session-sync`, so it is not a single-writer database and is not mirrored by SQL. There is no
+  fix in this release; its sessions stay in the everyday database (`session-maint vacuum` reclaims
+  space).
+- **`full_store_unavailable`** — the full database could not be opened as a file: the volume was
+  unmounted, or the path names something that is not a database file. Mount the volume or correct
+  `database.full_db_path`, then run `sync-full` again.
+- **`managed_store_busy_or_unavailable`** — another program held one of the two databases while
+  deletions were being reconciled. Wait, or stop what else is using them (the web app, an MCP
+  server, another sync), then run again.
+- **`controls_unstable`** or **`controls_changed`** — a deletion or forget changed while
+  `sync-full` was reconciling deletions or about to copy. Run again; if it repeats, stop other
+  StudyLoop processes first.
+- **`immutable_collision`**, naming a table and a key — the full database holds a record under the
+  same key with different content. Captured memory is never overwritten, so the copy stops. Do not
+  edit either database: keep both files and report the table and key. Pointing
+  `database.full_db_path` at a new file starts a fresh mirror in the meantime.
+- **`noncanonical_override`** — `--db` names a database other than the configured
+  `database.path`; the mirror belongs to the configured everyday database only. Run without `--db`.
+- **`unclassified tier table: <name>`** — the everyday database has a memory table this version of
+  StudyLoop does not know how to mirror, usually because a newer StudyLoop wrote it. Run the
+  current StudyLoop on this machine, then `sync-full` again. `prune` refuses the same way.
+- **The two databases are on different schema versions**, or the everyday one is behind. Upgrade
+  StudyLoop, run `session-export` once (it migrates the everyday database), then `sync-full`.
+- **`Legacy SQL sync cannot transfer scoped or source-grounded memory`** — the configuration
+  scopes memory (`memory.sync`, `memory.projects`, or a `memory.default_scope` other than
+  `unclassified`). Scoped memory moves only through the structured replication protocol, so
+  `sync-full` is not available with that configuration and sessions stay in the everyday database.
+
+`session-maint prune` reporting every old session as skipped (not in the full database) means the
+full database is behind: something was captured after the last `sync-full`. Run `sync-full`, fix
+any refusal above, then `prune` again.

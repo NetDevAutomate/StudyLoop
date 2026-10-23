@@ -116,6 +116,11 @@ experience may change before `1.0.0`.
 
 ### Changed
 
+- `session-maint sync-full` keeps `database.full_db_path` as a one-way mirror of the everyday
+  database, bound to it on the first run, and copies whole sessions together with the memory
+  captured from them (never this machine's own replication, access or policy state), so
+  `session-maint prune` can remove verified old sessions from a current database; a repeat run
+  copies nothing, and when the copy cannot be made safely it prints a reason code and the fix.
 - `studyloop study` and both web start doors now say `STUDYLOOP_AGENT=<value> is not a known
   harness (known: …)` when the variable names an unregistered harness, instead of the generic
   "No AI agent found"; the unset case is unchanged.
@@ -177,13 +182,13 @@ experience may change before `1.0.0`.
   separate file that nothing in StudyLoop reads. The supported way to move old
   sessions out of the everyday database is `session-maint sync-full` and then
   `session-maint prune` (both need `database.full_db_path`). That is not a
-  drop-in replacement: it copies whole sessions into the full database, removes
-  from the everyday one only the sessions it has verified there, and keeps any
-  session that holds learner records. Today `sync-full` refuses a database that
-  holds exported evidence — on the current schema, every database with an
-  exported session — because it would leave that evidence behind, so `archive`
-  is not removed until `sync-full` works on the current schema. Until then
-  `archive` prints this notice and otherwise behaves as before.
+  drop-in replacement: `sync-full` mirrors whole sessions, with the memory
+  captured from them, into the full database, and `prune` removes from the
+  everyday one only the sessions it has verified there and keeps any session
+  that holds learner records. `archive` stays available until `sync-full`
+  carries the whole context tier; its removal is planned for the release after
+  the one in which it does. Until then `archive` prints this notice and
+  otherwise behaves as before.
 
 ### Fixed
 
@@ -208,10 +213,11 @@ experience may change before `1.0.0`.
   personas said this three different ways (the mandate and two definitions ordered a manual export
   at every wrap-up). The personas also cite the shared protocol files where they are installed
   (`~/.agents/shared/`), falling back to the checkout when the hub is absent.
-- `session-maint sync-full`: the legacy-sync refusal now names the `context_*` table(s) that
-  triggered it ("Protected rows found in: context_evidence."), so a learner can tell captured
-  evidence from a deletion marker or a parked-topic board layout. The protected set is unchanged:
-  every current-schema export writes evidence rows the legacy copier would drop.
+- The legacy-sync refusal (`session-sync` to a peer without the structured protocol, and the
+  `studyloop focus` data movement) now names the `context_*` table(s) that triggered it
+  ("Protected rows found in: context_evidence."), so a learner can tell captured evidence from a
+  deletion marker or a parked-topic board layout. The protected set is unchanged: every
+  current-schema export writes evidence rows the legacy copier would drop.
 - Scrubber: a private key cut off at the front and flattened onto one line (`<b64> <b64> -----END …
   PRIVATE KEY-----`, with or without a PGP `=XXXX` checksum, glued or spaced) is redacted whole;
   only the END armour used to go.

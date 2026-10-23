@@ -9,7 +9,7 @@ local database growing forever.
 graph TB
     subgraph "Every machine (macOS / Ubuntu / WSL2)"
         HARNESS[Code harnesses + studyloop sessions] -->|"1. write (always local, never fails)"| HOT["HOT: ~/.config/studyloop/sessions.db<br/>working set · all operational reads<br/>prunable to N days"]
-        HOT -->|"2. store-and-forward sync<br/>background, content-hash diff"| FULL["FULL: database.full_db_path<br/>the record · normally append-only"]
+        HOT -->|"2. one-way mirror sync<br/>background, bound to this hot DB"| FULL["FULL: database.full_db_path<br/>the record · single-writer mirror"]
         FULL -->|"3. auto-snapshot + retention"| SNAP["snapshot_dir"]
         SEARCH["session-query search-cmd"] -->|always| HOT
         SEARCH -.->|"4. federated: ATTACH read-only<br/>when mounted, tag [full]"| FULL
@@ -20,7 +20,7 @@ graph TB
 | Tier | Path | Role |
 |------|------|------|
 | **Hot** | `database.path` (always local) | Spool + working set. Every exporter writes here unconditionally. All operational reads (`struggles`, `resume`, `now`, web, MCP). Prunable. |
-| **Full** | `database.full_db_path` (e.g. external volume) | The record. Complete history, maintained by the background content-hash sync. Read opportunistically by federated search; verification anchor for prune. |
+| **Full** | `database.full_db_path` (e.g. external volume) | The record. Complete history, kept by the background `sync-full` as a single-writer mirror of this machine's hot DB: bound to it on the first sync, it receives whole sessions and the memory captured from them, never the hot DB's own replication, access or policy state. Read opportunistically by federated search; verification anchor for prune. |
 | **Snapshots** | `database.snapshot_dir` | Point-in-time `VACUUM INTO` copies of the full DB, auto-created every `snapshot_interval_days` after a sync, rotated to `snapshot_retention`. Protect the record from corruption that sync would faithfully propagate. |
 
 The full DB is **per-machine**. Cross-machine consolidation is
@@ -57,7 +57,7 @@ behaves as a single local DB.
 ## Key operations
 
 ```bash
-session-maint sync-full         # incremental hot -> full (idempotent, locked)
+session-maint sync-full         # mirror hot -> full (idempotent, locked; a refusal prints a reason code and the fix)
 session-maint snapshot          # manual point-in-time snapshot of the full DB
 session-maint fts-check --fix   # check/repair the FTS index invariant
 session-maint compact SRC DEST  # rescue a bloated DB into a clean one
@@ -73,11 +73,12 @@ session-sync sync HOST --tier full    # consolidate records across machines
 
 1. **Writes never depend on a mount.** Exports land in the hot DB
    unconditionally; sync forwards to the record when the volume is there.
-   The diff is stateless (content-hash), so a week offline is caught up by
+   The copy compares rows, not timestamps, so a week offline is caught up by
    the first sync after remount.
 2. **Prune is mechanically unable to lose data.** A session is deleted
    only when the full DB holds the same id with a matching content hash
-   and at least as many messages. Full DB unreachable → prune refuses.
+   and every one of its messages, and holds everything else `sync-full`
+   copies from hot. Full DB unreachable → prune refuses.
 3. **Learning tables are never pruned.** Tables with no link to a
    conversation (`study_progress`, `concepts`, `card_reviews`, ...) are never
    touched. Tables that do link to one — `study_sessions`,
@@ -103,6 +104,7 @@ session-sync sync HOST --tier full    # consolidate records across machines
 | Volume unmounted at prune/refocus | Refuses / defers (`focus apply` retries) |
 | Sync crash mid-run | Single transaction; rollback; next run redoes the same diff |
 | Concurrent triggers | Lockfile serialises; losers skip |
+| Full DB populated but never bound, or bound to another hot DB | `sync-full` refuses (`unbound_full` / `instance_mismatch`) and copies nothing; point `full_db_path` at a new file and keep the old one |
 | Full DB corrupted | Restore newest snapshot, re-run `sync-full` |
 
 ## Restore procedures

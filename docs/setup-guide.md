@@ -1057,14 +1057,50 @@ export STUDYLOOP_CONFIG=/path/to/your/config.yaml
 ```bash
 session-maint vacuum             # Reclaim space
 session-query stats-cmd          # Check current size
-session-maint sync-full          # Copy whole sessions into the full database (needs database.full_db_path)
+session-maint sync-full          # Mirror whole sessions into the full database (needs database.full_db_path)
 session-maint prune --days 30    # Preview what sync-full has verified there; add --no-dry-run to remove it
 ```
 
-`prune` removes from the everyday database only the sessions `sync-full` has verified in the full
-database, and keeps any session that owns learner records. Today `sync-full` refuses a database that
-holds exported evidence — on the current schema that is every database with an exported session,
-because `sync-full` copies sessions, messages and file references only and would leave the
-evidence behind — so neither command moves anything yet. `session-maint archive` is deprecated (it
-copies sessions and messages only, into a file nothing in StudyLoop reads) but stays available until
-`sync-full` works on the current schema.
+To move old sessions out of the everyday database, point `database.full_db_path` at a second
+database file, usually on a larger or external disk:
+
+```yaml
+database:
+  full_db_path: /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db
+```
+
+`sync-full` keeps that file as a one-way mirror of the everyday database:
+
+- **Before it runs.** `database.full_db_path` is set and names a different file from the everyday
+  database, the everyday database is on the current schema, and it has never replicated with a
+  peer (it holds no peer-replication history). A configuration that scopes memory (`memory.sync`,
+  `memory.projects`, or a `memory.default_scope` other than `unclassified`) is refused as before:
+  scoped memory moves only through the structured replication protocol.
+- **Binding.** The first `sync-full` into an empty or missing full database binds it to this
+  everyday database, and from then on it accepts only this one. A full database that already holds
+  sessions but was never bound (made by an older StudyLoop, copied, or another machine's) is
+  refused, and so is one bound to a different everyday database. Point `database.full_db_path` at a
+  new file rather than reusing one, and keep the old file: it may hold sessions that are no longer
+  anywhere else.
+- **What it copies.** Whole sessions with their messages and file references, and the memory
+  captured from them (evidence, assertions, observations and the links between them). Deletions
+  and permanent forgets reach the full database first, so a forgotten session is never brought
+  back. Captured memory is never overwritten: if the full database holds a different version of the
+  same record, `sync-full` refuses instead.
+- **What it never copies.** This machine's own state — access generations, replication receipts and
+  peer history, policy and lifecycle mode, capture runs, retention origins, quarantine. The full
+  database's search index follows the rows it receives; embeddings are not copied.
+- **Repeated runs.** A run with nothing new copies nothing. With `database.full_db_path` set,
+  StudyLoop also starts a quiet `sync-full` in the background after exports and study-session
+  starts (`database.sync_mode`); it prints nothing, so run `session-maint sync-full` by hand to see
+  why it refused.
+- **A refusal** prints `❌`, a reason code and the fix, and copies no session into the full
+  database. Each reason is explained in
+  [Troubleshooting](troubleshooting.md#session-maint-sync-full-refuses).
+
+`prune` removes from the everyday database only the sessions the full database verifiably holds,
+together with everything else `sync-full` copies from this database, and keeps any session that owns
+learner records; run `sync-full` first. `session-maint archive` is deprecated (it copies sessions
+and messages only, into a file nothing in StudyLoop reads) but stays available until `sync-full`
+carries the whole context tier; its removal is planned for the release after the one in which it
+does.
