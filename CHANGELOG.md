@@ -116,6 +116,20 @@ experience may change before `1.0.0`.
 
 ### Changed
 
+- `studyloop study` and both web start doors now say `STUDYLOOP_AGENT=<value> is not a known
+  harness (known: …)` when the variable names an unregistered harness, instead of the generic
+  "No AI agent found"; the unset case is unchanged.
+- The LAN address printed for a second device is discovered the same way by `studyloop study`
+  and `studyloop web` (`studyloop.web.lan_hosts.candidate_lan_hosts`); the launcher no longer
+  prints a hostname that resolves to loopback (`127.0.1.1`) when a routable address exists.
+- `studyloop doctor`: each row's repair is now `fix_command` (an exact command) and `fix_note`
+  (prose), shown as the command in backticks with the note beneath; `--json` carries both plus the
+  derived `fix_hint` for existing consumers.
+- Tests: the docs-drift check now covers `README.md`, `CONTRIBUTING.md` and every top-level
+  `docs/*.md` page (447 fenced command examples, 26 YAML blocks, up from 300 / 18); both branches
+  of the MCP launch command are pinned; the readiness-scaling tests reach the loaded conftest
+  through a shared helper and the suite proves the conftest is executed once.
+
 - `session-maint delete --days N` says what it keeps. Sessions older than N days
   that hold learner records were already kept; the `--days` help now says so,
   and the final line reports how many were deleted and how many were kept and

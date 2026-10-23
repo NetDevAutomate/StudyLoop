@@ -17,8 +17,12 @@ The system SHALL model each diagnostic result as a frozen
 `CheckResult` dataclass (`doctor/models.py`) carrying `category`
 (one of `core`, `database`, `config`, `agents`, `deps`, `voice`,
 `updates`, `harness`), `status` (one of `pass`, `warn`, `fail`,
-`info`), a human `message`, a `fix_hint` string, and a boolean
-`fix_auto` flag indicating whether `--fix` can resolve it.
+`info`), a human `message`, an optional `fix_command` (an exact,
+copy-pasteable command and nothing else), an optional `fix_note`
+(prose), and a boolean `fix_auto` flag indicating whether `--fix` can
+resolve it. `fix_hint` SHALL be derived, read-only, as
+`<fix_command>  (<fix_note>)` (whichever parts exist) for readers that
+predate the split.
 
 #### Scenario: A checker returns an invalid status string
 - **WHEN** a checker function attempts to construct a `CheckResult`
@@ -28,8 +32,13 @@ The system SHALL model each diagnostic result as a frozen
 #### Scenario: JSON output from studyloop doctor
 - **WHEN** `studyloop doctor --json` is invoked
 - **THEN** the output is a JSON array where each element has keys
-  `category`, `name`, `status`, `message`, `fix_hint`, `fix_auto`
-  — matching the `to_dict()` contract
+  `category`, `name`, `status`, `message`, `fix_command`, `fix_note`,
+  `fix_hint`, `fix_auto` — matching the `to_dict()` contract
+
+#### Scenario: A producer still passes the one-line hint
+- **WHEN** a checker constructs `CheckResult(..., fix_hint="...")` or passes
+  a fifth positional argument
+- **THEN** construction raises `TypeError` (the fix fields are keyword-only)
 
 ### Requirement: The CheckerRegistry groups checkers by category and isolates crashes
 `CheckerRegistry` (`doctor/__init__.py`) SHALL execute all registered
