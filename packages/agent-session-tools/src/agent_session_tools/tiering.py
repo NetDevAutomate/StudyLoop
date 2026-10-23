@@ -835,20 +835,23 @@ def _missing_sql(
     *,
     keys_only: bool,
     select: list[str] | None = None,
+    source: str = "hot",
+    archive: str = "main",
 ) -> str:
     """Hot rows of ``table`` absent from full: by key, or by whole-row equality.
 
     A correlated ``NOT EXISTS`` probe on full's primary key (council pass 7, A2):
     ``EXCEPT`` plans as a merge scanning both sides -- the whole archive on
     every run -- while the anti-join searches full's key index once per hot row.
-    ``select`` narrows the returned columns (default: every column).
+    ``select`` narrows the returned columns (default: every column);
+    ``source``/``archive`` name the hot and full schemas on this connection.
     """
     match = cols if not keys_only else list(key)
     where = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in match)
     selected = ", ".join(f"h.{_q(c)}" for c in (select or cols))
     return (
-        f"SELECT {selected} FROM hot.{_q(table)} h WHERE NOT EXISTS "
-        f"(SELECT 1 FROM main.{_q(table)} x WHERE {where})"
+        f"SELECT {selected} FROM {source}.{_q(table)} h WHERE NOT EXISTS "
+        f"(SELECT 1 FROM {archive}.{_q(table)} x WHERE {where})"
     )
 
 
@@ -898,13 +901,15 @@ def _untracked_payload(conn: sqlite3.Connection, schema: str) -> list[str]:
     ]
 
 
-def _controls_differ(conn: sqlite3.Connection) -> str | None:
+def _controls_differ(
+    conn: sqlite3.Connection, source: str = "hot", archive: str = "main"
+) -> str | None:
     """The first control table whose identities differ between hot and full."""
     from .tiering_registry import CONTROL
 
     for entry in CONTROL:
         match = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in entry.key)
-        for left, right in (("hot", "main"), ("main", "hot")):
+        for left, right in ((source, archive), (archive, source)):
             if conn.execute(
                 f"SELECT 1 FROM {left}.{_q(entry.name)} h WHERE NOT EXISTS "
                 f"(SELECT 1 FROM {right}.{_q(entry.name)} x WHERE {match}) LIMIT 1"
@@ -1483,58 +1488,42 @@ def prune_hot(
 
 
 def _archive_context_complete(conn):
-    """Conservative whole-context retention proof; compare rows inside SQLite."""
-    from .context import records
+    """Whole-context retention proof by the table-role registry (hot=main, full).
 
-    local = {
-        r[0]
-        for r in conn.execute("SELECT name FROM main.sqlite_master WHERE type='table'")
-    }
-    remote = {
-        r[0]
-        for r in conn.execute("SELECT name FROM full.sqlite_master WHERE type='table'")
-    }
-    bookkeeping = {
-        "context_access_state",
-        "context_replica_content_state",
-        "context_policy_state",
-        "context_lifecycle_mode",
-        "context_erasure_pending",
-        "context_capture_runs",
-    }
-    # Include older payloads with no observation wrapper: a matching native hash
-    # alone says nothing about a newly edited note or an unarchived file reference.
-    tables = (
-        set(records.TABLES)
-        | {
-            "session_notes",
-            "session_tags",
-            "session_learning_metadata",
-            "file_references",
-            "scrub_log",
-            "message_concepts",
-        }
-        | {
-            t
-            for t in local
-            if t.startswith("context_")
-            and not t.startswith("context_evidence_fts")
-            and t not in bookkeeping
-        }
-    )
-    tables -= _DERIVED_TABLES
-    if not tables <= remote or conn.execute("PRAGMA full.foreign_key_check").fetchone():
+    The same registry the mirror copies by (``tiering_registry``), so what is
+    required in full is exactly what ``sync_to_full`` puts there (council pass
+    7, C2): every payload row of hot is row-equal in full (``sessions`` and
+    ``messages`` are proven per session by ``prune_hot``), the permanent
+    controls are equal, full's foreign keys hold, and an unclassified table
+    fails closed. Instance-local, peer-ledger and derived tables are neither
+    copied nor required -- before, every ``context_*`` table counted, so the
+    ``context_retention_origins`` row each export writes kept this false
+    forever once anything was mirrored. Primary-key anti-joins, not EXCEPT.
+    """
+    from .tiering_registry import PAYLOAD, UnclassifiedTable, classify_database, columns
+
+    try:
+        classify_database(conn, "main")
+    except UnclassifiedTable as exc:
+        logger.warning("prune: %s -- nothing is evicted until this build knows it", exc)
         return False
-    for table in sorted(tables):
-        quoted = '"' + table.replace('"', '""') + '"'
-        columns = [r[1] for r in conn.execute(f"PRAGMA main.table_info({quoted})")]
-        full_columns = {r[1] for r in conn.execute(f"PRAGMA full.table_info({quoted})")}
-        if not set(columns) <= full_columns:
+    remote = set(_user_tables(conn, "full"))
+    if conn.execute("PRAGMA full.foreign_key_check").fetchone():
+        return False
+    if _controls_differ(conn, "main", "full"):
+        return False
+    for entry in PAYLOAD:
+        if entry.name in ("sessions", "messages"):
+            continue  # proven per session, with the content hash, in prune_hot
+        if entry.name not in remote:
             return False
-        selected = ",".join('"' + c.replace('"', '""') + '"' for c in columns)
-        if conn.execute(
-            f"SELECT 1 FROM (SELECT {selected} FROM main.{quoted} EXCEPT SELECT {selected} FROM full.{quoted}) LIMIT 1"
-        ).fetchone():
+        cols = columns(conn, entry.name, "main")
+        if cols != columns(conn, entry.name, "full"):
+            return False
+        probe = _missing_sql(
+            entry.name, cols, entry.key, keys_only=False, source="main", archive="full"
+        )
+        if conn.execute(probe + " LIMIT 1").fetchone():
             return False
     return True
 

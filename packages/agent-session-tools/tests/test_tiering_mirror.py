@@ -567,3 +567,118 @@ def test_peer_legacy_paths_still_refuse_modern_context(mirror):  # R7
     with pytest.raises(legacy.LegacySyncRefused):
         sync_to_full()
     assert not mirror["full"].exists()
+
+
+# ---------------------------------------------------------------------------
+# T5 -- prune's archive proof consumes the same registry (R10, contamination)
+# ---------------------------------------------------------------------------
+
+
+def _accepts(state) -> bool:
+    with closing(sqlite3.connect(state["hot"])) as probe:
+        probe.execute("ATTACH DATABASE ? AS full", (str(state["full"]),))
+        return tiering._archive_context_complete(probe)
+
+
+def test_acceptance_holds_after_a_real_sync(mirror):
+    """Instance-local rows every export writes are not required in full."""
+    two_sessions(mirror)
+    sync_to_full()
+    for table in ("context_retention_origins", "context_capture_runs"):
+        assert count(mirror["hot"], f"SELECT count(*) FROM {table}") > 0
+        assert count(mirror["full"], f"SELECT count(*) FROM {table}") == 0
+    assert _accepts(mirror) is True
+
+
+def test_acceptance_ignores_peer_and_local_only_rows(mirror):
+    two_sessions(mirror)
+    sync_to_full()
+    conn = _connect(mirror)
+    conn.execute(
+        "INSERT INTO context_scope_audit VALUES ('a','reclassify','s','{}','{}','fixture','d','now')"
+    )
+    conn.commit()
+    assert _accepts(mirror) is True
+    conn.execute(
+        "INSERT INTO context_replica_peers VALUES ('peer','remote','local','instance','now')"
+    )
+    conn.commit()
+    assert _accepts(mirror) is True, "peer ledgers are never copied, so never required"
+
+
+def test_unclassified_context_table_fails_closed(mirror):  # R10
+    two_sessions(mirror)
+    sync_to_full()
+    for path in (mirror["hot"], mirror["full"]):
+        with closing(sqlite3.connect(path)) as conn:
+            conn.execute("CREATE TABLE context_future (id TEXT PRIMARY KEY)")
+            conn.execute("INSERT INTO context_future VALUES ('same-in-both')")
+            conn.commit()
+    assert _accepts(mirror) is False
+    with pytest.raises(TieringRefused) as info:
+        sync_to_full()
+    assert info.value.reason == "unclassified_table"
+    assert info.value.table == "context_future"
+
+
+def test_acceptance_sees_a_mutable_row_changed_after_sync(mirror):
+    two_sessions(mirror)
+    sync_to_full()
+    conn = _connect(mirror)
+    conn.execute("INSERT INTO study_notes(title, body) VALUES ('t', 'first')")
+    conn.commit()
+    assert _accepts(mirror) is False
+    sync_to_full()
+    assert _accepts(mirror) is True
+    conn.execute("UPDATE study_notes SET body='edited'")
+    conn.commit()
+    assert _accepts(mirror) is False
+    sync_to_full()
+    assert _accepts(mirror) is True
+
+
+def test_acceptance_needs_equal_controls(mirror):
+    two_sessions(mirror)
+    sync_to_full()
+    with closing(sqlite3.connect(mirror["full"])) as conn:
+        conn.execute(
+            "INSERT INTO context_tombstones VALUES ('only-in-full','d-1','2026-01-01')"
+        )
+        conn.commit()
+    assert _accepts(mirror) is False
+
+
+def plain(state) -> None:
+    """A hot with no exporter rows, so nothing else can make the proof false."""
+    conn = _connect(state)
+    conn.execute(
+        "INSERT INTO sessions(id,source,updated_at) VALUES ('p0','codex','2020-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO messages(id,session_id,role,content) VALUES ('p0-m','p0','user','hi')"
+    )
+    conn.commit()
+
+
+def test_unclassified_context_table_fails_closed_on_its_own(mirror):  # R10
+    plain(mirror)
+    sync_to_full()
+    assert _accepts(mirror) is True
+    for path in (mirror["hot"], mirror["full"]):
+        with closing(sqlite3.connect(path)) as conn:
+            conn.execute("CREATE TABLE context_future (id TEXT PRIMARY KEY)")
+            conn.execute("INSERT INTO context_future VALUES ('same-in-both')")
+            conn.commit()
+    assert _accepts(mirror) is False
+
+
+def test_acceptance_needs_equal_controls_on_its_own(mirror):
+    plain(mirror)
+    sync_to_full()
+    assert _accepts(mirror) is True
+    with closing(sqlite3.connect(mirror["full"])) as conn:
+        conn.execute(
+            "INSERT INTO context_tombstones VALUES ('only-in-full','d-1','2026-01-01')"
+        )
+        conn.commit()
+    assert _accepts(mirror) is False
