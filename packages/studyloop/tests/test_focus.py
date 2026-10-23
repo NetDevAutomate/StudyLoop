@@ -216,3 +216,33 @@ class TestSuggestFocusUtcCutoff:
         assert "dropped-topic" not in topics, (
             f"a session 1 minute outside the UTC cutoff must be dropped under TZ={tz}"
         )
+
+
+class TestRefocusRefusal:
+    """``refocus`` shares the legacy guard (``tiering.py``): once the full database
+    carries any ``context_*`` row -- after the first mirror sync of any exported
+    database, since plan 6 -- it raises ``LegacySyncRefused``, a ``RuntimeError``.
+    ``_apply_refocus`` caught only ``ValueError`` and ``FileNotFoundError``, so
+    ``focus set`` and ``focus apply`` ended in a traceback after saving the focus
+    (plan 6, lane U, found-not-fixed 1)."""
+
+    def test_focus_apply_reports_a_legacy_refusal_instead_of_a_traceback(
+        self, isolated_config, monkeypatch
+    ):
+        from agent_session_tools import tiering
+        from agent_session_tools.replication.legacy import LegacySyncRefused
+
+        def refuse(*_args, **_kwargs):
+            raise LegacySyncRefused("Legacy SQL sync cannot transfer scoped memory.")
+
+        monkeypatch.setattr(tiering, "refocus", refuse)
+        runner = CliRunner()
+        runner.invoke(cli, ["focus", "set", "python", "--no-refocus"])
+
+        result = runner.invoke(cli, ["focus", "apply"])
+
+        assert result.exception is None or isinstance(result.exception, SystemExit), result.output
+        flat = " ".join(result.output.split())  # rich wraps the console line
+        assert "Traceback" not in flat
+        assert "Legacy SQL sync cannot transfer" in flat
+        assert "focus saved" in flat
