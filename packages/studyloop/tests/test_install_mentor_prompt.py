@@ -64,7 +64,7 @@ class TestInstallMentorPrompt:
         must be the real CheckResult contract (doctor/models.py), not the stale
         `check` key and `ok|warn|error` statuses."""
         content = (REPO_ROOT / "agents" / "shared" / "install-mentor.md").read_text()
-        for key in CheckResult("core", "n", "pass", "m", "", False).to_dict():
+        for key in CheckResult("core", "n", "pass", "m").to_dict():
             assert f'"{key}"' in content, f"doctor JSON key {key!r} not documented"
         assert '"check":' not in content
         status_line = re.search(r'"status":\s*"([^"]+)"', content)

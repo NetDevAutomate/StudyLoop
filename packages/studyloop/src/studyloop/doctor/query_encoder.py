@@ -38,7 +38,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 
-from studyloop.doctor.models import CheckResult
+from studyloop.doctor.models import CheckResult, split_fix_hint
 
 
 def _missing_runtime_modules(backend: str) -> tuple[str, ...]:
@@ -89,8 +89,6 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 "query encoder backend is misconfigured; skipping the "
                 "artefact check (resolving a backend elsewhere will surface "
                 "the error)",
-                "",
-                fix_auto=False,
             )
         ]
 
@@ -132,14 +130,17 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 f"semantic runtime for the {effective_backend} query encoder is {where}; "
                 "no surface resolves to hybrid, so the artefact check does not apply"
             )
+        # install_hint() is built outside doctor/ in the one-line
+        # "<command>  (<note>)" shape; split it so the command stays runnable.
+        install_command, install_note = split_fix_hint(embedding_store.install_hint())
         return [
             CheckResult(
                 "deps",
                 "query_encoder_artefact",
                 "warn" if hybrid else "info",
                 message,
-                embedding_store.install_hint(),
-                fix_auto=False,
+                fix_command=install_command,
+                fix_note=install_note,
             )
         ]
 
@@ -150,8 +151,6 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 "query_encoder_artefact",
                 "info",
                 f"query encoder backend is {backend!r}; the pinned ONNX artefact is not required",
-                "",
-                fix_auto=False,
             )
         ]
 
@@ -169,8 +168,6 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 f"query encoder backend resolves to onnx for model {model!r}, "
                 f"but it has no pinned ONNX artefact ({exc}); change the "
                 "configured model or add a pin to embeddings.ONNX_ARTIFACTS",
-                "",
-                fix_auto=False,
             )
         ]
     if check.status == "pass":
@@ -181,8 +178,6 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 "pass",
                 f"ONNX query-encoder artefact cached and verified for "
                 f"{check.model} ({check.hf_name}@{check.revision})",
-                "",
-                fix_auto=False,
             )
         ]
     if check.status == "fail":
@@ -193,7 +188,7 @@ def check_query_encoder_artefact() -> list[CheckResult]:
                 "fail",
                 f"ONNX query-encoder artefact for {check.model} failed "
                 f"verification: {check.detail}",
-                FETCH_COMMAND,
+                fix_command=FETCH_COMMAND,
                 fix_auto=True,
             )
         ]
@@ -205,7 +200,7 @@ def check_query_encoder_artefact() -> list[CheckResult]:
             f"backend would resolve to onnx for {check.model} but the pinned "
             f"artefact is not cached ({check.hf_name}@{check.revision}, "
             f"{check.detail})",
-            FETCH_COMMAND,
+            fix_command=FETCH_COMMAND,
             fix_auto=True,
         )
     ]

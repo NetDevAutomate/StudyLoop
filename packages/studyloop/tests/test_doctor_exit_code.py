@@ -27,8 +27,7 @@ def test_unresolvable_fail_still_exits_1() -> None:
             name="review_db_integrity",
             status="fail",
             message="review.db failed a PRAGMA integrity_check",
-            fix_hint="Restore review.db from a backup",
-            fix_auto=False,
+            fix_note="Restore review.db from a backup",
         )
     ]
 

@@ -297,7 +297,7 @@ class TestDoctorFixInvokesTheFetch:
                 "query_encoder_artefact",
                 "warn",
                 "backend would resolve to onnx but the artefact is absent",
-                "session-maint fetch-query-encoder",
+                fix_command="session-maint fetch-query-encoder",
                 fix_auto=True,
             )
         ]
@@ -328,7 +328,7 @@ class TestDoctorFixInvokesTheFetch:
                 "query_encoder_artefact",
                 "fail",
                 "sha mismatch",
-                "session-maint fetch-query-encoder",
+                fix_command="session-maint fetch-query-encoder",
                 fix_auto=True,
             )
         ]

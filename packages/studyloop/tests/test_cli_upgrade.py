@@ -27,9 +27,14 @@ class TestUpdateCommand:
 
         mock_results = [
             CheckResult(
-                "updates", "update_studyloop", "warn", "2.0.0 -> 2.1.0", "studyloop upgrade", True
+                "updates",
+                "update_studyloop",
+                "warn",
+                "2.0.0 -> 2.1.0",
+                fix_command="studyloop upgrade",
+                fix_auto=True,
             ),
-            CheckResult("core", "studyloop_installed", "pass", "studyloop 2.0.0", "", False),
+            CheckResult("core", "studyloop_installed", "pass", "studyloop 2.0.0"),
         ]
 
         with patch("studyloop.cli._upgrade._get_registry") as mock_reg:
@@ -42,9 +47,7 @@ class TestUpdateCommand:
         from studyloop.cli._upgrade import update
 
         mock_results = [
-            CheckResult(
-                "updates", "update_studyloop", "pass", "studyloop 2.0.0 (latest)", "", False
-            ),
+            CheckResult("updates", "update_studyloop", "pass", "studyloop 2.0.0 (latest)"),
         ]
 
         with patch("studyloop.cli._upgrade._get_registry") as mock_reg:
@@ -60,7 +63,12 @@ class TestUpdateCommand:
 
         mock_results = [
             CheckResult(
-                "updates", "update_studyloop", "warn", "update available", "studyloop upgrade", True
+                "updates",
+                "update_studyloop",
+                "warn",
+                "update available",
+                fix_command="studyloop upgrade",
+                fix_auto=True,
             ),
         ]
 
@@ -149,7 +157,12 @@ class TestUpgradeCommand:
 
         mock_results = [
             CheckResult(
-                "updates", "update_studyloop", "warn", "2.0.0 -> 2.1.0", "studyloop upgrade", True
+                "updates",
+                "update_studyloop",
+                "warn",
+                "2.0.0 -> 2.1.0",
+                fix_command="studyloop upgrade",
+                fix_auto=True,
             ),
         ]
 
@@ -163,7 +176,7 @@ class TestUpgradeCommand:
         from studyloop.cli._upgrade import upgrade
 
         mock_results = [
-            CheckResult("core", "python_version", "pass", "Python 3.12", "", False),
+            CheckResult("core", "python_version", "pass", "Python 3.12"),
         ]
 
         with patch("studyloop.cli._upgrade._get_registry") as mock_reg:
@@ -181,8 +194,8 @@ class TestUpgradeCommand:
                 "agent_codex",
                 "warn",
                 "codex agent definition outdated",
-                "studyloop upgrade --component agents",
-                True,
+                fix_command="studyloop upgrade --component agents",
+                fix_auto=True,
             ),
         ]
 

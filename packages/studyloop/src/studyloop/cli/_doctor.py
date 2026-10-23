@@ -63,8 +63,7 @@ def check_unknown_config_keys() -> list[CheckResult]:
             "warn",
             f"Unknown or retired config.yaml key(s): {keys}. StudyLoop no longer "
             "reads them; they are silently inert.",
-            f"Remove {keys} from ~/.config/studyloop/config.yaml.",
-            False,
+            fix_note=f"Remove {keys} from ~/.config/studyloop/config.yaml.",
         )
     ]
 
@@ -98,8 +97,8 @@ def check_study_plans() -> list[CheckResult]:
                 "study_plans",
                 "warn",
                 f"Study plans could not be read: {exc}",
-                "Run `studyloop plan list` to see the underlying error.",
-                False,
+                fix_command="studyloop plan list",
+                fix_note="prints the underlying error",
             )
         ]
 
@@ -109,9 +108,11 @@ def check_study_plans() -> list[CheckResult]:
             "study_plans",
             "warn",
             f"Study plan document '{plan_id}' could not be read, so its readiness is unknown.",
-            f"Open the file under `studyloop plan list`'s directory and fix its front matter, "
-            f"or move it out; `studyloop plan show {plan_id}` prints the parse error.",
-            False,
+            fix_command=f"studyloop plan show {plan_id}",
+            fix_note=(
+                "prints the parse error; open the file under `studyloop plan list`'s "
+                "directory and fix its front matter, or move it out"
+            ),
         )
         for plan_id in survey.unreadable
     ]
@@ -124,9 +125,8 @@ def check_study_plans() -> list[CheckResult]:
                 "study_plans",
                 "info",
                 "No active study plan. Nothing for the readiness gate to judge.",
-                "Create one with `studyloop plan architect` when you want a plan to steer "
-                "`studyloop now`.",
-                False,
+                fix_command="studyloop plan architect",
+                fix_note="creates a plan to steer `studyloop now`; optional",
             ),
         ]
 
@@ -139,8 +139,6 @@ def check_study_plans() -> list[CheckResult]:
                 "study_plans",
                 "pass",
                 f"{n} active plan{'s' if n != 1 else ''}, all ready as they stand.",
-                "",
-                False,
             ),
         ]
 
@@ -155,8 +153,8 @@ def check_study_plans() -> list[CheckResult]:
                 "warn",
                 f"Active plan '{plan_id}' ({husk.summary.title}) is not ready and refuses "
                 f"every write until paused or repaired. Blockers: {blockers} {provenance}",
-                f"studyloop plan repair {plan_id}  (or: studyloop plan status {plan_id} paused)",
-                False,
+                fix_command=f"studyloop plan repair {plan_id}",
+                fix_note=f"or: studyloop plan status {plan_id} paused",
             )
         )
     return rows
@@ -272,6 +270,23 @@ def _compute_exit_code(results: list[CheckResult]) -> int:
     if has_fail or has_auto_warn:
         return 1
     return 0
+
+
+def _render_fix(result: CheckResult) -> str:
+    """The Fix column: the command on its own line in backticks, the note beneath.
+
+    A learner copies the first line; the second says what it does. Rich
+    renders the newline inside the cell, and ``escape`` keeps a hint that
+    happens to contain ``[...]`` from being read as markup.
+    """
+    from rich.markup import escape
+
+    lines: list[str] = []
+    if result.fix_command:
+        lines.append(f"`{escape(result.fix_command)}`")
+    if result.fix_note:
+        lines.append(escape(result.fix_note))
+    return "\n".join(lines)
 
 
 def _summary_line(results: list[CheckResult]) -> str:
@@ -501,8 +516,7 @@ def doctor(
                 table.add_section()
             current_category = r.category
         icon = STATUS_ICONS.get(r.status, "?")
-        fix_col = r.fix_hint if r.fix_hint else ""
-        table.add_row(icon, f"[bold]{r.category}[/bold]/{r.name}", r.message, fix_col)
+        table.add_row(icon, f"[bold]{r.category}[/bold]/{r.name}", r.message, _render_fix(r))
 
     console.print(table)
     console.print(f"\n{_summary_line(results)}")

@@ -37,18 +37,15 @@ def _steering_result(tool: str) -> CheckResult:
             name=f"export_mandate_{tool}",
             status="pass",
             message=f"{tool}: session-export mandate present in {path.name}",
-            fix_hint="",
-            fix_auto=False,
         )
     return CheckResult(
         category="harness",
         name=f"export_mandate_{tool}",
         status="warn",
-        message=(
-            f"{tool}: no session-export mandate in {path} — sessions/struggles "
-            f"won't be persisted to the session DB at session end"
-        ),
-        fix_hint="studyloop doctor --fix  (writes the session-export steering mandate)",
+        message=f"{tool}: no session-export mandate in {path} — sessions/struggles "
+        f"won't be persisted to the session DB at session end",
+        fix_command="studyloop doctor --fix",
+        fix_note="writes the session-export steering mandate",
         fix_auto=True,
     )
 
@@ -64,11 +61,10 @@ def _legacy_hook_result(tool: str, name: str) -> CheckResult:
         category="harness",
         name=name,
         status="warn",
-        message=(
-            f"{tool}: session-export hook runs an unpinned command or discards its output; "
-            f"a failing export would be silent"
-        ),
-        fix_hint="studyloop doctor --fix  (rewrites the hook to the pinned, logged command)",
+        message=f"{tool}: session-export hook runs an unpinned command or discards its output; "
+        f"a failing export would be silent",
+        fix_command="studyloop doctor --fix",
+        fix_note="rewrites the hook to the pinned, logged command",
         fix_auto=True,
     )
 
@@ -97,8 +93,6 @@ def _claude_hook_result() -> CheckResult:
             name="session_export_hook_claude",
             status="pass",
             message="claude: session-export Stop hook registered (pinned, logged)",
-            fix_hint="",
-            fix_auto=False,
         )
     if present:
         return _legacy_hook_result("claude", "session_export_hook_claude")
@@ -106,11 +100,10 @@ def _claude_hook_result() -> CheckResult:
         category="harness",
         name="session_export_hook_claude",
         status="warn",
-        message=(
-            "claude: no session-export Stop hook in ~/.claude/settings.json — "
-            "Claude sessions won't auto-export to the session DB"
-        ),
-        fix_hint="studyloop doctor --fix  (merges a session-export Stop hook)",
+        message="claude: no session-export Stop hook in ~/.claude/settings.json — "
+        "Claude sessions won't auto-export to the session DB",
+        fix_command="studyloop doctor --fix",
+        fix_note="merges a session-export Stop hook",
         fix_auto=True,
     )
 
@@ -133,7 +126,8 @@ def _session_memory_skill_result(tool: str) -> CheckResult:
             if present
             else f"{tool}: missing session-memory query skill at {path}"
         ),
-        fix_hint="" if present else "studyloop doctor --fix  (installs agent skills)",
+        fix_command=None if present else "studyloop doctor --fix",
+        fix_note=None if present else "installs agent skills",
         fix_auto=not present,
     )
 
@@ -151,7 +145,8 @@ def _text_hook_result(tool: str, path, command: str) -> CheckResult:
             if present
             else f"{tool}: missing automatic session-export hook at {path}"
         ),
-        fix_hint="" if present else "studyloop doctor --fix  (installs session-end hook)",
+        fix_command=None if present else "studyloop doctor --fix",
+        fix_note=None if present else "installs session-end hook",
         fix_auto=not present,
     )
 
@@ -206,7 +201,8 @@ def _kiro_hook_result() -> CheckResult:
             if present
             else "kiro: study-mentor agent has no automatic session-export stop hook"
         ),
-        fix_hint="" if present else "studyloop doctor --fix  (reinstalls Kiro agent)",
+        fix_command=None if present else "studyloop doctor --fix",
+        fix_note=None if present else "reinstalls Kiro agent",
         fix_auto=not present,
     )
 
@@ -238,7 +234,8 @@ def _json_session_end_hook_result(
             if present
             else f"{tool}: missing SessionEnd export hook in {path}"
         ),
-        fix_hint="" if present else f"studyloop doctor --fix  ({fix_verb} {label} SessionEnd hook)",
+        fix_command=None if present else "studyloop doctor --fix",
+        fix_note=None if present else f"{fix_verb} {label} SessionEnd hook",
         fix_auto=not present,
     )
 
@@ -275,7 +272,7 @@ def _executable_result(command: str) -> CheckResult:
         name=f"session_memory_executable_{command}",
         status="pass" if present else "warn",
         message=f"{command}: installed" if present else f"{command}: not found on PATH; {purpose}",
-        fix_hint="" if present else "studyloop install tools",
+        fix_command=None if present else "studyloop install tools",
         fix_auto=not present,
     )
 
