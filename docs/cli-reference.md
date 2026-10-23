@@ -461,9 +461,9 @@ studyloop prune --days 30                  # Dry run by default
 studyloop prune --days 30 --apply          # Actually delete
 ```
 
-Saving a focus is followed by the **refocus data movement**: focus-topic conversations newer than `--days` are pulled from the full DB into the local DB, then non-focus sessions older than `--days` are pruned. If the full DB is unreachable (external volume unmounted) the focus still saves and the movement is **deferred** — run `studyloop focus apply` later.
+Saving a focus is followed by the **refocus data movement**: focus-topic conversations newer than `--days` are pulled from the full DB into the local DB, then non-focus sessions older than `--days` are pruned. If the full DB is unreachable (external volume unmounted) the focus still saves and the movement is **deferred** — run `studyloop focus apply` later. On the current schema the movement itself stops with a legacy-sync refusal and moves nothing (it would copy sessions without the memory captured from them); the focus is saved before it runs, and `--no-refocus` skips it.
 
-Both `prune` and the refocus prune obey one safety invariant: a session is deleted only when the configured full DB (`database.full_db_path`) holds the same session with a **matching content hash and at least as many messages**. Unverified sessions are skipped and reported. Learning data — progress, concepts, reviews — is never touched.
+Both `prune` and the refocus prune obey one safety invariant: a session is deleted only when the configured full DB (`database.full_db_path`) holds the same session with a **matching content hash and every one of its messages**, and holds everything else `session-maint sync-full` copies from this database. Run `sync-full` before `prune`: anything captured since the last sync makes `prune` keep every session until the next one. Unverified sessions are skipped and reported. Learning data — progress, concepts, reviews — is never touched.
 
 ### Knowledge bridges
 
@@ -603,15 +603,18 @@ session-sync all                         # Push all peers before pulling all pee
 session-sync status|endpoints            # Show configured peers / listener status
 session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
 session-maint vacuum|reindex|schema      # Database maintenance
-session-maint archive --days N           # DEPRECATED, not yet removed: its replacement (sync-full then prune, not a
-                                          # drop-in) refuses a database holding exported evidence on the current schema
+session-maint archive --days N           # DEPRECATED, not a drop-in for sync-full then prune; stays until sync-full carries
+                                          # the context tier, removal planned for the release after the one in which it does
 session-maint delete --days N --confirm   # Permanently delete old sessions; keeps sessions that own learner records
 session-maint delete --days N --confirm --forget-learner-records
                                           # ...and also deletes those sessions and their learner records
 session-maint delete ... --allow-unmigrated
                                           # Delete refuses a pre-41 (no tombstone) database; this flag allows it, with a warning
 session-maint find-duplicates|fts-check|fix-perms|compact  # Integrity and rescue; fix-perms chmods existing snapshots/backups/sidecars to 0600 and their directories to 0700; --remote runs the per-endpoint ssh chmod it otherwise prints
-session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune (prune is a dry run until --no-dry-run)
+session-maint sync-full                  # Mirror whole sessions and their context tier into database.full_db_path; the first run
+                                          # binds an empty full DB to this one; a refusal prints a reason code and the fix
+session-maint prune [--days 30]          # Evict only sessions the last sync-full verified in the full DB (dry run until --no-dry-run)
+session-maint snapshot                   # Point-in-time copy of the full DB, rotated
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
                                           # Migrate the DB if behind, then embed the backlog (doctor's embeddings_alignment remediation)
 session-maint embed-check [--fix]        # Migrate the DB if behind, then audit/repair message_embeddings alignment
@@ -623,6 +626,14 @@ session-db-mcp                           # MCP server (stdio) for the session to
 study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
                                           # Speak text aloud using local TTS
 ```
+
+**`session-maint sync-full`, then `prune`.** `sync-full` needs `database.full_db_path` and keeps the
+full database as a one-way mirror of this one: it copies whole sessions together with the memory
+captured from them, never this machine's own replication, access or policy state, and a run with
+nothing new copies nothing. `prune` then removes from the everyday database only what the full
+database verifiably holds. What the first run binds, and what each refusal means:
+[Setup Guide](setup-guide.md#database-too-large) and
+[Troubleshooting](troubleshooting.md#session-maint-sync-full-refuses).
 
 **Exit codes for `session-maint fetch-query-encoder`:** deliberately outside
 click's reserved 1 (hard failure) / 2 (usage error) range, so a wrapper script
