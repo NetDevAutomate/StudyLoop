@@ -321,6 +321,17 @@ def start_session(
     if agent is None:
         available = detect_agents()
         if not available:
+            # detect_agents honours STUDYLOOP_AGENT by returning nothing rather
+            # than launching a different harness, so a typo'd value has to be
+            # named here or the learner only sees "No AI agent found".
+            override = os.environ.get("STUDYLOOP_AGENT", "").strip()
+            if override and override not in AGENTS:
+                known = ", ".join(sorted(AGENTS))
+                raise SessionStartError(
+                    f"[red]STUDYLOOP_AGENT={override} is not a known harness[/red] "
+                    f"(known: {known})\n"
+                    "  Unset it, or set it to one of the known names."
+                )
             raise SessionStartError(
                 "[red]No AI agent found.[/red]\n"
                 "  Install one of: Kiro CLI, Codex, Claude Code, OpenCode, or pi\n"

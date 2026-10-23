@@ -54,6 +54,29 @@ _DEFAULT_PURPOSE = "focus"
 _ARCHITECT_TOPIC = "Study plan"
 
 
+def _no_agent_response() -> JSONResponse:
+    """The 503 for an empty ``detect_agents()``, naming a typo'd ``STUDYLOOP_AGENT``.
+
+    ``detect_agents`` honours the override by returning nothing rather than
+    launching a different harness, so a value that is not a registered adapter
+    used to surface here as the generic "No AI agent found" with no clue that the
+    environment variable was the cause (review 4 lane O, found-not-fixed #3). Both
+    start doors (PTY and ACP) return this.
+    """
+    import os
+
+    from studyloop.agent_launcher import AGENTS
+
+    override = os.environ.get("STUDYLOOP_AGENT", "").strip()
+    if override and override not in AGENTS:
+        known = ", ".join(sorted(AGENTS))
+        return JSONResponse(
+            {"error": f"STUDYLOOP_AGENT={override} is not a known harness (known: {known})"},
+            status_code=503,
+        )
+    return JSONResponse({"error": "No AI agent found on this machine"}, status_code=503)
+
+
 class PlanningBriefError(Exception):
     """The planning brief could not be built, so an architect must not launch.
 
@@ -560,10 +583,7 @@ async def _start_pty_session(
         if not agent:
             available = detect_agents()
             if not available:
-                return JSONResponse(
-                    {"error": "No AI agent found on this machine"},
-                    status_code=503,
-                )
+                return _no_agent_response()
             agent = available[0]
 
         adapter = AGENTS[agent]
@@ -807,10 +827,7 @@ async def _start_acp_session(
         if not agent:
             available = detect_agents()
             if not available:
-                return JSONResponse(
-                    {"error": "No AI agent found on this machine"},
-                    status_code=503,
-                )
+                return _no_agent_response()
             agent = available[0]
 
         # --- ACP capability guard ---
