@@ -1527,6 +1527,12 @@ def fts_check(
             f"⚠️  FTS drift: {result.fts_rows:,} index rows for "
             f"{result.messages_with_content:,} messages (drift {result.drift:+,})"
         )
+        if result.evidence_drift:
+            print(
+                f"⚠️  Evidence FTS drift: {result.evidence_fts_rows:,} index rows for "
+                f"{result.evidence_rows:,} evidence rows "
+                f"(drift {result.evidence_drift:+,}, context_evidence_fts)"
+            )
         if not fix:
             print("   Run with --fix to rebuild the index from the messages table.")
             raise typer.Exit(1)
@@ -1535,6 +1541,11 @@ def fts_check(
         after = repair_fts(conn)
         conn.commit()
         print(f"✅ Rebuilt: {after.fts_rows:,} entries (drift now {after.drift:+,})")
+        if result.evidence_drift:
+            print(
+                f"✅ Rebuilt context_evidence_fts: {after.evidence_fts_rows:,} entries "
+                f"(drift now {after.evidence_drift:+,})"
+            )
         raise typer.Exit(0 if after.healthy else 1)
     finally:
         conn.close()

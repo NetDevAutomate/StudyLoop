@@ -73,18 +73,30 @@ _LOCK_STALE_SECONDS = 3600
 
 @dataclass
 class FtsIntegrity:
-    """Result of the FTS index invariant check."""
+    """Result of the FTS index invariant checks.
+
+    ``drift``/``fts_rows``/``messages_with_content`` describe ``messages_fts``
+    (unchanged meaning). ``evidence_*`` describe ``context_evidence_fts``, an
+    external-content index whose own cardinality is its ``_docsize`` row count;
+    both are zero on a database without that index. ``healthy`` needs both.
+    """
 
     messages_with_content: int
     fts_rows: int
+    evidence_rows: int = 0
+    evidence_fts_rows: int = 0
 
     @property
     def drift(self) -> int:
         return self.fts_rows - self.messages_with_content
 
     @property
+    def evidence_drift(self) -> int:
+        return self.evidence_fts_rows - self.evidence_rows
+
+    @property
     def healthy(self) -> bool:
-        return self.drift == 0
+        return self.drift == 0 and self.evidence_drift == 0
 
 
 @dataclass
@@ -322,7 +334,8 @@ def _copy_table(
 
 
 def fts_integrity(conn: sqlite3.Connection) -> FtsIntegrity:
-    """Check the FTS invariant: one index row per message with content.
+    """Check the FTS invariants: one index row per message with content, and one
+    ``context_evidence_fts`` document per evidence row.
 
     A drifted index means the sync triggers were bypassed (bulk re-insert
     bug) or messages were deleted outside the triggers. Historical versions
@@ -333,16 +346,31 @@ def fts_integrity(conn: sqlite3.Connection) -> FtsIntegrity:
         "SELECT COUNT(*) FROM messages WHERE content IS NOT NULL"
     ).fetchone()[0]
     fts_rows = conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0]
-    return FtsIntegrity(messages_with_content=messages, fts_rows=fts_rows)
+    evidence = evidence_fts = 0
+    if _table_exists(conn, "context_evidence_fts_docsize"):
+        # External content: count(*) on the FTS table itself reads
+        # context_evidence, so the index's own cardinality is its docsize rows.
+        evidence = conn.execute("SELECT COUNT(*) FROM context_evidence").fetchone()[0]
+        evidence_fts = conn.execute(
+            "SELECT COUNT(*) FROM context_evidence_fts_docsize"
+        ).fetchone()[0]
+    return FtsIntegrity(
+        messages_with_content=messages,
+        fts_rows=fts_rows,
+        evidence_rows=evidence,
+        evidence_fts_rows=evidence_fts,
+    )
 
 
 def repair_fts(conn: sqlite3.Connection) -> FtsIntegrity:
-    """Rebuild the FTS index from the messages table (idempotent).
+    """Rebuild the FTS indexes from their source tables (idempotent).
 
     Note: FTS5's built-in ``('rebuild')`` command rebuilds the inverted index
     from the FTS table's *own* content store, so it preserves duplicate rows.
     A drifted standalone FTS table must be cleared and repopulated from the
-    source of truth instead.
+    source of truth instead. ``context_evidence_fts`` is external-content
+    (its content store *is* ``context_evidence``), so ``'rebuild'`` is the
+    correct repair there -- the same one ``lifecycle.compact`` runs.
     """
     with conn:
         conn.execute("DELETE FROM messages_fts")
@@ -353,6 +381,10 @@ def repair_fts(conn: sqlite3.Connection) -> FtsIntegrity:
             FROM messages WHERE content IS NOT NULL
             """
         )
+        if _table_exists(conn, "context_evidence_fts"):
+            conn.execute(
+                "INSERT INTO context_evidence_fts(context_evidence_fts) VALUES ('rebuild')"
+            )
     conn.execute("INSERT INTO messages_fts(messages_fts) VALUES('optimize')")
     return fts_integrity(conn)
 
