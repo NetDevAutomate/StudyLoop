@@ -4,7 +4,9 @@ Peer withdrawal/acknowledgement and managed backup restore are separate operatio
 These helpers never claim those have occurred from a local database transaction.
 """
 
+from collections import Counter
 from contextlib import contextmanager
+import logging
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
@@ -13,6 +15,8 @@ from ..migrations import CURRENT_VERSION
 from . import records
 from .scope import ScopeError, active_policy, retirement_selection_sql
 from .store import ContextStore, _now
+
+logger = logging.getLogger(__name__)
 
 
 def require_schema(conn):
@@ -84,6 +88,75 @@ def selected_records(conn, session_id):
         conn.execute(f"DROP TABLE IF EXISTS {study}")
 
 
+def _dependent_tables(conn):
+    """Tables holding a foreign key into a table ``purge_session`` deletes from.
+
+    Read from the schema at call time (``PRAGMA foreign_key_list``), so a
+    table added by a later migration -- or by the learner -- is covered
+    without a list to keep in step.
+    """
+    parents = {*records.TABLES, *_PURGED_TABLES}
+    dependents = []
+    for (table,) in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ):
+        quoted = '"' + table.replace('"', '""') + '"'
+        if any(
+            row[2] in parents
+            for row in conn.execute(f"PRAGMA foreign_key_list({quoted})")
+        ):
+            dependents.append(table)
+    return dependents
+
+
+def _dependency_violations(conn, tables):
+    """``(table, rowid, parent, fk)`` for every row in ``tables`` whose parent is gone."""
+    found = set()
+    for table in tables:
+        quoted = '"' + table.replace('"', '""') + '"'
+        found.update(
+            tuple(row) for row in conn.execute(f"PRAGMA foreign_key_check({quoted})")
+        )
+    return found
+
+
+def _tables_still_referencing(conn, dependents, session_id):
+    """Dependents of ``sessions`` that still hold a row for ``session_id``."""
+    holding = []
+    for table in dependents:
+        quoted = '"' + table.replace('"', '""') + '"'
+        columns = [
+            row[3]
+            for row in conn.execute(f"PRAGMA foreign_key_list({quoted})")
+            if row[2] == "sessions"
+        ]
+        for column in columns:
+            quoted_column = '"' + column.replace('"', '""') + '"'
+            if conn.execute(
+                f"SELECT 1 FROM {quoted} WHERE {quoted_column}=? LIMIT 1", (session_id,)
+            ).fetchone():
+                holding.append(table)
+                break
+    return holding
+
+
+# Non-learner tables purge_session deletes from (records.TABLES are the rest).
+_PURGED_TABLES = (
+    "context_evidence",
+    "context_observations",
+    "context_record_owners",
+    "message_concepts",
+    "messages",
+    "session_notes",
+    "session_tags",
+    "session_learning_metadata",
+    "file_references",
+    "scrub_log",
+    "context_session_projects",
+    "sessions",
+)
+
+
 def purge_session(conn, session_id, *, permanent=True):
     """Trusted storage operation; caller authorizes scope and owns the transaction."""
     require_schema(conn)
@@ -99,55 +172,94 @@ def purge_session(conn, session_id, *, permanent=True):
     ).fetchone()[0]
     if mode != ("ordinary" if permanent else "evict"):
         raise RuntimeError("Purge mode does not match the requested lifecycle action")
+    # The dependency check is scoped to this purge (plan 5, larger #2 item 7):
+    # the tables that reference what it deletes, compared against a snapshot
+    # taken before the deletes. A violation already present is someone else's
+    # -- a row an archive/delete run before c0ff6e3f left behind -- and used
+    # to make every delete, forget and prune refuse ("Purge violated a
+    # database dependency"), stranding the learner. It is reported and left
+    # exactly as found, never repaired here. With foreign keys enforced and no
+    # deferred constraint, SQLite itself refuses a delete that would leave a
+    # dependent row, so the after-check is a backstop: anything new is named.
+    dependents = _dependent_tables(conn)
+    before = _dependency_violations(conn, dependents)
     with selected_records(conn, session_id) as selected:
-        if permanent:
-            conn.execute(
-                "INSERT OR IGNORE INTO context_tombstones VALUES (?,?,?)",
-                (session_id, uuid4().hex, _now()),
-            )
-        # Sources purge source-linked observations, assertions, reviews and edges.
-        conn.execute("DELETE FROM context_evidence WHERE session_id=?", (session_id,))
-        conn.execute(
-            "DELETE FROM context_observations WHERE id IN (SELECT observation_id FROM context_observation_session_owners WHERE session_id=?)",
-            (session_id,),
-        )
-        for table in (
-            *[t for t in records.TABLES if t != "study_sessions"],
-            "study_sessions",
-        ):
-            conn.execute(
-                f"DELETE FROM {table} WHERE CAST(id AS TEXT) IN (SELECT row_id FROM {selected} WHERE table_name=?)",
-                (table,),
-            )
-        conn.execute(
-            "DELETE FROM context_record_owners WHERE session_id=?", (session_id,)
-        )
-        conn.execute(
-            "DELETE FROM message_concepts WHERE message_id IN (SELECT id FROM messages WHERE session_id=?)",
-            (session_id,),
-        )
-        # Explicit FTS deletion also removes old orphan rows from earlier REPLACE imports.
-        conn.execute("DELETE FROM messages_fts WHERE session_id=?", (session_id,))
-        conn.execute("DELETE FROM messages WHERE session_id=?", (session_id,))
-        for table in (
-            "session_notes",
-            "session_tags",
-            "session_learning_metadata",
-            "file_references",
-            "scrub_log",
-            "context_session_projects",
-        ):
-            conn.execute(f"DELETE FROM {table} WHERE session_id=?", (session_id,))
-        conn.execute("DELETE FROM sessions WHERE id=?", (session_id,))
-        # Eviction also needs file cleanup, but must not create permanent controls.
-        conn.execute(
-            "INSERT INTO context_erasure_pending VALUES (1,?) ON CONFLICT(id) DO UPDATE SET requested_at=excluded.requested_at",
-            (_now(),),
-        )
-    if conn.execute("PRAGMA foreign_key_check").fetchone():
+        try:
+            _purge_rows(conn, session_id, selected, permanent=permanent)
+        except sqlite3.IntegrityError as exc:
+            # Only SQLite's own refusal of a delete that would orphan a dependent
+            # row is translated and named; any other integrity failure (a
+            # trigger's RAISE, a CHECK) is the caller's to see as it is.
+            if "FOREIGN KEY constraint failed" not in str(exc):
+                raise
+            holding = _tables_still_referencing(conn, dependents, session_id)
+            raise RuntimeError(
+                "Purge would orphan rows in "
+                + (", ".join(holding) if holding else "a dependent table")
+                + f" that still reference session {session_id}; "
+                "transaction must roll back"
+            ) from exc
+    created = _dependency_violations(conn, dependents) - before
+    if created:
         raise RuntimeError(
-            "Purge violated a database dependency; transaction must roll back"
+            "Purge orphaned rows in "
+            + ", ".join(sorted({row[0] for row in created}))
+            + "; transaction must roll back"
         )
+    if before:
+        counts = Counter(row[0] for row in before)
+        logger.warning(
+            "purge_session: %d pre-existing orphaned row(s) left in place, not this "
+            "purge's to repair: %s",
+            len(before),
+            ", ".join(f"{table} ({n})" for table, n in sorted(counts.items())),
+        )
+
+
+def _purge_rows(conn, session_id, selected, *, permanent):
+    """The deletes themselves; ``purge_session`` owns the checks around them."""
+    if permanent:
+        conn.execute(
+            "INSERT OR IGNORE INTO context_tombstones VALUES (?,?,?)",
+            (session_id, uuid4().hex, _now()),
+        )
+    # Sources purge source-linked observations, assertions, reviews and edges.
+    conn.execute("DELETE FROM context_evidence WHERE session_id=?", (session_id,))
+    conn.execute(
+        "DELETE FROM context_observations WHERE id IN (SELECT observation_id FROM context_observation_session_owners WHERE session_id=?)",
+        (session_id,),
+    )
+    for table in (
+        *[t for t in records.TABLES if t != "study_sessions"],
+        "study_sessions",
+    ):
+        conn.execute(
+            f"DELETE FROM {table} WHERE CAST(id AS TEXT) IN (SELECT row_id FROM {selected} WHERE table_name=?)",
+            (table,),
+        )
+    conn.execute("DELETE FROM context_record_owners WHERE session_id=?", (session_id,))
+    conn.execute(
+        "DELETE FROM message_concepts WHERE message_id IN (SELECT id FROM messages WHERE session_id=?)",
+        (session_id,),
+    )
+    # Explicit FTS deletion also removes old orphan rows from earlier REPLACE imports.
+    conn.execute("DELETE FROM messages_fts WHERE session_id=?", (session_id,))
+    conn.execute("DELETE FROM messages WHERE session_id=?", (session_id,))
+    for table in (
+        "session_notes",
+        "session_tags",
+        "session_learning_metadata",
+        "file_references",
+        "scrub_log",
+        "context_session_projects",
+    ):
+        conn.execute(f"DELETE FROM {table} WHERE session_id=?", (session_id,))
+    conn.execute("DELETE FROM sessions WHERE id=?", (session_id,))
+    # Eviction also needs file cleanup, but must not create permanent controls.
+    conn.execute(
+        "INSERT INTO context_erasure_pending VALUES (1,?) ON CONFLICT(id) DO UPDATE SET requested_at=excluded.requested_at",
+        (_now(),),
+    )
 
 
 def forget_session(conn, session_id: str, *, apply: bool = False):
