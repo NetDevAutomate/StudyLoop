@@ -141,12 +141,22 @@ def _show_url() -> None:
     practice_check capability (same file, same threat model), and the address is
     printed only when something answers on the recorded port -- a dead server's
     token is nobody's credential and is not handed out.
+
+    Something answering is not enough (plan 5 item E, pass 4): a port can be
+    reused, and then the probe would vouch for a stranger. The launcher records
+    the server's ``web_pid`` beside the port; ``os.kill(pid, 0)`` asks the kernel
+    whether that process still exists without signalling it. Gone (``ESRCH``)
+    means whatever answers is not our server, so refuse; alive -- including
+    ``EPERM``, a real process we may not signal -- means the answer is ours.
     """
+    import os
+
     from studyloop.session_state import read_session_state
     from studyloop.web.ws_origin import BOOTSTRAP_QUERY
 
     state = read_session_state()
     port = state.get("web_port")
+    pid = state.get("web_pid")
     token = state.get("web_sign_in_token")
     host = str(state.get("web_bind_host") or LOOPBACK)
     none_up = (
@@ -161,6 +171,16 @@ def _show_url() -> None:
         raise click.ClickException(none_up)
     if not _answers(LOOPBACK, port_number):
         raise click.ClickException(none_up)
+    if isinstance(pid, int) and not isinstance(pid, bool):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            raise click.ClickException(
+                f"the recorded server (pid {pid}) is gone; something else answers on port "
+                f"{port_number}. Start a new one with `studyloop study --web`."
+            ) from None
+        except PermissionError:
+            pass  # alive, owned by someone else: still a real process on that pid
     if not token:
         raise click.ClickException(
             f"A server answers on port {port_number} but this session recorded no sign-in "
