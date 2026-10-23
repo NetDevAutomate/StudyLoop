@@ -682,3 +682,133 @@ def test_acceptance_needs_equal_controls_on_its_own(mirror):
         )
         conn.commit()
     assert _accepts(mirror) is False
+
+
+# ---------------------------------------------------------------------------
+# T8 -- the end-to-end acceptance test for the record (R1; ruling §4 Q6)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_full_then_prune_evicts_a_real_exported_session(mirror):  # R1
+    """A current-schema session exported by the real exporter is mirrored, then
+    evicted from hot by ``prune_hot`` with its whole closure queryable in full;
+    FK and both FTS invariants hold; a repeat sync writes nothing; a permanent
+    forget of the archived session never resurrects it."""
+    from datetime import UTC, datetime
+
+    from agent_session_tools.context import managed_history
+    from agent_session_tools.tiering import prune_hot
+
+    old = export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    today = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows_recent = [
+        {
+            "timestamp": today,
+            "type": "session_meta",
+            "payload": {"id": "beta", "cwd": "/x"},
+        },
+        {
+            "timestamp": today,
+            "type": "response_item",
+            "payload": {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": "beta generators today"}],
+            },
+        },
+    ]
+    (mirror["archives"] / "rollout-beta.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in rows_recent)
+    )
+    conn = _connect(mirror)
+    assert (
+        not CodexExporter(mirror["archives"]).export_all(conn, incremental=False).errors
+    )
+    recent = conn.execute(
+        "SELECT id FROM sessions WHERE metadata LIKE '%rollout-beta.jsonl%'"
+    ).fetchone()[0]
+    ids = enrich(mirror, old, "R1")
+    # A scope-owned observation (context_observation_owners): an owner row that
+    # does not anchor the session to hot.
+    store = ContextStore(conn)
+    with store._atomic(), records.policy_guard(conn):
+        owned = ObservationStore(conn).append(
+            kind="fixture.plan",
+            subject="r1-owned",
+            payload={"text": "OWNED_REPORT"},
+            producer="fixture",
+            authority="reported",
+        )
+    for table, column, value in (
+        ("context_evidence", "session_id", old),
+        ("context_native_message_sources", "evidence_id", ids["evidence"]),
+        ("context_citations", "assertion_id", ids["assertion"]),
+        ("context_observation_sources", "observation_id", ids["observation"]),
+        ("context_observation_session_owners", "session_id", old),
+        ("context_observation_owners", "observation_id", owned),
+    ):
+        assert count(
+            mirror["hot"], f"SELECT count(*) FROM {table} WHERE {column}=?", value
+        ), table
+    before = {e.name: rows(mirror["hot"], e.name) for e in registry.PAYLOAD}
+    assert not mirror["full"].exists()
+
+    stats = sync_to_full()
+
+    assert stats.bound and stats.sessions_synced == 2
+    assert payload_subset(mirror) == {}
+    with closing(sqlite3.connect(mirror["full"])) as full:
+        assert full.execute("PRAGMA foreign_key_check").fetchall() == []
+
+    pruned = prune_hot(days=30, dry_run=False)
+
+    assert pruned.sessions_deleted == 1, pruned
+    assert pruned.skipped_unverified == 0 and pruned.skipped_anchored == 0
+    assert count(mirror["hot"], "SELECT count(*) FROM sessions WHERE id=?", old) == 0
+    assert count(mirror["hot"], "SELECT count(*) FROM sessions WHERE id=?", recent) == 1
+    assert (
+        count(
+            mirror["hot"],
+            "SELECT count(*) FROM context_evidence WHERE session_id=?",
+            old,
+        )
+        == 0
+    )
+    # The whole pre-prune closure is queryable in full, row for row.
+    for name, hot_rows in before.items():
+        assert hot_rows <= rows(mirror["full"], name), name
+    with (
+        closing(sqlite3.connect(mirror["full"])) as full,
+        closing(sqlite3.connect(mirror["hot"])) as hot,
+    ):
+        assert full.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert hot.execute("PRAGMA foreign_key_check").fetchall() == []
+        for db in (full, hot):
+            integrity = fts_integrity(db)
+            assert integrity.healthy, integrity
+        assert (
+            full.execute(
+                "SELECT count(*) FROM context_evidence_fts WHERE context_evidence_fts MATCH 'decorators'"
+            ).fetchone()[0]
+            == 1
+        )
+
+    again = sync_to_full()
+    assert sum(again.rows_copied.values()) == 0 and again.sessions_synced == 0
+
+    # A permanent forget of the archive-only session reaches full and sticks.
+    assert managed_history.forget_with_history(old, apply=True)["applied"]
+    sync_to_full()
+    for sql in (
+        "SELECT count(*) FROM sessions WHERE id=?",
+        "SELECT count(*) FROM messages WHERE session_id=?",
+        "SELECT count(*) FROM context_evidence WHERE session_id=?",
+    ):
+        assert count(mirror["full"], sql, old) == 0, sql
+        assert count(mirror["hot"], sql, old) == 0, sql
+    resurrect = sync_to_full()
+    assert sum(resurrect.rows_copied.values()) == 0
+    assert count(mirror["full"], "SELECT count(*) FROM sessions WHERE id=?", old) == 0
+    assert (
+        count(mirror["full"], "SELECT count(*) FROM sessions WHERE id=?", recent) == 1
+    )
