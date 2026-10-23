@@ -2,7 +2,7 @@
 session file-IO modules.
 
 Session release (``active.release()``) unlinks the IPC files from an
-executor thread (``active.py:130-131``), so a request reading them concurrently
+executor thread (``active.py``, ``_clear_files_of``), so a request reading them concurrently
 races that unlink. ``28a431b`` fixed this shape for
 ``parse_topics_file``/``parse_parking_file`` (checked ``exists()`` then called
 ``read_text()`` as a separate step); R-06 and R-08 (this lane) fixed the two

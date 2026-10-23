@@ -202,7 +202,7 @@ class TestSessionSSE:
     def test_mtime_or_zero_survives_a_vanishing_file(self) -> None:
         """R-06: the SSE loop's change-detection stat() must not race
         clear_session_files(), which unlinks these same files from an
-        executor thread (session/active.py:130-131) -- the exact race
+        executor thread (session/active.py, ``_clear_files_of``) -- the exact race
         28a431b fixed for parse_topics_file/parse_parking_file, reachable
         here too (that commit's own message named it: "any client polling
         session state while a grace window expires could hit it") but never

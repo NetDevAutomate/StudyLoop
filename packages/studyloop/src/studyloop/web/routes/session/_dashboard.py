@@ -164,7 +164,7 @@ def _mtime_or_zero(f: Path) -> float:
     """This file's mtime, or 0.0 if it can't be stat()'d.
 
     Read first and handle failure, rather than checking exists() and then
-    stat()-ing: clear_session_files() (session release, active.py:130-131)
+    stat()-ing: clear_session_files() (session release, ``active._clear_files_of``)
     unlinks these same files from an executor thread. 28a431b fixed the
     exact race for parse_topics_file/parse_parking_file's read(); the SSE
     loop below is the client its own commit message named as reachable
