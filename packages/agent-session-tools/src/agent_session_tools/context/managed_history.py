@@ -26,7 +26,13 @@ CONTROL_TABLES = (
     "context_observation_tombstones",
     "context_observation_retired_subjects",
     "context_retirements",
+    # Permanent (ABORT on UPDATE/DELETE, session_owner_schema.py) and acted on by
+    # its own purge trigger; a full tier missing it kept the retired annotation
+    # body (council pass 7, C3).
+    "context_annotation_retirements",
 )
+# Controls whose identity is their first two columns (their composite key).
+_TWO_COLUMN_KEYS = ("context_retirements", "context_annotation_retirements")
 MAX_CONTROL_ROWS = 1_000_000
 MAX_CONTROL_BYTES = 32 * 1024 * 1024
 MAX_CLOSURE_ROUNDS = 16
@@ -144,7 +150,7 @@ def _counts(conn):
 
 def _keys(controls):
     return {
-        table: {row[:2] if table == "context_retirements" else row[:1] for row in rows}
+        table: {row[:2] if table in _TWO_COLUMN_KEYS else row[:1] for row in rows}
         for table, rows in controls.items()
     }
 
@@ -252,38 +258,52 @@ def forget_with_history(session_id, *, apply=False):
             }
 
 
-def reconcile_full(*, hot: Path | None = None, config=None):
-    """Reconcile permanent controls with the configured full DB; no body transfer.
+def _reconcile_controls(config, hot):
+    """Converge permanent controls canonical-first; ``(report, identities, controls)``.
 
-    Existing archive retirement intent is preserved as well as current canonical
-    intent. Permission withdrawal is a separate, explicitly incomplete phase.
-    External snapshots/native archives are outside this cleanup operation.
+    The report is a refusal (``complete`` False with a ``reason``) whenever the
+    controls phase could not run; otherwise ``identities``/``controls`` are what
+    the caller re-checks against.
     """
-    config = load_config() if config is None else config
     configured = _configured(config)
     canonical, archive, _ = configured
     if archive is None:
-        return {
-            "configured": False,
-            "complete": True,
-            "coverage": "no_configured_full_store",
-        }
+        return (
+            {
+                "configured": False,
+                "complete": True,
+                "controls_stable": True,
+                "coverage": "no_configured_full_store",
+            },
+            None,
+            None,
+        )
     if hot is not None and hot.expanduser().resolve() != canonical:
-        return {
-            "configured": archive is not None,
-            "complete": False,
-            "reason": "noncanonical_override",
-        }
+        return (
+            {
+                "configured": archive is not None,
+                "complete": False,
+                "controls_stable": False,
+                "reason": "noncanonical_override",
+            },
+            None,
+            None,
+        )
     if canonical == archive or (
         canonical.exists() and archive.exists() and canonical.samefile(archive)
     ):
         raise ScopeError("Canonical and full-history databases must be different files")
     if not archive.is_file():
-        return {
-            "configured": True,
-            "complete": False,
-            "reason": "full_store_unavailable",
-        }
+        return (
+            {
+                "configured": True,
+                "complete": False,
+                "controls_stable": False,
+                "reason": "full_store_unavailable",
+            },
+            None,
+            None,
+        )
     identities = {path: _identity(path) for path in (canonical, archive)}
     try:
         # Fixed lock order. Only canonical commits first; archive rollback after
@@ -298,6 +318,81 @@ def reconcile_full(*, hot: Path | None = None, config=None):
             _check(configured, identities)
             _commit_archive(full)
         _check(configured, identities)
+    except sqlite3.OperationalError:
+        return (
+            {
+                "configured": True,
+                "complete": False,
+                "controls_stable": False,
+                "reason": "managed_store_busy_or_unavailable",
+            },
+            None,
+            None,
+        )
+    return (
+        {
+            "configured": True,
+            "coverage": "permanent_controls_in_canonical_and_configured_full_database",
+            "closure_rounds": rounds,
+        },
+        (configured, identities, canonical, archive),
+        controls,
+    )
+
+
+def reconcile_full_controls(*, hot: Path | None = None, config=None):
+    """Converge permanent controls with the configured full DB; no compaction.
+
+    The tier mirror's controls phase (council pass 7, A1): the same convergence
+    and canonical-first commits as :func:`reconcile_full`, without
+    ``lifecycle.compact`` (``wal_checkpoint(TRUNCATE)`` + ``VACUUM`` of both
+    files). ``sync-full`` runs after every export, so a compacting gate would
+    VACUUM hot each time and refuse whenever another process holds it open.
+    Retired bodies in full are purged by the convergence itself
+    (``reconcile_local_retirements`` on both copies) and again inside the
+    mirror's content transaction. ``complete`` == ``controls_stable``.
+    """
+    config = load_config() if config is None else config
+    report, checked, controls = _reconcile_controls(config, hot)
+    if checked is None:
+        return report
+    configured, identities, canonical, archive = checked
+    try:
+        _check(configured, identities)
+        stable = _same_controls(canonical, controls) and _same_controls(
+            archive, controls
+        )
+    except sqlite3.OperationalError:
+        return {
+            "configured": True,
+            "complete": False,
+            "controls_stable": False,
+            "reason": "managed_store_busy_or_unavailable",
+        }
+    return {
+        **report,
+        "complete": bool(stable),
+        "controls_stable": bool(stable),
+        "physical_cleanup": "not_performed",
+        "withdrawal_reconciliation": "not_performed",
+        "managed_restore_reconciled": False,
+    }
+
+
+def reconcile_full(*, hot: Path | None = None, config=None):
+    """Reconcile permanent controls with the configured full DB; no body transfer.
+
+    Existing archive retirement intent is preserved as well as current canonical
+    intent. Permission withdrawal is a separate, explicitly incomplete phase.
+    External snapshots/native archives are outside this cleanup operation.
+    """
+    config = load_config() if config is None else config
+    report, checked, controls = _reconcile_controls(config, hot)
+    if checked is None:
+        report.pop("controls_stable", None)
+        return report
+    configured, identities, canonical, archive = checked
+    try:
         canonical_cleanup = compact(canonical)
         full_cleanup = compact(archive)
         _check(configured, identities)
@@ -308,8 +403,8 @@ def reconcile_full(*, hot: Path | None = None, config=None):
         return {
             "configured": True,
             "complete": bool(complete),
-            "coverage": "permanent_controls_in_canonical_and_configured_full_database",
-            "closure_rounds": rounds,
+            "coverage": report["coverage"],
+            "closure_rounds": report["closure_rounds"],
             "canonical_cleanup": canonical_cleanup,
             "full_cleanup": full_cleanup,
             "controls_stable": stable,
