@@ -1662,6 +1662,11 @@ def prune(
 
     print(f"Candidates older than {days} days: {stats.candidates}")
     print(f"Verified present in full DB:       {stats.verified}")
+    if stats.skipped_undated:
+        print(
+            f"ℹ️  Kept {stats.skipped_undated} session(s) with no timestamp: "
+            "their age is unknown."
+        )
     if stats.skipped_anchored:
         print(f"Retained (own learner records):    {stats.skipped_anchored}")
     if stats.skipped_unverified:
