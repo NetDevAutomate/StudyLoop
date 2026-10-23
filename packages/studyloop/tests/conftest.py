@@ -736,9 +736,18 @@ def _fail_on_real_home_harness_writes(request: pytest.FixtureRequest):
     if report is not None and report.failed:
         return  # the test already failed; that failure is the more useful signal
     detail = "\n".join(f"  - {path}" for path in changed)
+    # The guard sees a CHANGE during this test's window; it cannot tell who made
+    # it. The usual culprit is this test reaching an installer or a session
+    # start without the redirect -- but a concurrent writer is just as able:
+    # Kiro CLI migrating an agent file it loads (2026-10-23, during a 50-second
+    # test), `studyloop install agents`, or a live study session. Say so, and
+    # say how to tell: alone, an innocent test leaves the mtimes unchanged.
     pytest.fail(
-        "this test wrote into the developer's real home (redirect the installer "
-        f"or stub it; see the guard in conftest.py):\n{detail}",
+        "a real-home harness file changed while this test ran (either this test "
+        "wrote it -- redirect the installer or stub it; see the guard in "
+        "conftest.py -- or another process did: Kiro CLI migrating agent files, "
+        "`studyloop install agents`, a live study session; re-run this test alone "
+        f"to tell):\n{detail}",
         pytrace=False,
     )
 
