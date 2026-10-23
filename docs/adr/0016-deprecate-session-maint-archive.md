@@ -104,6 +104,49 @@ is the design question for the implementation cycle; it is put to a council (pas
 is briefed, and this record will be amended with the outcome. Until the implementation lands, the
 notice, docs and changelog keep the wording the previous amendment gave them.*
 
+*Amendment, 2026-10-23 (council pass 7, remediation plan 6; **lands with lane T,
+`review6/tiering-mirror`** — until that branch is merged this paragraph records a ruling, not
+shipped behaviour): the design question above is decided. All five seats ruled ADOPT WITH CHANGES
+on a SQL copy of a verified table set under a narrowed guard, not the structured data plane run
+locally. The principle the legacy guard was written on is kept, and narrowed, in these words: "The
+protected-memory principle remains mandatory for peer and scoped replication and for every legacy
+SQL entry point. Tiering is a separate, same-owner mirror: explicit table roles, lifecycle
+reconciliation before content, foreign keys on, immutable-row rules, no peer-convergence claim, and
+no copy of instance-local peer, receipt, access-generation, retention-origin, quarantine or policy
+state. It is not a fallback and authorises no SQL transfer between independent nodes."*
+
+*The mirror contract `session-maint sync-full` implements under that principle: it runs only with
+`database.full_db_path` set; the full database is a single-writer mirror, bound on its first sync
+to the hot database's instance (`context_access_state.instance`), and a populated full that is
+unbound, or bound to another instance, is refused; a hot database that has used structured
+replication (any peer-ledger row) is refused; permanent controls (tombstones, retirements) are
+reconciled canonical-first before any content moves, without compacting either file, and the
+bodies those controls retire are purged from full; content then moves in one transaction with foreign keys on,
+driven by one table-role registry that both the copier and `prune`'s acceptance check consume, so
+a `context_*` table the registry does not classify makes both fail closed; immutable rows are
+inserted if absent and never replaced, and a divergent row under an overlapping key is a refusal
+naming table and key; mutable rows are upserted, never `INSERT OR REPLACE`; instance-local state
+(access generations, replica receipts, policy, lifecycle mode, capture runs, retention origins, the
+peer ledger, quarantine) is never copied; a repeated run with nothing changed inserts nothing.
+`session-maint prune` then evicts from hot only the sessions that check verifies in full. A refusal
+is its own exception with a reason code, not the `LegacySyncRefused` message, and the CLI prints the
+reason and the fix.*
+
+*What remains forbidden: every SQL transfer between independent instances. `session-sync` and every
+other legacy SQL entry point, and any scoped configuration (`memory.sync`, `memory.projects`, a
+non-default `memory.default_scope`, which `sync-full` still refuses through `check_config`), keep
+the legacy guard (`replication/legacy.py`) and its existing refusal pins unchanged; `refocus`
+(full → hot) still shares that guard and is its own design item. The guard is narrowed for one
+path only — `sync-full` into the full database bound to this hot one — and that path is not a
+fallback for any other. The removal promise stays withdrawn by this amendment. It returns — the
+notice, docs and changelog may again say `archive` is removed in the release after the one in which
+`sync-full` carries the context tier — only when the end-to-end acceptance test (pass 7, R1) is
+green on `main`: a current-schema session created through the real exporter, synced with
+`sync_to_full`, is evicted from hot by `prune_hot(dry_run=False)` with its whole closure queryable
+in full; the foreign-key check and both full-text invariants hold; a repeat sync inserts zero rows;
+a permanent forget never resurrects; and every existing peer refusal pin stays green. Until then the
+docs describe the mirror contract but name no removal release.*
+
 Grounding adopted: single source of truth for the schema (one migration path, one reader set);
 Keep a Changelog's deprecate-then-remove.
 
