@@ -657,18 +657,25 @@ def _read_topic(session_id: str) -> str | None:
     return topic if isinstance(topic, str) else None
 
 
-def _persist_before_release(session_id: str) -> None:
-    """Save ``session_id``'s evidence before ``active.release()`` deletes it.
+def _end_before_release(session_id: str) -> None:
+    """End ``session_id`` -- save it and tear it down -- before ``active.release()``.
 
     Stop, agent exit, grace expiry, the reaper and shutdown all end a session
     through :func:`_release_if_current` alone. Before review 2026-10-21
     (F-WEB-02) that released the slot, which unlinks the topics and parking
     files, and never wrote the ``study_sessions`` row: the row stayed open with
-    no notes and the evidence was unrecoverable.
+    no notes and the evidence was unrecoverable. F-WEB-02 added the save; plan 5
+    (larger #1 c) added the teardown half too, because only the End route ran
+    it: a Kiro learner's swapped agent definitions and the persona file stayed
+    behind on every other kind of ending until the next session started.
+    ``end_session_common`` runs the same persist-then-teardown the End route and
+    the CLI's ``cleanup_on_exit`` run, in the same order -- teardown while the
+    agent is still alive is the order every end path already uses.
 
     Skips a state file that is not this session's (cleared or replaced from
     another process; its files are not this session's evidence) and one
-    already marked ``mode=ended`` (saved by whoever wrote the marker).
+    already marked ``mode=ended`` (saved, and torn down, by whoever wrote the
+    marker).
 
     Synchronous for the reason :func:`_read_topic` gives: no new yield point
     in the WS route's ``finally``. Best effort, because none of these paths can
@@ -682,12 +689,12 @@ def _persist_before_release(session_id: str) -> None:
         return
     if state.get("study_session_id") != session_id or state.get("mode") == "ended":
         return
-    from studyloop.session.cleanup import persist_session_end
+    from studyloop.session.cleanup import end_session_common
 
     try:
-        persist_session_end(state, raise_if_not_persisted=False)
+        end_session_common(state, raise_if_not_persisted=False)
     except Exception:  # pragma: no cover — defensive; must not wedge the slot
-        logger.exception("saving session %s before release failed", session_id)
+        logger.exception("ending session %s before release failed", session_id)
 
 
 def _transport_alive(transport: AgentSessionTransport) -> bool:
@@ -709,8 +716,11 @@ async def _release_if_current(session_id: str, *, reason: str, persist: bool = T
     own.
 
     With ``persist`` (every caller except the End route, which has already
-    saved the session) the session's evidence is saved first, because
-    ``active.release()`` deletes the topics and parking files.
+    ended the session) the session is ended first -- saved and torn down --
+    because ``active.release()`` deletes the topics and parking files, and
+    nothing after it can reach the adapter. ``release()`` keeps the
+    ``mode=ended`` state file the save leaves, so the dashboard's summary view
+    has something to render.
     """
     from studyloop.session import active as session_active
 
@@ -720,7 +730,7 @@ async def _release_if_current(session_id: str, *, reason: str, persist: bool = T
     topic = _read_topic(session_id)
     _record_release(session_id, reason, topic, current.config.agent)
     if persist:
-        _persist_before_release(session_id)
+        _end_before_release(session_id)
     # Free the consumer slot with the session it belonged to. Leaving it to the
     # WS handler's ``finally`` is what let "refresh → End → Start" refuse the
     # next session's first WebSocket with a handshake 403.

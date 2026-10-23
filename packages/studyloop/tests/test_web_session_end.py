@@ -233,7 +233,12 @@ async def test_repeated_end_does_not_duplicate_persisted_evidence(
 
     assert first_resp.status_code == 200, first_resp.text
     assert second.status_code in (200, 404), second.text
-    assert third.status_code == 404, third.text
+    # The release keeps the ``mode=ended`` state file for the summary view (plan 5,
+    # larger #1), so a later End finds an already-ended session and answers 200
+    # after an idempotent teardown -- not 404, which the End dialog reads as
+    # "could not end, try again" (session-timer.js, R-70) and keeps open.
+    assert third.status_code == 200, third.text
+    assert session_state.read_session_state().get("mode") == "ended"
     assert len(ends) == 1, f"end_study_session ran {len(ends)} times"
     assert sorted(c["topic"] for c in progress) == ["Closures", "GIL"]
     row = _stored_row(db, study_id)

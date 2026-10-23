@@ -138,12 +138,29 @@ def _render_summary(state: dict) -> str:
         )
         parked_html = f"<h3>\u25cb Parked Topics</h3><ul>{parked_items}</ul>"
 
+    # One line, only when pi's own export is known to be missing
+    # (``cleanup.record_harness_export_check``, plan-5 D). Advice, not an error:
+    # an empty pi session the exporter wrote no row for gets the same line, and
+    # the command it names is idempotent. Only pi exports itself, so only pi is
+    # checked; another harness would need its own command here.
+    export_html = ""
+    export_check = state.get("export_check")
+    if (
+        isinstance(export_check, dict)
+        and export_check.get("harness") == "pi"
+        and export_check.get("status") == "missing"
+    ):
+        export_html = (
+            '<p class="summary-export-missing">This pi session was not exported to '
+            "the session database \u2014 run `session-export --pi-only`.</p>"
+        )
+
     return (
         f'<div class="session-summary">'
         f'<div class="summary-header">'
         f"<h2>Session Complete: {topic}</h2>"
         f"</div>"
-        f"{wins_html}{struggles_html}{parked_html}"
+        f"{wins_html}{struggles_html}{parked_html}{export_html}"
         f'<p class="summary-cta">'
         f"Stand up. Walk to the kitchen. Your brain needs a break.</p>"
         f"</div>"

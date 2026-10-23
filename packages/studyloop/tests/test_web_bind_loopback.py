@@ -14,6 +14,7 @@ Review-4 items 3 and 4 (coordinator decisions on the ADR-0019 consequences):
 
 from __future__ import annotations
 
+import os
 import re
 import secrets
 import socket
@@ -25,6 +26,8 @@ from studyloop.web.ws_origin import BOOTSTRAP_TOKEN_ENV
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_DEAD_PID = 999_999_999  # beyond any pid the kernel hands out
 
 
 def _run(
@@ -292,7 +295,7 @@ class TestShowUrl:
                 monkeypatch,
                 tmp_path,
                 {
-                    "web_pid": 4242,
+                    "web_pid": os.getpid(),
                     "web_port": port,
                     "web_bind_host": "100.101.102.103",
                     "web_sign_in_token": token,
@@ -314,10 +317,78 @@ class TestShowUrl:
             code, output = _show_url(
                 monkeypatch,
                 tmp_path,
+                {"web_pid": os.getpid(), "web_port": port, "web_sign_in_token": token},
+            )
+        assert code == 0, output
+        assert f"http://127.0.0.1:{port}/session?token={token}" in output
+
+    def test_refuses_when_the_recorded_server_is_gone_and_something_else_answers(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Plan 5 item E (pass 4, astra): a reused port must not re-print a stale token.
+
+        The probe only proves that *something* accepts a connection on the port.
+        The recorded ``web_pid`` is what ties the answer to our server: when that
+        process is gone, whatever answers is not the one the token belongs to.
+        """
+        token = secrets.token_urlsafe(32)
+        with socket.socket() as squatter:
+            squatter.bind(("127.0.0.1", 0))
+            squatter.listen(1)
+            port = squatter.getsockname()[1]
+            code, output = _show_url(
+                monkeypatch,
+                tmp_path,
+                {"web_pid": _DEAD_PID, "web_port": port, "web_sign_in_token": token},
+            )
+        assert code == 1, output
+        assert f"the recorded server (pid {_DEAD_PID}) is gone" in output
+        assert f"something else answers on port {port}" in output
+        assert token not in output, "a dead server's token was handed out"
+        assert "token=" not in output
+        assert "http://" not in output
+
+    def test_a_server_owned_by_another_user_counts_as_alive(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``os.kill(pid, 0)`` answering EPERM means a real process holds that pid."""
+        token = secrets.token_urlsafe(32)
+
+        def _someone_elses(_pid: int, _sig: int) -> None:
+            raise PermissionError("Operation not permitted")
+
+        monkeypatch.setattr(os, "kill", _someone_elses)
+        with socket.socket() as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            port = server.getsockname()[1]
+            code, output = _show_url(
+                monkeypatch,
+                tmp_path,
                 {"web_pid": 4242, "web_port": port, "web_sign_in_token": token},
             )
         assert code == 0, output
         assert f"http://127.0.0.1:{port}/session?token={token}" in output
+
+    def test_a_dead_pid_is_not_mentioned_when_nothing_answers(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Nothing on the port is the plainer fact; the launcher message stays."""
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        code, output = _show_url(
+            monkeypatch,
+            tmp_path,
+            {
+                "web_pid": _DEAD_PID,
+                "web_port": port,
+                "web_sign_in_token": secrets.token_urlsafe(32),
+            },
+        )
+        assert code == 1, output
+        assert "no studyloop web server" in output.lower()
+        assert "is gone" not in output
 
     def test_refuses_when_no_server_answers_on_the_recorded_port(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
