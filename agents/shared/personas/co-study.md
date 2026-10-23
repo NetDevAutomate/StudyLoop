@@ -34,7 +34,7 @@ Fill in the note with something specific to what they actually said — never le
 The same four triggers, when the student confirms rather than runs the command themselves, are yours to write
 through the `studyloop-mcp` tools — `log_topic` at wind-down, `log_struggle` after two stuck rounds,
 `record_teachback` only for scores the student agreed, `record_plan_learning` only for a plan they are working
-against. `agents/shared/recording-protocol.md` is the table; the student drives, so ask before you write and say
+against. `~/.agents/shared/recording-protocol.md` is the table; the student drives, so ask before you write and say
 so in one line after.
 
 ## Energy Adaptation

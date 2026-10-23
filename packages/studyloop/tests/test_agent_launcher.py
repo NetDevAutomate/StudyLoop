@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 # Inline fixtures only (no conftest.py — pluggy conflict)
 
@@ -293,6 +291,71 @@ class TestBuildCanonicalPersona:
             build_canonical_persona("focus", "Python", 5)
 
         assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+# ---------------------------------------------------------------------------
+# Council pass 5, Q5: the personas cite the installed hub, and the builder
+# resolves the hub to the checkout when `studyloop install agents` never ran.
+# ---------------------------------------------------------------------------
+
+_SERVED_PERSONAS = ("study", "co-study")
+
+
+class TestSharedCitations:
+    @staticmethod
+    def _repo_root() -> Path:
+        root = Path(__file__).resolve()
+        while not (root / "agents/manifest.json").exists():
+            root = root.parent
+        return root
+
+    @pytest.mark.parametrize("mode", _SERVED_PERSONAS)
+    def test_persona_cites_the_installed_hub_not_a_repo_relative_path(self, mode: str) -> None:
+        """A session directory is not the checkout: `agents/shared/x.md` resolves
+        to nothing from there. Every citation names `~/.agents/shared/`, the hub
+        `_SHARED_LINKS` installs (file-level, so it is a grep a reviewer can
+        repeat)."""
+        import re
+
+        text = (self._repo_root() / f"agents/shared/personas/{mode}.md").read_text(encoding="utf-8")
+        bare = [
+            m.group(0)
+            for m in re.finditer(r"(?<![\w./~])agents/shared/[\w./-]+", text)
+            if not m.group(0).startswith("~/.")
+        ]
+        assert bare == [], f"{mode}.md cites agents/shared/ without the hub prefix: {bare}"
+        assert "~/.agents/shared/recording-protocol.md" in text
+
+    def test_hub_present_keeps_the_hub_citation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from studyloop.agent_launcher import build_canonical_persona
+
+        (tmp_path / ".agents" / "shared").mkdir(parents=True)
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+        served = build_canonical_persona("study", "Python", 5)
+
+        assert "`~/.agents/shared/socratic-engine.md`" in served
+        assert str(self._repo_root() / "agents" / "shared") not in served
+
+    def test_hub_absent_substitutes_the_checkout_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An un-installed checkout still resolves: with no `~/.agents/shared`
+        the served text names the repository's `agents/shared` instead, the
+        same substitution shape the session paths use."""
+        from studyloop.agent_launcher import build_canonical_persona
+
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+        assert not (tmp_path / ".agents" / "shared").exists()
+
+        served = build_canonical_persona("study", "Python", 5)
+
+        repo_shared = self._repo_root() / "agents" / "shared"
+        assert f"`{repo_shared / 'socratic-engine.md'}`" in served
+        assert f"`{repo_shared / 'recording-protocol.md'}`" in served
+        assert "~/.agents/shared" not in served
 
 
 # ---------------------------------------------------------------------------
