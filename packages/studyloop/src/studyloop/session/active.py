@@ -140,5 +140,41 @@ async def release() -> None:
         )
 
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, session_state.clear_session_files)
+    await loop.run_in_executor(None, _clear_files_of, session.study_session_id)
     logger.info("active session released id=%s", session.study_session_id)
+
+
+def _clear_files_of(study_session_id: str) -> None:
+    """Clear the IPC files the released session owned -- and only those.
+
+    Until review 2026-10-21 (plan 5, larger #1) this was an unconditional
+    ``clear_session_files()``, which deleted files the released session did not
+    own in two ways. The state file names its owner, so read it first:
+
+    - **Another session's.** The reaper releases a slot whose state file no
+      longer names it (``state_file_replaced``: a later start has written its
+      claim, and its topics and parking files are its own). Nothing here is
+      that session's to delete; touch nothing.
+    - **Ours, saved.** Every end path writes ``mode=ended`` after persisting
+      the session (``cleanup.persist_session_end``), and the dashboard's
+      summary view renders from that file. Deleting it here is why a browser
+      session never showed its summary. Keep the state file; the topics and
+      parking files have been persisted and go. An ended claim blocks no
+      start (``_claim_exists``), and the next start replaces the file.
+    - **Ours, unsaved** (no ``mode=ended``: the marker write failed, or a
+      caller released without ending) and **nobody's** (no id): as before,
+      everything goes. A kept file would read as a live claim owned by this
+      process's pid and refuse the next ``studyloop study``, and there is no
+      saved summary for it to show. The marker is NOT written here: it means
+      "persisted", and only the code that persisted may say so.
+
+    Runs on an executor thread (``write_session_state``'s flock would block the
+    loop). Reading, then unlinking, is not atomic against a start landing in
+    between on the loop; that window is the read-to-unlink gap of the unsaved
+    case only, where it used to be the whole release.
+    """
+    state = session_state.read_session_state()
+    owner = state.get("study_session_id")
+    if owner and owner != study_session_id:
+        return
+    session_state.clear_session_files(keep_state=bool(owner) and state.get("mode") == "ended")
