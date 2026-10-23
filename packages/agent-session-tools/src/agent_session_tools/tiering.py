@@ -678,12 +678,7 @@ def _mirror_preflight(
                 "WHERE id=1"
             ).fetchone()
             if row is not None:
-                if row[0] != instance:
-                    raise TieringRefused(
-                        "instance_mismatch",
-                        f"the full database is bound to instance {row[0]}; the hot "
-                        f"database is instance {instance}",
-                    )
+                _require_bound_to(row[0], plan)
                 plan.bound, plan.receipt = True, row[1]
                 return plan
         holding = _populated(conn, "main")
@@ -697,43 +692,68 @@ def _mirror_preflight(
     return plan
 
 
-def _bind_full(conn: sqlite3.Connection, plan: _MirrorPlan) -> bool:
-    """Create/verify the binding inside the content transaction; True when bound now.
+def _bind_full(full: Path, plan: _MirrorPlan) -> bool:
+    """Bind an empty full to hot's instance before anything else is written to it.
 
-    The table is created here, in the full tier only, rather than by a migration:
-    migrations are tier-agnostic (``init_db`` runs the same chain on hot and full),
-    and a hot carrying an empty binding table would mean nothing.
+    Its own short transaction, right after ``init_db(full)`` and before the
+    controls phase: from then on only this instance's mirror writes the file, so
+    a refused first copy (or a crash) leaves a bound full that the next run
+    continues -- not a populated, unbound one it would have to refuse. The table
+    is created here, in the full tier only, rather than by a migration:
+    migrations are tier-agnostic (``init_db`` runs the same chain on hot and
+    full), and a hot carrying an empty binding table would mean nothing.
+    Returns True when this call created the binding.
     """
     from .tiering_registry import MIRROR_TABLE
 
-    conn.execute(
-        f"""CREATE TABLE IF NOT EXISTS main.{MIRROR_TABLE} (
-            id INTEGER PRIMARY KEY CHECK(id=1),
-            canonical_instance TEXT NOT NULL,
-            bound_at TEXT NOT NULL,
-            last_source_revision INTEGER
-        )"""
+    conn = sqlite3.connect(
+        full.resolve().as_uri() + "?mode=rw", uri=True, isolation_level=None, timeout=5
     )
-    row = conn.execute(
-        f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
-    ).fetchone()
-    if row is not None:
-        if row[0] != plan.instance:
-            raise TieringRefused(
-                "instance_mismatch",
-                f"the full database is bound to instance {row[0]}",
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            conn.execute(
+                f"""CREATE TABLE IF NOT EXISTS main.{MIRROR_TABLE} (
+                    id INTEGER PRIMARY KEY CHECK(id=1),
+                    canonical_instance TEXT NOT NULL,
+                    bound_at TEXT NOT NULL,
+                    last_source_revision INTEGER
+                )"""
             )
-        return False
-    holding = _populated(conn, "main")
-    if holding:
+            row = conn.execute(
+                f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
+            ).fetchone()
+            if row is not None:
+                _require_bound_to(row[0], plan)
+                conn.execute("ROLLBACK")
+                return False
+            holding = _populated(conn, "main")
+            if holding:
+                raise TieringRefused(
+                    "unbound_full",
+                    f"rows appeared in {', '.join(holding[:5])} during sync",
+                )
+            conn.execute(
+                f"INSERT INTO main.{MIRROR_TABLE} VALUES (1, ?, ?, NULL)",
+                (plan.instance, datetime.now(UTC).isoformat()),
+            )
+            conn.execute("COMMIT")
+            return True
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+    finally:
+        conn.close()
+
+
+def _require_bound_to(canonical_instance: str | None, plan: _MirrorPlan) -> None:
+    if canonical_instance != plan.instance:
         raise TieringRefused(
-            "unbound_full", f"rows appeared in {', '.join(holding[:5])} during sync"
+            "instance_mismatch",
+            f"the full database is bound to instance {canonical_instance}; the hot "
+            f"database is instance {plan.instance}",
         )
-    conn.execute(
-        f"INSERT INTO main.{MIRROR_TABLE} VALUES (1, ?, ?, NULL)",
-        (plan.instance, datetime.now(UTC).isoformat()),
-    )
-    return True
 
 
 # ---------------------------------------------------------------------------
@@ -802,6 +822,7 @@ def sync_to_full(
 
     ensure_leaf_dir(full.parent)
     init_db(str(full)).close()
+    bound_now = _bind_full(full, plan)
     _check_mirror_schemas(hot, full)
 
     try:
@@ -815,6 +836,7 @@ def sync_to_full(
         )
 
     stats = _mirror_copy(hot, full, plan)
+    stats.bound = bound_now
     logger.info(
         "sync_to_full: %s session(s) changed, %s row(s) written, full DB holds %s sessions",
         stats.sessions_synced,
@@ -996,7 +1018,10 @@ def _mirror_copy(hot: Path, full: Path, plan: _MirrorPlan) -> SyncStats:
         conn.execute("BEGIN IMMEDIATE")
         try:
             check_config(load_config())  # the live config, as the old guard re-read it
-            stats.bound = _bind_full(conn, plan)
+            binding = conn.execute(
+                f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
+            ).fetchone()
+            _require_bound_to(binding[0] if binding else None, plan)
             instance, revision = conn.execute(
                 "SELECT a.instance, r.revision FROM hot.context_access_state a, "
                 "hot.context_replica_content_state r WHERE a.id=1 AND r.id=1"

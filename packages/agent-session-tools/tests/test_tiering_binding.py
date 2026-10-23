@@ -157,3 +157,82 @@ def test_override_paths_must_be_the_configured_pair(tiered, tmp_path):
     with pytest.raises(tiering.TieringRefused) as info:
         tiering.sync_to_full(full=tmp_path / "elsewhere.db")
     assert info.value.reason == "noncanonical_override"
+
+
+def test_first_sync_of_a_hot_with_permanent_controls_binds(tiered):
+    """The controls phase writes hot's tombstones into the still-unbound full
+    before the content transaction binds it; that is not 'populated'."""
+    from agent_session_tools.context import records
+    from agent_session_tools.context.lifecycle import purge_session
+
+    with closing(records.connect(tiered["hot"])) as hot:
+        hot.execute("INSERT INTO sessions(id,source) VALUES ('forgotten','codex')")
+        hot.commit()
+        hot.execute("BEGIN IMMEDIATE")
+        purge_session(hot, "forgotten")
+        hot.commit()
+
+    stats = tiering.sync_to_full()
+
+    assert stats.bound
+    assert _binding(tiered["full"])[0] == _instance(tiered["hot"])
+    with closing(sqlite3.connect(tiered["full"])) as full:
+        assert full.execute(
+            "SELECT count(*) FROM context_tombstones WHERE session_id='forgotten'"
+        ).fetchone() == (1,)
+        assert full.execute("SELECT id FROM sessions").fetchall() == [("s0",)]
+
+
+def test_a_rebuilt_hot_cannot_overwrite_autoincrement_rows(tiered):
+    """Learner tables use AUTOINCREMENT ids as their upsert key. That is only
+    safe because full is bound to one instance: a rebuilt hot restarts the ids
+    (``study_notes`` id 1 again) and is refused instead of overwriting."""
+    with closing(sqlite3.connect(tiered["hot"])) as hot:
+        hot.execute("INSERT INTO study_notes(title, body) VALUES ('original', 'A')")
+        hot.commit()
+    tiering.sync_to_full()
+    tiered["hot"].unlink()
+    for suffix in ("-wal", "-shm"):
+        tiered["hot"].with_name(tiered["hot"].name + suffix).unlink(missing_ok=True)
+    rebuilt = init_db(str(tiered["hot"]))
+    rebuilt.execute("INSERT INTO study_notes(title, body) VALUES ('rebuilt', 'B')")
+    rebuilt.commit()
+    rebuilt.close()
+
+    with pytest.raises(tiering.TieringRefused) as info:
+        tiering.sync_to_full()
+
+    assert info.value.reason == "instance_mismatch"
+    with closing(sqlite3.connect(tiered["full"])) as full:
+        assert full.execute("SELECT id, title, body FROM study_notes").fetchall() == [
+            (1, "original", "A")
+        ]
+
+
+def test_a_failed_first_content_phase_does_not_strand_the_full(tiered, monkeypatch):
+    """The controls phase commits into full before the copy. If the first copy
+    then refuses, the next sync must not read those controls as foreign history."""
+    from agent_session_tools.context import records
+    from agent_session_tools.context.lifecycle import purge_session
+
+    with closing(records.connect(tiered["hot"])) as hot:
+        hot.execute("INSERT INTO sessions(id,source) VALUES ('forgotten','codex')")
+        hot.commit()
+        hot.execute("BEGIN IMMEDIATE")
+        purge_session(hot, "forgotten")
+        hot.commit()
+    real = tiering._copy_payload
+
+    def refuse_once(*_args, **_kwargs):
+        raise tiering.TieringRefused("orphan_row", "simulated first-copy failure")
+
+    monkeypatch.setattr(tiering, "_copy_payload", refuse_once)
+    with pytest.raises(tiering.TieringRefused):
+        tiering.sync_to_full()
+    monkeypatch.setattr(tiering, "_copy_payload", real)
+
+    tiering.sync_to_full()
+
+    assert _binding(tiered["full"])[0] == _instance(tiered["hot"])
+    with closing(sqlite3.connect(tiered["full"])) as full:
+        assert full.execute("SELECT id FROM sessions").fetchall() == [("s0",)]
