@@ -1503,6 +1503,13 @@ body[data-font="opendyslexic"] .card-content {
   text-align: center;
 }
 
+/* Plan-5 D: the one advisory line the ended summary shows when pi's own
+   export is known to be missing (_render.py). Advice, not an error. */
+.summary-export-missing {
+  margin-top: 12px;
+  color: var(--yellow);
+}
+
 /* Session start picker */
 .session-start-picker {
   max-width: 480px;

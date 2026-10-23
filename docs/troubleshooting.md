@@ -95,7 +95,8 @@ Each server prints a sign-in address once, with a token that is new every start;
 a browser that opens it is signed in. A tab from before a restart cannot recover
 on its own: reopen it from the new address. If the tab is closed and the token
 gone, `studyloop web --show-url` prints the current session dashboard's address
-again (it refuses when no server is up).
+again (it refuses when no server is up, and when the server that recorded the
+token is gone and something else now answers on its port).
 
 To reach it from another device, prefer an `ssh -L` tunnel or a Tailscale/VPN
 address (see [Remote Study](setup-guide.md#remote-study-ipad-on-the-bus)):
