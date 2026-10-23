@@ -13,6 +13,7 @@ is executed. No test here runs a real ssh.
 
 from __future__ import annotations
 
+import copy
 import subprocess
 from pathlib import Path
 
@@ -52,7 +53,9 @@ def cfg(tmp_path: Path) -> dict:
         },
         "logging": {"path": str(tmp_path / "log" / "sessions.log"), "level": "INFO"},
         # Legacy endpoint form: no hostname lookup, exactly what get_endpoints returns.
-        "endpoints": ENDPOINTS,
+        # A copy per test: a test that adds or edits an endpoint must not leak
+        # into its siblings through the shared module constant.
+        "endpoints": copy.deepcopy(ENDPOINTS),
     }
 
 
@@ -115,9 +118,11 @@ class TestRemote:
                 "BatchMode=yes",
                 "-o",
                 "ConnectTimeout=10",
+                "--",
                 "learner@192.0.2.10",
                 "chmod",
                 "600",
+                "--",
                 "/srv/study/sessions.db",
             ],
             [
@@ -126,9 +131,11 @@ class TestRemote:
                 "BatchMode=yes",
                 "-o",
                 "ConnectTimeout=10",
+                "--",
                 "learner@192.0.2.10",
                 "chmod",
                 "600",
+                "--",
                 "/srv/study/sessions_full.db",
             ],
             [
@@ -137,9 +144,11 @@ class TestRemote:
                 "BatchMode=yes",
                 "-o",
                 "ConnectTimeout=10",
+                "--",
                 "learner@198.51.100.7",
                 "chmod",
                 "600",
+                "--",
                 # ssh joins the remote words with spaces for the remote shell,
                 # so the path is quoted exactly as the printed hint quotes it.
                 "'/home/learner/My Sessions/sessions.db'",
@@ -295,6 +304,90 @@ class TestRemote:
 
         out = capsys.readouterr().out
         assert "❌ Remote 'ghost'" in out and "no address configured" in out
+
+    def test_a_spawn_error_at_one_endpoint_is_a_row_and_the_sweep_continues(
+        self, cfg, capsys, monkeypatch
+    ):
+        """Council pass 6: only TimeoutExpired and FileNotFoundError were caught,
+        so a PermissionError (or any other OSError) from spawning ssh escaped
+        _remote_chmod and aborted the sweep -- the contract says a failed
+        endpoint is one reported row, never an abort."""
+        calls: list[list[str]] = []
+
+        def flaky(argv, *args, **kwargs):
+            calls.append(list(argv))
+            if argv[-1] == "/srv/study/sessions.db":
+                raise PermissionError(13, "Permission denied", "ssh")
+            if argv[-1] == "/srv/study/sessions_full.db":
+                raise OSError(8, "Exec format error", "ssh")
+            return _completed(argv)
+
+        monkeypatch.setattr(maintenance.subprocess, "run", flaky)
+
+        assert _fix_perms(cfg, remote=True) == 1
+
+        out = capsys.readouterr().out
+        assert len(calls) == 3, "the sweep must reach every endpoint path"
+        assert "❌ Remote 'alpha' learner@192.0.2.10:/srv/study/sessions.db" in out
+        assert "Permission denied" in out
+        assert "Exec format error" in out
+        assert "✅ Remote 'beta'" in out
+
+    def test_a_destination_that_looks_like_an_option_is_refused_before_ssh(
+        self, cfg, capsys, monkeypatch
+    ):
+        """A configured username or address beginning with '-' would reach ssh
+        in the destination slot and be parsed as an option (ProxyCommand runs a
+        local command). Refuse it as a row; never spawn."""
+        cfg["endpoints"] = {
+            "odd": {
+                "username": "-oProxyCommand=touch /tmp/pwned",
+                "ip_address": {"primary_ip": "192.0.2.10"},
+                "path": "/srv/study/sessions.db",
+                "full_path": "",
+            }
+        }
+        monkeypatch.setattr(maintenance.subprocess, "run", no_process)
+
+        assert _fix_perms(cfg, remote=True) == 1
+
+        out = capsys.readouterr().out
+        assert "❌ Remote 'odd'" in out and "not a valid ssh destination" in out
+
+    def test_the_argv_ends_option_parsing_before_the_destination(
+        self, cfg, monkeypatch
+    ):
+        ssh = _Ssh({})
+        monkeypatch.setattr(maintenance.subprocess, "run", ssh)
+
+        _fix_perms(cfg, remote=True)
+
+        for argv, _ in ssh.calls:
+            host_index = (
+                argv.index("learner@192.0.2.10")
+                if "learner@192.0.2.10" in argv
+                else argv.index("learner@198.51.100.7")
+            )
+            assert argv[host_index - 1] == "--", argv
+            assert argv[host_index + 1 :] == ["chmod", "600", "--", argv[-1]], argv
+
+    def test_dry_run_never_exits_1_even_for_an_endpoint_without_an_address(
+        self, cfg, capsys, monkeypatch
+    ):
+        """The local half of a dry run never fails; the remote half must not
+        either -- a dry run changes nothing, so it has nothing to fail."""
+        cfg["endpoints"]["ghost"] = {
+            "username": "learner",
+            "ip_address": {"primary_ip": ""},
+            "path": "/srv/study/sessions.db",
+            "full_path": "",
+        }
+        monkeypatch.setattr(maintenance.subprocess, "run", no_process)
+
+        assert _fix_perms(cfg, dry_run=True, remote=True) == 0
+
+        out = capsys.readouterr().out
+        assert "Remote 'ghost'" in out and "no address configured" in out
 
     def test_dry_run_with_remote_executes_nothing_and_says_what_it_would_run(
         self, cfg, capsys, monkeypatch

@@ -344,12 +344,27 @@ def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
                 )
                 continue
             label = f"Remote '{name}' {shown_host}:{remote_path}"
+            if dry_run:
+                # A dry run changes nothing, so it has nothing to fail: say
+                # what would run (or that nothing could) and move on.
+                if not ip:
+                    print(
+                        f"🔍 {label}: no address configured for this endpoint; nothing to run"
+                    )
+                else:
+                    print(f"🔍 {label}: would run {command}")
+                continue
             if not ip:
                 remote_failed += 1
                 print(f"❌ {label}: no address configured for this endpoint")
                 continue
-            if dry_run:
-                print(f"🔍 {label}: would run {command}")
+            if host.startswith("-") or user.startswith("-"):
+                # An option-shaped destination must never reach ssh's argv
+                # (council pass 6): refuse it as this endpoint's row.
+                remote_failed += 1
+                print(
+                    f"❌ {label}: '{host}' is not a valid ssh destination (starts with '-')"
+                )
                 continue
             reason = _remote_chmod(host, quoted)
             if reason is None:
@@ -389,9 +404,15 @@ def _remote_chmod(host: str, quoted_path: str) -> str | None:
         "BatchMode=yes",
         "-o",
         "ConnectTimeout=10",
+        # ``--`` ends ssh's option parsing, so a destination that begins with
+        # ``-`` can never be read as an option (ProxyCommand would run a local
+        # command); ``_fix_perms`` refuses such a destination before this call
+        # as well. The second ``--`` does the same for the remote chmod.
+        "--",
         host,
         "chmod",
         "600",
+        "--",
         quoted_path,
     ]
     try:
@@ -400,6 +421,10 @@ def _remote_chmod(host: str, quoted_path: str) -> str | None:
         return "timeout (no answer within 30s)"
     except FileNotFoundError:
         return "ssh not found on this machine"
+    except OSError as exc:
+        # Any other spawn failure (EACCES on the binary, ENOEXEC, EMFILE ...)
+        # is this endpoint's row, never the end of the sweep (council pass 6).
+        return f"could not run ssh: {exc.strerror or exc}"
     if result.returncode == 0:
         return None
     detail = (result.stderr or result.stdout or "").strip().splitlines()
