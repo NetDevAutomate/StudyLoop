@@ -105,12 +105,14 @@ def _assert_notice(out: str) -> None:
     # database with an exported session -- because `sync_to_full` copies only
     # sessions, messages and file references and would drop the evidence tier.
     # So the removal is no longer promised for "the release after"; it waits on
-    # `sync-full` carrying the current schema, and the notice says why the
-    # replacement will refuse the learner today instead of sending them to it.
+    # `sync-full` carrying the current schema. Plan 6 (lane T) made sync-full
+    # carry it, so the notice no longer says it refuses every exported database
+    # (that became false); it names the refusals the mirror does make.
     assert "removed in the release after the one that deprecates it" not in out
     assert "will not be removed until" in out
-    assert "refuses" in out
-    assert "exported evidence" in out
+    assert "refuses a database that holds exported evidence" not in out
+    assert "evidence" in out and "refuses" in out
+    assert "never overwrites another history" in out
     assert "0.7.0" not in out
     assert "session-maint sync-full" in out
     assert "session-maint prune" in out

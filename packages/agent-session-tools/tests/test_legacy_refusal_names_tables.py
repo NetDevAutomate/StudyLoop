@@ -8,7 +8,9 @@ source-grounded memory" could not tell whether the trigger was captured evidence
 parked-topic board layout (remediation plan 5, lane Q, item B). The protected set
 itself is unchanged: read-and-prove showed every exported database carries
 ``context_evidence`` rows that ``tiering.sync_to_full`` would drop, so no narrowing
-of the set would make the legacy copier correct for a real database.
+of the set would make the legacy copier correct for a real database. (Remediation
+plan 6 replaced that copier with the registry mirror; ``sync_to_full`` no longer
+consults this guard, and the set still protects every legacy and peer path.)
 """
 
 from __future__ import annotations
@@ -108,8 +110,13 @@ class TestRefusalNamesTheOffendingTables:
         assert "context_lifecycle_mode" in text
         assert "context_policy_state" not in text
 
-    def test_sync_full_surfaces_the_named_table(self, tmp_path, monkeypatch):
-        """The CLI's replacement for ``archive`` shows the learner which table refused."""
+    def test_sync_full_mirrors_what_the_legacy_guard_protects(
+        self, tmp_path, monkeypatch
+    ):
+        """Pin reversed by remediation plan 6 (lane T, T4): ``sync_to_full`` is no
+        longer a legacy copier. It mirrors the context tier into a bound full
+        database, so the evidence the guard names arrives instead of refusing;
+        the guard itself still refuses that database for every legacy/peer path."""
         hot = tmp_path / "sessions.db"
         full_dir = tmp_path / "external"
         full_dir.mkdir()
@@ -126,14 +133,17 @@ class TestRefusalNamesTheOffendingTables:
             "NULL,NULL,NULL,NULL)"
         )
         conn.commit()
+        with pytest.raises(legacy.LegacySyncRefused, match="context_evidence"):
+            legacy.check_database(conn)
         conn.close()
 
+        tiering.sync_to_full()
+
+        archive = sqlite3.connect(full)
+        assert archive.execute("SELECT id FROM context_evidence").fetchall() == [("e",)]
         with pytest.raises(legacy.LegacySyncRefused, match="context_evidence"):
-            tiering.sync_to_full()
-        assert (
-            not full.exists()
-            or not sqlite3.connect(full).execute("SELECT 1 FROM sessions").fetchone()
-        )
+            legacy.check_database(archive)
+        archive.close()
 
 
 class TestProtectedSetUnchanged:

@@ -7,8 +7,10 @@ The tiering model:
   depend on an external volume being mounted. May be pruned to the last
   N days on machines with small drives.
 - **Full DB** (``database.full_db_path`` in config.yaml, e.g. on an external
-  volume) — the complete, append-mostly history. Maintained by
-  :func:`sync_to_full`, an idempotent content-hash based upsert.
+  volume) — the complete, append-mostly history: a single-writer mirror of
+  the hot DB's whole context tier, bound to one canonical instance and
+  maintained by :func:`sync_to_full` (copied and verified by the table-role
+  registry in :mod:`agent_session_tools.tiering_registry`).
 - **Snapshots** (``database.backup_dir``) — periodic point-in-time copies of
   the full DB with retention, protecting against corruption that an
   incremental sync would faithfully propagate.
@@ -31,6 +33,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -50,10 +53,10 @@ logger = logging.getLogger(__name__)
 _SESSION_CHILD_TABLES = ("session_learning_metadata",)
 _MESSAGE_CHILD_TABLES = ("message_embeddings", "message_concepts")
 
-# Tables synced into the full DB (with their FK parents). Embeddings are
-# derived data and deliberately NOT synced — they are regenerated locally by
-# ``session-maint embed`` (migration 48; the derived vector index is a sidecar).
-_SYNCED_TABLES = ("sessions", "messages", "file_references")
+# What is synced into the full DB is the table-role registry
+# (``tiering_registry``). Embeddings are derived data and deliberately NOT
+# synced — they are regenerated locally by ``session-maint embed`` (migration
+# 48; the derived vector index is a sidecar).
 
 # Derived tables that must NOT take part in the whole-context retention proof:
 # they are never synced to the full tier, so requiring them there would make
@@ -73,18 +76,30 @@ _LOCK_STALE_SECONDS = 3600
 
 @dataclass
 class FtsIntegrity:
-    """Result of the FTS index invariant check."""
+    """Result of the FTS index invariant checks.
+
+    ``drift``/``fts_rows``/``messages_with_content`` describe ``messages_fts``
+    (unchanged meaning). ``evidence_*`` describe ``context_evidence_fts``, an
+    external-content index whose own cardinality is its ``_docsize`` row count;
+    both are zero on a database without that index. ``healthy`` needs both.
+    """
 
     messages_with_content: int
     fts_rows: int
+    evidence_rows: int = 0
+    evidence_fts_rows: int = 0
 
     @property
     def drift(self) -> int:
         return self.fts_rows - self.messages_with_content
 
     @property
+    def evidence_drift(self) -> int:
+        return self.evidence_fts_rows - self.evidence_rows
+
+    @property
     def healthy(self) -> bool:
-        return self.drift == 0
+        return self.drift == 0 and self.evidence_drift == 0
 
 
 @dataclass
@@ -105,6 +120,98 @@ class SyncStats:
     messages_synced: int = 0
     file_references_synced: int = 0
     sessions_total_full: int = 0
+    #: Rows written per table (inserted or updated) by this run.
+    rows_copied: dict[str, int] = field(default_factory=dict)
+    #: True when this run bound an empty full tier to hot's instance.
+    bound: bool = False
+    #: True when the receipt proved nothing changed and no write ran.
+    fast_path: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Mirror refusals
+# ---------------------------------------------------------------------------
+
+_REFUSAL_FIXES = {
+    "distinct_paths": (
+        "database.path and database.full_db_path must name two different files"
+    ),
+    "noncanonical_override": (
+        "sync-full mirrors the configured database.path into database.full_db_path; "
+        "run it without --db, or point the config at the database you meant"
+    ),
+    "schema_mismatch": (
+        "run any session-export (it migrates the hot database), or upgrade this "
+        "installation if the full database is newer, then run sync-full again"
+    ),
+    "peer_ledger_present": (
+        "this database has taken part in structured replication; the SQL mirror "
+        "does not carry it -- use the structured sync coordinator instead"
+    ),
+    "unbound_full": (
+        "the full database was not written by this mirror: move it aside (keep it "
+        "as a backup) and run sync-full again to create a bound mirror"
+    ),
+    "instance_mismatch": (
+        "the full database belongs to another instance (hot was rebuilt or "
+        "compacted, or the file is another machine's): point database.full_db_path "
+        "at a new file, or move the old full database aside"
+    ),
+    "unclassified_table": (
+        "this build does not know that table, so it cannot mirror or verify it; "
+        "upgrade agent-session-tools -- nothing was copied"
+    ),
+    "controls_unstable": (
+        "another process changed permanent deletions during the sync; run sync-full again"
+    ),
+    "controls_changed": (
+        "a permanent deletion arrived between reconciliation and the copy; "
+        "run sync-full again -- nothing was copied"
+    ),
+    "immutable_collision": (
+        "the full database holds a different version of an immutable row; nothing "
+        "was copied -- inspect that row before syncing (another tool wrote the full tier)"
+    ),
+    "orphan_row": (
+        "the hot database holds a row whose parent is missing "
+        "(PRAGMA foreign_key_check); repair it before syncing -- nothing was copied"
+    ),
+    "constraint_violation": (
+        "a row could not be mirrored without breaking a uniqueness rule in the "
+        "full database; nothing was copied"
+    ),
+    "full_store_unavailable": "mount the volume holding the full database and retry",
+    "managed_store_busy_or_unavailable": (
+        "another process holds a database write lock; sync-full will retry on the "
+        "next trigger, or run it again"
+    ),
+}
+
+
+class TieringRefused(ValueError):
+    """The hot -> full mirror refused; ``reason`` is a stable code, ``fix`` the remedy.
+
+    A ``ValueError`` so the ``sync-full`` and ``prune`` handlers render it; it is
+    deliberately not :class:`replication.legacy.LegacySyncRefused`, which keeps
+    meaning "this needs the structured protocol" for peer and legacy paths.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        detail: str = "",
+        *,
+        table: str | None = None,
+        key: object = None,
+    ) -> None:
+        self.reason = reason
+        self.table = table
+        self.key = key
+        self.fix = _REFUSAL_FIXES.get(reason, "run sync-full again")
+        message = f"sync-full refused ({reason})"
+        if detail:
+            message += f": {detail}"
+        super().__init__(message)
 
 
 @dataclass
@@ -322,7 +429,8 @@ def _copy_table(
 
 
 def fts_integrity(conn: sqlite3.Connection) -> FtsIntegrity:
-    """Check the FTS invariant: one index row per message with content.
+    """Check the FTS invariants: one index row per message with content, and one
+    ``context_evidence_fts`` document per evidence row.
 
     A drifted index means the sync triggers were bypassed (bulk re-insert
     bug) or messages were deleted outside the triggers. Historical versions
@@ -333,16 +441,31 @@ def fts_integrity(conn: sqlite3.Connection) -> FtsIntegrity:
         "SELECT COUNT(*) FROM messages WHERE content IS NOT NULL"
     ).fetchone()[0]
     fts_rows = conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0]
-    return FtsIntegrity(messages_with_content=messages, fts_rows=fts_rows)
+    evidence = evidence_fts = 0
+    if _table_exists(conn, "context_evidence_fts_docsize"):
+        # External content: count(*) on the FTS table itself reads
+        # context_evidence, so the index's own cardinality is its docsize rows.
+        evidence = conn.execute("SELECT COUNT(*) FROM context_evidence").fetchone()[0]
+        evidence_fts = conn.execute(
+            "SELECT COUNT(*) FROM context_evidence_fts_docsize"
+        ).fetchone()[0]
+    return FtsIntegrity(
+        messages_with_content=messages,
+        fts_rows=fts_rows,
+        evidence_rows=evidence,
+        evidence_fts_rows=evidence_fts,
+    )
 
 
 def repair_fts(conn: sqlite3.Connection) -> FtsIntegrity:
-    """Rebuild the FTS index from the messages table (idempotent).
+    """Rebuild the FTS indexes from their source tables (idempotent).
 
     Note: FTS5's built-in ``('rebuild')`` command rebuilds the inverted index
     from the FTS table's *own* content store, so it preserves duplicate rows.
     A drifted standalone FTS table must be cleared and repopulated from the
-    source of truth instead.
+    source of truth instead. ``context_evidence_fts`` is external-content
+    (its content store *is* ``context_evidence``), so ``'rebuild'`` is the
+    correct repair there -- the same one ``lifecycle.compact`` runs.
     """
     with conn:
         conn.execute("DELETE FROM messages_fts")
@@ -353,6 +476,10 @@ def repair_fts(conn: sqlite3.Connection) -> FtsIntegrity:
             FROM messages WHERE content IS NOT NULL
             """
         )
+        if _table_exists(conn, "context_evidence_fts"):
+            conn.execute(
+                "INSERT INTO context_evidence_fts(context_evidence_fts) VALUES ('rebuild')"
+            )
     conn.execute("INSERT INTO messages_fts(messages_fts) VALUES('optimize')")
     return fts_integrity(conn)
 
@@ -440,6 +567,196 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
 
 
 # ---------------------------------------------------------------------------
+# Incremental sync (hot -> full): preflight and binding
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _MirrorPlan:
+    """What the read-only preflight established about the hot/full pair."""
+
+    instance: str
+    revision: int
+    full_exists: bool
+    bound: bool
+    receipt: int | None
+
+
+def _open_ro(path: Path) -> sqlite3.Connection:
+    return sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    if a.resolve() == b.resolve():
+        return True
+    return a.exists() and b.exists() and a.samefile(b)
+
+
+def _refuse_peer_ledger(conn: sqlite3.Connection, schema: str, label: str) -> None:
+    from .tiering_registry import PEER_LEDGER
+
+    tables = set(_user_tables(conn, schema))
+    holding = [
+        entry.name
+        for entry in PEER_LEDGER
+        if entry.name in tables
+        and conn.execute(f"SELECT 1 FROM {schema}.{entry.name} LIMIT 1").fetchone()
+    ]
+    if holding:
+        raise TieringRefused(
+            "peer_ledger_present",
+            f"the {label} database holds structured-replication rows in "
+            + ", ".join(holding),
+        )
+
+
+def _populated(conn: sqlite3.Connection, schema: str) -> list[str]:
+    """Payload or control tables in ``schema`` that hold any row."""
+    from .tiering_registry import CONTROL, PAYLOAD
+
+    tables = set(_user_tables(conn, schema))
+    return [
+        entry.name
+        for entry in (*PAYLOAD, *CONTROL)
+        if entry.name in tables
+        and conn.execute(f'SELECT 1 FROM {schema}."{entry.name}" LIMIT 1').fetchone()
+    ]
+
+
+def _mirror_preflight(
+    hot: Path, full: Path, configured_hot: Path, configured_full: Path
+) -> _MirrorPlan:
+    """Read-only checks before anything in the full tier is migrated or written."""
+    from .migrations import CURRENT_VERSION
+    from .tiering_registry import MIRROR_TABLE, UnclassifiedTable, classify_database
+
+    if _same_file(hot, full):
+        raise TieringRefused("distinct_paths", f"both name {hot.resolve()}")
+    if not _same_file(hot, configured_hot) or not _same_file(full, configured_full):
+        raise TieringRefused(
+            "noncanonical_override",
+            f"asked to mirror {hot} into {full}; configured pair is "
+            f"{configured_hot} -> {configured_full}",
+        )
+    with closing(_open_ro(hot)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != CURRENT_VERSION:
+            raise TieringRefused(
+                "schema_mismatch",
+                f"the hot database is at schema {version}; this build mirrors "
+                f"schema {CURRENT_VERSION}",
+            )
+        try:
+            classify_database(conn)
+        except UnclassifiedTable as exc:
+            raise TieringRefused(
+                "unclassified_table", str(exc), table=exc.table
+            ) from exc
+        _refuse_peer_ledger(conn, "main", "hot")
+        instance = conn.execute(
+            "SELECT instance FROM context_access_state WHERE id=1"
+        ).fetchone()[0]
+        revision = conn.execute(
+            "SELECT revision FROM context_replica_content_state WHERE id=1"
+        ).fetchone()[0]
+    plan = _MirrorPlan(instance, revision, False, False, None)
+    if not full.exists() or full.stat().st_size == 0:
+        return plan
+    plan.full_exists = True
+    with closing(_open_ro(full)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version > CURRENT_VERSION:
+            raise TieringRefused(
+                "schema_mismatch",
+                f"the full database is at schema {version}, newer than this build "
+                f"({CURRENT_VERSION})",
+            )
+        _refuse_peer_ledger(conn, "main", "full")
+        if _table_exists(conn, MIRROR_TABLE):
+            row = conn.execute(
+                f"SELECT canonical_instance, last_source_revision FROM {MIRROR_TABLE} "
+                "WHERE id=1"
+            ).fetchone()
+            if row is not None:
+                _require_bound_to(row[0], plan)
+                plan.bound, plan.receipt = True, row[1]
+                return plan
+        holding = _populated(conn, "main")
+        if holding:
+            raise TieringRefused(
+                "unbound_full",
+                f"{full} holds rows (in {', '.join(holding[:5])}"
+                + (", ..." if len(holding) > 5 else "")
+                + ") and no mirror binding",
+            )
+    return plan
+
+
+def _bind_full(full: Path, plan: _MirrorPlan) -> bool:
+    """Bind an empty full to hot's instance before anything else is written to it.
+
+    Its own short transaction, right after ``init_db(full)`` and before the
+    controls phase: from then on only this instance's mirror writes the file, so
+    a refused first copy (or a crash) leaves a bound full that the next run
+    continues -- not a populated, unbound one it would have to refuse. The table
+    is created here, in the full tier only, rather than by a migration:
+    migrations are tier-agnostic (``init_db`` runs the same chain on hot and
+    full), and a hot carrying an empty binding table would mean nothing.
+    Returns True when this call created the binding.
+    """
+    from .tiering_registry import MIRROR_TABLE
+
+    conn = sqlite3.connect(
+        full.resolve().as_uri() + "?mode=rw", uri=True, isolation_level=None, timeout=5
+    )
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            conn.execute(
+                f"""CREATE TABLE IF NOT EXISTS main.{MIRROR_TABLE} (
+                    id INTEGER PRIMARY KEY CHECK(id=1),
+                    canonical_instance TEXT NOT NULL,
+                    bound_at TEXT NOT NULL,
+                    last_source_revision INTEGER
+                )"""
+            )
+            row = conn.execute(
+                f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
+            ).fetchone()
+            if row is not None:
+                _require_bound_to(row[0], plan)
+                conn.execute("ROLLBACK")
+                return False
+            holding = _populated(conn, "main")
+            if holding:
+                raise TieringRefused(
+                    "unbound_full",
+                    f"rows appeared in {', '.join(holding[:5])} during sync",
+                )
+            conn.execute(
+                f"INSERT INTO main.{MIRROR_TABLE} VALUES (1, ?, ?, NULL)",
+                (plan.instance, datetime.now(UTC).isoformat()),
+            )
+            conn.execute("COMMIT")
+            return True
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+    finally:
+        conn.close()
+
+
+def _require_bound_to(canonical_instance: str | None, plan: _MirrorPlan) -> None:
+    if canonical_instance != plan.instance:
+        raise TieringRefused(
+            "instance_mismatch",
+            f"the full database is bound to instance {canonical_instance}; the hot "
+            f"database is instance {plan.instance}",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Incremental sync (hot -> full)
 # ---------------------------------------------------------------------------
 
@@ -449,18 +766,42 @@ def sync_to_full(
     full: Path | None = None,
     config: dict[str, Any] | None = None,
 ) -> SyncStats:
-    """Idempotently upsert new/changed sessions from the hot DB into the full DB.
+    """Mirror the hot DB's whole context tier into the bound full DB (idempotent).
 
-    Change detection is by ``content_hash`` (not timestamps), so machine
-    clock differences and re-exports are handled: a session is copied when
-    it is missing from the full DB or its content hash differs. Messages of
-    a changed session are replaced wholesale; the full DB's FTS triggers
-    keep its index consistent.
+    The full tier is a single-writer mirror bound to one canonical instance
+    (ADR-0016 amendment; council pass 7). In order:
+
+    1. ``check_config`` -- scoped/peer configurations still need the structured
+       protocol (``LegacySyncRefused``); then a read-only preflight
+       (:func:`_mirror_preflight`) before anything in full is migrated.
+    2. Fast path: full's receipt equals hot's content revision, the permanent
+       controls are equal and the tables the revision does not track hold
+       nothing new -- no write transaction is opened on either file.
+    3. Controls: ``managed_history.reconcile_full_controls`` converges the
+       permanent controls canonical-first, without compacting.
+    4. Content, one transaction on full with hot attached read-only and
+       foreign keys on: re-check the controls, re-apply retirements to full,
+       then copy by the table-role registry (``tiering_registry``) -- sessions
+       upserted, changed sessions' messages/file references replaced,
+       immutable rows inserted if absent (a differing overlapping key refuses),
+       mutable rows upserted where they differ. Never ``INSERT OR REPLACE``.
+       The receipt is written in the same transaction.
+
+    Deletions reach full only through the controls phase; a session evicted
+    from hot by ``prune_hot`` stays in full by design. Instance-local state
+    (identity, generations, policy, capture runs, origin labels, peer ledgers)
+    is never copied. Refusals raise :class:`TieringRefused`.
     """
+    from .context import managed_history
+    from .context.scope import ScopeError
+    from .replication.legacy import check_config
+
     cfg = config or load_config()
-    hot = hot or get_db_path(cfg)
-    full = full or get_full_db_path(cfg)
-    if full is None:
+    configured_hot = get_db_path(cfg)
+    configured_full = get_full_db_path(cfg)
+    hot = hot or configured_hot
+    full = full or configured_full
+    if full is None or configured_full is None:
         raise ValueError(
             "database.full_db_path is not configured — set it in config.yaml "
             "to enable tiering"
@@ -468,82 +809,391 @@ def sync_to_full(
     if not hot.exists():
         raise FileNotFoundError(f"Hot database not found: {hot}")
 
-    _require_legacy_copy(hot, full, cfg)
+    # The structured protocol still owns every scoped/peer configuration.
+    check_config(cfg)
+    plan = _mirror_preflight(hot, full, configured_hot, configured_full)
+    if plan.bound and _nothing_changed(hot, full, plan):
+        with closing(_open_ro(full)) as conn:
+            total = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        logger.info("sync_to_full: nothing changed (receipt %s)", plan.receipt)
+        return SyncStats(sessions_total_full=total, fast_path=True)
 
     from agent_session_tools.export_sessions import init_db
 
     ensure_leaf_dir(full.parent)
-    conn = init_db(str(full))
-    stats = SyncStats()
+    init_db(str(full)).close()
+    bound_now = _bind_full(full, plan)
+    _check_mirror_schemas(hot, full)
+
     try:
-        conn.execute("PRAGMA foreign_keys=OFF")
-        conn.execute("ATTACH DATABASE ? AS hot", (str(hot),))
+        controls = managed_history.reconcile_full_controls(hot=hot, config=cfg)
+    except ScopeError as exc:
+        raise TieringRefused("controls_unstable", str(exc)) from exc
+    if not controls.get("controls_stable"):
+        raise TieringRefused(
+            str(controls.get("reason") or "controls_unstable"),
+            "permanent controls could not be reconciled with the full database",
+        )
 
-        with conn:
-            conn.execute("BEGIN IMMEDIATE")
-            _check_legacy_attached(conn, "hot", cfg)
-            conn.execute(
-                """
-                CREATE TEMP TABLE changed_ids AS
-                SELECT h.id FROM hot.sessions h
-                LEFT JOIN main.sessions f ON f.id = h.id
-                WHERE f.id IS NULL
-                   OR COALESCE(f.content_hash, '') != COALESCE(h.content_hash, '')
-                """
-            )
-            stats.sessions_synced = conn.execute(
-                "SELECT COUNT(*) FROM changed_ids"
-            ).fetchone()[0]
-
-            if stats.sessions_synced:
-                # Replace messages of changed sessions (delete fires FTS
-                # delete trigger; insert fires FTS insert trigger).
-                conn.execute(
-                    "DELETE FROM main.messages WHERE session_id IN "
-                    "(SELECT id FROM changed_ids)"
-                )
-                stats.messages_synced = _copy_table(
-                    conn,
-                    "messages",
-                    "hot",
-                    where="WHERE session_id IN (SELECT id FROM changed_ids)",
-                )
-                _copy_table(
-                    conn,
-                    "sessions",
-                    "hot",
-                    where="WHERE id IN (SELECT id FROM changed_ids)",
-                    replace=True,
-                )
-                if _table_exists(conn, "file_references") and _table_exists(
-                    conn, "file_references", "hot"
-                ):
-                    conn.execute(
-                        "DELETE FROM main.file_references WHERE session_id IN "
-                        "(SELECT id FROM changed_ids)"
-                    )
-                    stats.file_references_synced = _copy_table(
-                        conn,
-                        "file_references",
-                        "hot",
-                        where="WHERE session_id IN (SELECT id FROM changed_ids)",
-                    )
-            conn.execute("DROP TABLE changed_ids")
-            _check_legacy_attached(conn, "hot", cfg)
-
-        stats.sessions_total_full = conn.execute(
-            "SELECT COUNT(*) FROM main.sessions"
-        ).fetchone()[0]
-        conn.execute("DETACH DATABASE hot")
-    finally:
-        conn.close()
-
+    stats = _mirror_copy(hot, full, plan)
+    stats.bound = bound_now
     logger.info(
-        "sync_to_full: %s session(s) upserted, full DB now holds %s sessions",
+        "sync_to_full: %s session(s) changed, %s row(s) written, full DB holds %s sessions",
         stats.sessions_synced,
+        sum(stats.rows_copied.values()),
         stats.sessions_total_full,
     )
     return stats
+
+
+def _q(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _missing_sql(
+    table: str,
+    cols: list[str],
+    key: tuple[str, ...],
+    *,
+    keys_only: bool,
+    select: list[str] | None = None,
+    source: str = "hot",
+    archive: str = "main",
+) -> str:
+    """Hot rows of ``table`` absent from full: by key, or by whole-row equality.
+
+    A correlated ``NOT EXISTS`` probe on full's primary key (council pass 7, A2):
+    ``EXCEPT`` plans as a merge scanning both sides -- the whole archive on
+    every run -- while the anti-join searches full's key index once per hot row.
+    ``select`` narrows the returned columns (default: every column);
+    ``source``/``archive`` name the hot and full schemas on this connection.
+    """
+    match = cols if not keys_only else list(key)
+    where = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in match)
+    selected = ", ".join(f"h.{_q(c)}" for c in (select or cols))
+    return (
+        f"SELECT {selected} FROM {source}.{_q(table)} h WHERE NOT EXISTS "
+        f"(SELECT 1 FROM {archive}.{_q(table)} x WHERE {where})"
+    )
+
+
+def _upsert_sql(table: str, cols: list[str], key: tuple[str, ...]) -> str:
+    """Insert new rows and update rows whose columns differ; never a delete."""
+    non_key = [c for c in cols if c not in key]
+    target = ", ".join(_q(c) for c in key)
+    if non_key:
+        assignments = ", ".join(f"{_q(c)}=excluded.{_q(c)}" for c in non_key)
+        differs = " OR ".join(
+            f"{_q(table)}.{_q(c)} IS NOT excluded.{_q(c)}" for c in non_key
+        )
+        conflict = f"ON CONFLICT({target}) DO UPDATE SET {assignments} WHERE {differs}"
+    else:
+        conflict = f"ON CONFLICT({target}) DO NOTHING"
+    return (
+        f"INSERT INTO main.{_q(table)} ({', '.join(_q(c) for c in cols)}) "
+        + _missing_sql(table, cols, key, keys_only=False)
+        + f" {conflict}"
+    )
+
+
+def _untracked_payload(conn: sqlite3.Connection, schema: str) -> list[str]:
+    """Payload tables whose changes do not advance hot's content revision.
+
+    Migration 46 installs ``replica_content_<table>_{insert,update,delete}``
+    triggers on a frozen list; ``scrub_log``, ``message_concepts``,
+    ``context_projects``, ``context_board_columns`` and the concept graph are
+    outside it, so the receipt alone cannot prove they are unchanged.
+    """
+    from .tiering_registry import PAYLOAD
+
+    triggers = {
+        row[0]
+        for row in conn.execute(
+            f"SELECT name FROM {schema}.sqlite_master WHERE type='trigger' "
+            "AND name LIKE 'replica_content_%'"
+        )
+    }
+    return [
+        entry.name
+        for entry in PAYLOAD
+        if not all(
+            f"replica_content_{entry.name}_{event}" in triggers
+            for event in ("insert", "update", "delete")
+        )
+    ]
+
+
+def _controls_differ(
+    conn: sqlite3.Connection, source: str = "hot", archive: str = "main"
+) -> str | None:
+    """The first control table whose identities differ between hot and full."""
+    from .tiering_registry import CONTROL
+
+    for entry in CONTROL:
+        match = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in entry.key)
+        for left, right in ((source, archive), (archive, source)):
+            if conn.execute(
+                f"SELECT 1 FROM {left}.{_q(entry.name)} h WHERE NOT EXISTS "
+                f"(SELECT 1 FROM {right}.{_q(entry.name)} x WHERE {match}) LIMIT 1"
+            ).fetchone():
+                return entry.name
+    return None
+
+
+def _nothing_changed(hot: Path, full: Path, plan: _MirrorPlan) -> bool:
+    """The O(1) receipt check plus the untracked tables, read-only on both files."""
+    from .migrations import CURRENT_VERSION
+
+    if plan.receipt is None or plan.receipt != plan.revision:
+        return False
+    with closing(_open_ro(full)) as conn:
+        if conn.execute("PRAGMA user_version").fetchone()[0] != CURRENT_VERSION:
+            return False
+        conn.execute("ATTACH DATABASE ? AS hot", (hot.resolve().as_uri() + "?mode=ro",))
+        conn.execute("BEGIN")  # one read snapshot over both files
+        try:
+            revision = conn.execute(
+                "SELECT revision FROM hot.context_replica_content_state WHERE id=1"
+            ).fetchone()[0]
+            if revision != plan.receipt or _controls_differ(conn):
+                return False
+            from .tiering_registry import REGISTRY, columns
+
+            for table in _untracked_payload(conn, "hot"):
+                entry = REGISTRY[table]
+                sql = _missing_sql(
+                    table, columns(conn, table, "hot"), entry.key, keys_only=False
+                )
+                if conn.execute(sql + " LIMIT 1").fetchone():
+                    return False
+            return True
+        finally:
+            conn.rollback()
+
+
+def _check_mirror_schemas(hot: Path, full: Path) -> None:
+    """Exact registered column sets on both sides -- never a column intersection."""
+    from .tiering_registry import CONTROL, PAYLOAD, columns
+
+    with closing(_open_ro(full)) as conn:
+        conn.execute("ATTACH DATABASE ? AS hot", (hot.resolve().as_uri() + "?mode=ro",))
+        versions = [
+            conn.execute(f"PRAGMA {schema}.user_version").fetchone()[0]
+            for schema in ("hot", "main")
+        ]
+        if versions[0] != versions[1]:
+            raise TieringRefused(
+                "schema_mismatch",
+                f"hot is at schema {versions[0]}, full at {versions[1]} after migration",
+            )
+        for entry in (*PAYLOAD, *CONTROL):
+            ours, theirs = (
+                columns(conn, entry.name, "hot"),
+                columns(conn, entry.name, "main"),
+            )
+            if ours != theirs or not ours:
+                raise TieringRefused(
+                    "schema_mismatch",
+                    f"{entry.name} has columns {ours} in hot and {theirs} in full",
+                    table=entry.name,
+                )
+
+
+def _mirror_copy(hot: Path, full: Path, plan: _MirrorPlan) -> SyncStats:
+    """The content transaction: one ``BEGIN IMMEDIATE`` on full, hot read-only."""
+    from .context.lifecycle import reconcile_local_retirements
+    from .replication.legacy import check_config
+    from .tiering_registry import MIRROR_TABLE
+
+    stats = SyncStats()
+    conn = sqlite3.connect(
+        full.resolve().as_uri() + "?mode=rw", uri=True, isolation_level=None, timeout=5
+    )
+    try:
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA foreign_keys=ON")
+        # Read-only: the copy holds a read snapshot of hot, never its write lock,
+        # so exporters keep writing while the archive is updated.
+        conn.execute("ATTACH DATABASE ? AS hot", (hot.resolve().as_uri() + "?mode=ro",))
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            check_config(load_config())  # the live config, as the old guard re-read it
+            binding = conn.execute(
+                f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
+            ).fetchone()
+            _require_bound_to(binding[0] if binding else None, plan)
+            instance, revision = conn.execute(
+                "SELECT a.instance, r.revision FROM hot.context_access_state a, "
+                "hot.context_replica_content_state r WHERE a.id=1 AND r.id=1"
+            ).fetchone()
+            if instance != plan.instance:
+                raise TieringRefused(
+                    "instance_mismatch",
+                    "the hot database's instance changed during sync",
+                )
+            changed = _controls_differ(conn)
+            if changed:
+                raise TieringRefused(
+                    "controls_changed",
+                    f"{changed} differs between hot and full after reconciliation",
+                    table=changed,
+                )
+            # Re-apply durable intent to full against this snapshot before any copy.
+            reconcile_local_retirements(conn)
+            clean = _copy_payload(conn, stats)
+            conn.execute(
+                f"UPDATE main.{MIRROR_TABLE} SET last_source_revision=? WHERE id=1",
+                (revision if clean else None,),
+            )
+            stats.sessions_total_full = conn.execute(
+                "SELECT COUNT(*) FROM main.sessions"
+            ).fetchone()[0]
+            conn.execute("COMMIT")
+        except sqlite3.IntegrityError as exc:
+            # A trigger's RAISE(ROLLBACK) has already ended the transaction.
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            reason = (
+                "orphan_row" if "FOREIGN KEY" in str(exc) else "constraint_violation"
+            )
+            raise TieringRefused(reason, str(exc)) from exc
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+    finally:
+        conn.close()
+    return stats
+
+
+def _copy_payload(conn: sqlite3.Connection, stats: SyncStats) -> bool:
+    """Copy every payload table in registry order; True when hot ⊆ full afterwards."""
+    from .tiering_registry import PAYLOAD, Role, columns
+
+    cols = {entry.name: columns(conn, entry.name, "main") for entry in PAYLOAD}
+    message_cols = ", ".join(_q(c) for c in cols["messages"])
+    reference_cols = ", ".join(_q(c) for c in cols["file_references"])
+
+    # Sessions whose children must be replaced, decided BEFORE the session
+    # upsert. ``content_hash`` alone is not enough: the exporters never write it
+    # (exporters/base.py session upsert), so a re-export with new turns keeps
+    # NULL == NULL. A child row added, changed or removed marks the session too.
+    conn.execute("CREATE TEMP TABLE IF NOT EXISTS tier_changed (id TEXT PRIMARY KEY)")
+    conn.execute("DELETE FROM temp.tier_changed")
+    conn.execute(
+        "INSERT OR IGNORE INTO temp.tier_changed SELECT h.id FROM hot.sessions h "
+        "LEFT JOIN main.sessions f ON f.id = h.id "
+        "WHERE f.id IS NULL OR f.content_hash IS NOT h.content_hash"
+    )
+    for table in ("messages", "file_references"):
+        key = ("id",)
+        conn.execute(
+            "INSERT OR IGNORE INTO temp.tier_changed SELECT DISTINCT session_id FROM ("
+            + _missing_sql(
+                table, cols[table], key, keys_only=False, select=["session_id"]
+            )
+            + ")"
+        )
+        conn.execute(
+            f"INSERT OR IGNORE INTO temp.tier_changed SELECT DISTINCT x.session_id "
+            f"FROM main.{table} x WHERE x.session_id IN (SELECT id FROM hot.sessions) "
+            f"AND NOT EXISTS (SELECT 1 FROM hot.{table} h WHERE h.id = x.id)"
+        )
+    session_rows = conn.execute(
+        _missing_sql(
+            "sessions", cols["sessions"], ("id",), keys_only=False, select=["id"]
+        )
+    ).fetchall()
+    touched = {row[0] for row in session_rows} | {
+        row[0] for row in conn.execute("SELECT id FROM temp.tier_changed")
+    }
+    stats.sessions_synced = len(touched)
+
+    def record(table: str, written: int) -> None:
+        if written:
+            stats.rows_copied[table] = stats.rows_copied.get(table, 0) + written
+
+    for entry in PAYLOAD:
+        table, key = entry.name, entry.key
+        if table == "messages":
+            # message_concepts references messages with NO ACTION: clear it for
+            # the replaced messages first (the mutable phase restores hot's rows).
+            # The DELETE then cascades file_references, scrub_log, native message
+            # sources and embeddings; each is restored below from hot.
+            conn.execute(
+                "DELETE FROM main.message_concepts WHERE message_id IN (SELECT id FROM "
+                "main.messages WHERE session_id IN (SELECT id FROM temp.tier_changed))"
+            )
+            conn.execute(
+                "DELETE FROM main.messages WHERE session_id IN (SELECT id FROM temp.tier_changed)"
+            )
+            written = conn.execute(
+                f"INSERT INTO main.messages ({message_cols}) SELECT {message_cols} "
+                "FROM hot.messages WHERE session_id IN (SELECT id FROM temp.tier_changed)"
+            ).rowcount
+            stats.messages_synced = written
+            record(table, written)
+        elif table == "file_references":
+            conn.execute(
+                "DELETE FROM main.file_references WHERE session_id IN "
+                "(SELECT id FROM temp.tier_changed)"
+            )
+            written = conn.execute(
+                f"INSERT INTO main.file_references ({reference_cols}) SELECT {reference_cols} "
+                "FROM hot.file_references WHERE session_id IN (SELECT id FROM temp.tier_changed)"
+            ).rowcount
+            stats.file_references_synced = written
+            record(table, written)
+        elif entry.role is Role.PAYLOAD_IMMUTABLE:
+            _refuse_immutable_collision(conn, table, cols[table], key)
+            missing = _missing_sql(table, cols[table], key, keys_only=True)
+            col_list = ", ".join(_q(c) for c in cols[table])
+            record(
+                table,
+                conn.execute(
+                    f"INSERT INTO main.{_q(table)} ({col_list}) {missing}"
+                ).rowcount,
+            )
+        else:
+            record(table, conn.execute(_upsert_sql(table, cols[table], key)).rowcount)
+    conn.execute("DROP TABLE temp.tier_changed")
+
+    # A row-maintenance trigger in full (``trg_*_updated_at_*``, ``*_sync_key``)
+    # can rewrite a just-copied mutable row. One more upsert pass converges it;
+    # if anything still differs, the receipt is withheld so the next run is not
+    # a fast path and prune's proof stays false until it matches.
+    clean = True
+    for entry in PAYLOAD:
+        if entry.role is Role.PAYLOAD_IMMUTABLE or entry.role is Role.CHILDREN_REPLACE:
+            continue
+        probe = _missing_sql(entry.name, cols[entry.name], entry.key, keys_only=False)
+        if conn.execute(probe + " LIMIT 1").fetchone():
+            conn.execute(_upsert_sql(entry.name, cols[entry.name], entry.key))
+            if conn.execute(probe + " LIMIT 1").fetchone():
+                logger.warning(
+                    "sync_to_full: %s still differs after the upsert", entry.name
+                )
+                clean = False
+    return clean
+
+
+def _refuse_immutable_collision(
+    conn: sqlite3.Connection, table: str, cols: list[str], key: tuple[str, ...]
+) -> None:
+    """An overlapping immutable key must be column-equal (council pass 7, C1)."""
+    on = " AND ".join(f"x.{_q(c)} = h.{_q(c)}" for c in key)
+    same = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in cols)
+    row = conn.execute(
+        f"SELECT {', '.join(f'h.{_q(c)}' for c in key)} FROM hot.{_q(table)} h "
+        f"JOIN main.{_q(table)} x ON {on} WHERE NOT ({same}) LIMIT 1"
+    ).fetchone()
+    if row is not None:
+        raise TieringRefused(
+            "immutable_collision",
+            f"{table} key {tuple(row)!r} differs between hot and full",
+            table=table,
+            key=tuple(row),
+        )
 
 
 def _require_legacy_copy(hot, full, config):
@@ -865,58 +1515,42 @@ def prune_hot(
 
 
 def _archive_context_complete(conn):
-    """Conservative whole-context retention proof; compare rows inside SQLite."""
-    from .context import records
+    """Whole-context retention proof by the table-role registry (hot=main, full).
 
-    local = {
-        r[0]
-        for r in conn.execute("SELECT name FROM main.sqlite_master WHERE type='table'")
-    }
-    remote = {
-        r[0]
-        for r in conn.execute("SELECT name FROM full.sqlite_master WHERE type='table'")
-    }
-    bookkeeping = {
-        "context_access_state",
-        "context_replica_content_state",
-        "context_policy_state",
-        "context_lifecycle_mode",
-        "context_erasure_pending",
-        "context_capture_runs",
-    }
-    # Include older payloads with no observation wrapper: a matching native hash
-    # alone says nothing about a newly edited note or an unarchived file reference.
-    tables = (
-        set(records.TABLES)
-        | {
-            "session_notes",
-            "session_tags",
-            "session_learning_metadata",
-            "file_references",
-            "scrub_log",
-            "message_concepts",
-        }
-        | {
-            t
-            for t in local
-            if t.startswith("context_")
-            and not t.startswith("context_evidence_fts")
-            and t not in bookkeeping
-        }
-    )
-    tables -= _DERIVED_TABLES
-    if not tables <= remote or conn.execute("PRAGMA full.foreign_key_check").fetchone():
+    The same registry the mirror copies by (``tiering_registry``), so what is
+    required in full is exactly what ``sync_to_full`` puts there (council pass
+    7, C2): every payload row of hot is row-equal in full (``sessions`` and
+    ``messages`` are proven per session by ``prune_hot``), the permanent
+    controls are equal, full's foreign keys hold, and an unclassified table
+    fails closed. Instance-local, peer-ledger and derived tables are neither
+    copied nor required -- before, every ``context_*`` table counted, so the
+    ``context_retention_origins`` row each export writes kept this false
+    forever once anything was mirrored. Primary-key anti-joins, not EXCEPT.
+    """
+    from .tiering_registry import PAYLOAD, UnclassifiedTable, classify_database, columns
+
+    try:
+        classify_database(conn, "main")
+    except UnclassifiedTable as exc:
+        logger.warning("prune: %s -- nothing is evicted until this build knows it", exc)
         return False
-    for table in sorted(tables):
-        quoted = '"' + table.replace('"', '""') + '"'
-        columns = [r[1] for r in conn.execute(f"PRAGMA main.table_info({quoted})")]
-        full_columns = {r[1] for r in conn.execute(f"PRAGMA full.table_info({quoted})")}
-        if not set(columns) <= full_columns:
+    remote = set(_user_tables(conn, "full"))
+    if conn.execute("PRAGMA full.foreign_key_check").fetchone():
+        return False
+    if _controls_differ(conn, "main", "full"):
+        return False
+    for entry in PAYLOAD:
+        if entry.name in ("sessions", "messages"):
+            continue  # proven per session, with the content hash, in prune_hot
+        if entry.name not in remote:
             return False
-        selected = ",".join('"' + c.replace('"', '""') + '"' for c in columns)
-        if conn.execute(
-            f"SELECT 1 FROM (SELECT {selected} FROM main.{quoted} EXCEPT SELECT {selected} FROM full.{quoted}) LIMIT 1"
-        ).fetchone():
+        cols = columns(conn, entry.name, "main")
+        if cols != columns(conn, entry.name, "full"):
+            return False
+        probe = _missing_sql(
+            entry.name, cols, entry.key, keys_only=False, source="main", archive="full"
+        )
+        if conn.execute(probe + " LIMIT 1").fetchone():
             return False
     return True
 

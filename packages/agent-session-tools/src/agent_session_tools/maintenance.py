@@ -17,6 +17,7 @@ from typing import Annotated
 import typer
 
 from agent_session_tools.replication.legacy import LegacySyncRefused
+from agent_session_tools.tiering import TieringRefused
 from agent_session_tools.config_loader import (
     get_backup_dir,
     get_db_path,
@@ -804,8 +805,11 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
 # `context_evidence` per message and `sync_to_full` copies only sessions,
 # messages and file references -- so the removal is no longer promised for a
 # release; it waits on `sync-full` carrying the current schema (ADR-0016,
-# amendment 2026-10-23). The notice says so, instead of sending the learner to a
-# command that will refuse them.
+# amendment 2026-10-23). Plan 6 (lane T) made `sync-full` that mirror: it now
+# carries the evidence and the rest of the context tier, so the "today it
+# refuses every exported database" sentence became false and was replaced by the
+# refusals the mirror does make. The removal promise itself is lane U's/the
+# ADR's to state, after the end-to-end test is green on main (ruling §4 Q6).
 _ARCHIVE_DEPRECATION = (
     "⚠️  'session-maint archive' is deprecated: it copies sessions and messages only, "
     "into a two-table file\n"
@@ -814,18 +818,16 @@ _ARCHIVE_DEPRECATION = (
     "   schema, so it stays available for now.\n"
     "   The replacement is 'session-maint sync-full' then 'session-maint prune' (both "
     "need database.full_db_path).\n"
-    "   That is not a drop-in replacement: sync-full copies whole sessions (every "
-    "column, every message,\n"
-    "   file references) into the full database, which has the same schema as this "
+    "   That is not a drop-in replacement: sync-full mirrors whole sessions with "
+    "their evidence, notes and\n"
+    "   learner records into the full database, which has the same schema as this "
     "one; prune then removes\n"
     "   from this database only the sessions it has verified there, keeps any "
     "session that owns learner\n"
     "   records, and is a dry run until --no-dry-run.\n"
-    "   Today sync-full refuses a database that holds exported evidence -- on the "
-    "current schema, every\n"
-    "   database with an exported session -- because it would leave that evidence "
-    "behind; until that is\n"
-    "   fixed neither command moves anything for you."
+    "   sync-full refuses, and says why, when the full database was written by "
+    "something else or belongs\n"
+    "   to another database: it never overwrites another history."
 )
 
 
@@ -1527,6 +1529,12 @@ def fts_check(
             f"⚠️  FTS drift: {result.fts_rows:,} index rows for "
             f"{result.messages_with_content:,} messages (drift {result.drift:+,})"
         )
+        if result.evidence_drift:
+            print(
+                f"⚠️  Evidence FTS drift: {result.evidence_fts_rows:,} index rows for "
+                f"{result.evidence_rows:,} evidence rows "
+                f"(drift {result.evidence_drift:+,}, context_evidence_fts)"
+            )
         if not fix:
             print("   Run with --fix to rebuild the index from the messages table.")
             raise typer.Exit(1)
@@ -1535,6 +1543,11 @@ def fts_check(
         after = repair_fts(conn)
         conn.commit()
         print(f"✅ Rebuilt: {after.fts_rows:,} entries (drift now {after.drift:+,})")
+        if result.evidence_drift:
+            print(
+                f"✅ Rebuilt context_evidence_fts: {after.evidence_fts_rows:,} entries "
+                f"(drift now {after.evidence_drift:+,})"
+            )
         raise typer.Exit(0 if after.healthy else 1)
     finally:
         conn.close()
@@ -1613,6 +1626,7 @@ def sync_full(
 ) -> None:
     """Incrementally sync the hot DB into the configured full DB (idempotent)."""
     from agent_session_tools.tiering import (
+        TieringRefused,
         acquire_sync_lock,
         release_sync_lock,
         sync_to_full,
@@ -1627,17 +1641,33 @@ def sync_full(
         stats = sync_to_full(hot=db)
         write_sync_marker()
         if not quiet:
-            print(
-                f"✅ Synced {stats.sessions_synced} session(s) "
-                f"({stats.messages_synced} messages) — "
-                f"full DB holds {stats.sessions_total_full:,} sessions"
-            )
+            if stats.bound:
+                print("🔗 Bound the full DB to this database (first sync).")
+            if stats.fast_path:
+                print(
+                    "✅ Nothing changed since the last sync — "
+                    f"full DB holds {stats.sessions_total_full:,} sessions"
+                )
+            else:
+                print(
+                    f"✅ Synced {stats.sessions_synced} session(s) "
+                    f"({stats.messages_synced} messages, "
+                    f"{sum(stats.rows_copied.values()):,} rows in all) — "
+                    f"full DB holds {stats.sessions_total_full:,} sessions"
+                )
         # Periodic point-in-time protection for the record itself.
         from agent_session_tools.tiering import maybe_snapshot
 
         snap = maybe_snapshot()
         if snap and not quiet:
             print(f"📸 Auto-snapshot created: {snap}")
+    except TieringRefused as exc:
+        if not quiet:
+            _print_tiering_refusal(exc)
+        logger.warning(
+            "sync-full skipped (%s): %s -- fix: %s", exc.reason, exc, exc.fix
+        )
+        raise typer.Exit(1) from exc
     except (ValueError, FileNotFoundError, LegacySyncRefused) as exc:
         if not quiet:
             print(f"❌ {exc}")
@@ -1645,6 +1675,12 @@ def sync_full(
         raise typer.Exit(1) from exc
     finally:
         release_sync_lock()
+
+
+def _print_tiering_refusal(exc: TieringRefused) -> None:
+    """A mirror refusal: what refused (with its reason code), then the remedy."""
+    print(f"❌ {exc}")
+    print(f"   Fix: {exc.fix}")
 
 
 @app.command()
@@ -1686,13 +1722,16 @@ def prune(
     matching content hash and at least as many messages. Learning tables are
     never touched.
     """
-    from agent_session_tools.tiering import prune_hot
+    from agent_session_tools.tiering import TieringRefused, prune_hot
 
     print(f"\n{'=' * 50}")
     print(f"PRUNE HOT DB (older than {days} days){' — DRY RUN' if dry_run else ''}")
     print(f"{'=' * 50}")
     try:
         stats = prune_hot(days=days, hot=db, dry_run=dry_run, vacuum=not no_vacuum)
+    except TieringRefused as exc:
+        _print_tiering_refusal(exc)
+        raise typer.Exit(1) from exc
     except (ValueError, FileNotFoundError, LegacySyncRefused) as exc:
         print(f"❌ {exc}")
         raise typer.Exit(1) from exc
