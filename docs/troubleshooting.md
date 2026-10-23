@@ -384,40 +384,43 @@ Each reason, and what to do:
 - **`managed_store_busy_or_unavailable`** — another program held one of the two databases while
   deletions were being reconciled. Wait, or stop what else is using them (the web app, an MCP
   server, another sync), then run again.
-- **`controls_unstable`** or **`controls_changed`** — a deletion or forget changed while
-  `sync-full` was reconciling deletions or about to copy. Run again; if it repeats, stop other
-  StudyLoop processes first.
+- **`controls_unstable`** — the deletion and forget records of the two databases could not be
+  brought to agreement before copying (one of them changed under `sync-full`, or the full volume
+  went away mid-way). Run again; if it repeats, stop other StudyLoop processes first.
+- **`controls_changed`** — a deletion or forget landed between reconciling them and copying, so the
+  copy stopped before writing anything. Run again.
 - **`immutable_collision`**, naming a table and a key — the full database holds a record under the
   same key with different content. Captured memory is never overwritten, so the copy stops. Do not
   edit either database: keep both files and report the table and key. Pointing
   `database.full_db_path` at a new file starts a fresh mirror in the meantime.
 - **`noncanonical_override`** — `--db` names a database other than the configured
   `database.path`; the mirror belongs to the configured everyday database only. Run without `--db`.
-- **`unclassified tier table: <name>`** — the everyday database has a memory table this version of
-  StudyLoop does not know how to mirror, usually because a newer StudyLoop wrote it. Run the
-`distinct_paths` — `database.path` and `database.full_db_path` name the same file. Point
-`full_db_path` at a different file (on the external volume) and run `sync-full` again.
-
-`schema_mismatch` — the everyday database is not on the current schema, or the full database could
-not be brought to it. Run `session-maint schema` on each; an unwritable full volume is the usual cause.
-
-`unclassified_table` — the everyday database holds a `context_*` table the mirror does not know (a
-newer migration than this install). Upgrade StudyLoop; the mirror and `prune` both refuse rather
-than copy a table whose role they cannot name.
-
-`orphan_row` — a row in the everyday database points at a parent that exists in neither database
-(left by a deletion made with foreign keys off, before the lifecycle fixes). Nothing is copied. List
-the rows with `sqlite3 <database.path> "PRAGMA foreign_key_check"`; there is no repair command yet,
-so back the file up, delete the listed rows by hand, and run `sync-full` again.
-
-  current StudyLoop on this machine, then `sync-full` again. `prune` refuses the same way.
-- **The two databases are on different schema versions**, or the everyday one is behind. Upgrade
-  StudyLoop, run `session-export` once (it migrates the everyday database), then `sync-full`.
+- **`unclassified_table`**, naming the table — one of the two databases has a memory table this
+  version of StudyLoop does not know how to mirror, usually because a newer StudyLoop wrote it
+  (the message says which database). Run the current StudyLoop on this machine, then `sync-full`
+  again. `prune` refuses the same way, by name, rather than skip everything silently.
+- **`distinct_paths`** — `database.path` and `database.full_db_path` name the same file. Point
+  `full_db_path` at a different file (on the external volume) and run `sync-full` again.
+- **`schema_mismatch`** — the everyday database is not on this build's schema, or the full database
+  is on a newer one than this build. Upgrade StudyLoop on this machine (or, if the everyday
+  database is behind, run `session-export` once: it migrates it), then `sync-full`.
+- **`orphan_row`** — a row in the everyday database points at a parent row that exists in neither
+  database (left by a deletion made with foreign keys off, before the lifecycle fixes). The copy
+  stops and nothing is copied. List the rows with
+  `sqlite3 <database.path> "PRAGMA foreign_key_check"`; there is no repair command yet, so back the
+  file up, delete the listed rows by hand, and run `sync-full` again. (A parent that survives only
+  in the full database is not an orphan: the row copies.)
+- **`constraint_violation`**, naming a table — the full database refused a row under a constraint
+  other than a foreign key (a unique index or a check). Do not edit either database; keep both files
+  and report the table named. Pointing `database.full_db_path` at a new file starts a fresh mirror
+  in the meantime.
 - **`Legacy SQL sync cannot transfer scoped or source-grounded memory`** — the configuration
   scopes memory (`memory.sync`, `memory.projects`, or a `memory.default_scope` other than
   `unclassified`). Scoped memory moves only through the structured replication protocol, so
   `sync-full` is not available with that configuration and sessions stay in the everyday database.
 
-`session-maint prune` reporting every old session as skipped (not in the full database) means the
-full database is behind: something was captured after the last `sync-full`. Run `sync-full`, fix
-any refusal above, then `prune` again.
+`session-maint prune` first proves the full database is this database's mirror — bound to it by
+`sync-full`, or a copy of this very database — and refuses with `unbound_full` or
+`instance_mismatch` otherwise, before it verifies anything. `prune` reporting every old session as
+skipped (not in the full database) means the full database is behind: something was captured after
+the last `sync-full`. Run `sync-full`, fix any refusal above, then `prune` again.

@@ -1087,13 +1087,18 @@ database:
   and learning metadata; your learner records (study sessions, teach-backs, parked topics, study
   notes, practice attempts, the parking board's columns) and the concept graph they point at.
   Deletions and permanent forgets reach the full database first, so a forgotten session is never
-  brought back; an ordinary edit or delete of a mutable record (a note, a parked topic) is mirrored
-  as an update, and a plain delete leaves the old row in the full database — it is an archive.
+  brought back; deleting an owned record (a note, a parked topic) retires it, and the retirement is
+  one of those controls, so the full database drops its copy too. An edit of a mutable record is
+  mirrored as an update; a plain delete of an unowned row (a parking board column) leaves the old
+  row in the full database — it is an archive.
   Captured memory is never overwritten: if the full database holds a different version of the same
   record, `sync-full` refuses instead.
 - **What it never copies.** This machine's own state — access generations, replication receipts and
   peer history, policy and lifecycle mode, capture runs, retention origins, quarantine. The full
-  database's search index follows the rows it receives; embeddings are not copied.
+  database's search index follows the rows it receives; embeddings are not copied. StudyLoop's own
+  application tables in the same file (card reviews and review sessions, study plans and their
+  checkpoints, practice-check events) are not mirrored either: `prune` never touches them, and the
+  full database is not their backup.
 - **Repeated runs.** A run with nothing new copies nothing. With `database.full_db_path` set,
   StudyLoop also starts a quiet `sync-full` in the background after exports and study-session
   starts (`database.sync_mode`); it prints nothing, so run `session-maint sync-full` by hand to see

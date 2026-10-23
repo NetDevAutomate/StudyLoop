@@ -123,3 +123,25 @@ def test_spawned_sync_full_refusal_exits_nonzero_and_logs_the_reason(spawned):
         assert full.execute("SELECT id FROM sessions").fetchall() == [
             ("other-history",)
         ]
+
+
+def test_troubleshooting_lists_each_stable_reason_once():
+    """Pass 8 (sol S1): the setup guide promises 'each reason is explained'; a
+    bad hand-merge once severed one entry, duplicated two and omitted one.
+    Every stable reason code the mirror can raise appears exactly once as a
+    bold bullet in the troubleshooting list."""
+    from pathlib import Path
+
+    from agent_session_tools.tiering import _REFUSAL_FIXES
+
+    root = Path(__file__).resolve()
+    while not (root / "docs" / "troubleshooting.md").exists():
+        root = root.parent
+    text = (root / "docs" / "troubleshooting.md").read_text()
+    section = text[text.index("## `session-maint sync-full` Refuses") :]
+    section = (
+        section[: section.index("\n## ", 1)] if "\n## " in section[1:] else section
+    )
+    for reason in _REFUSAL_FIXES:
+        bullets = section.count(f"- **`{reason}`**")
+        assert bullets == 1, (reason, bullets)

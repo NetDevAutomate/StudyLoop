@@ -23,11 +23,16 @@ graph TB
 | **Full** | `database.full_db_path` (e.g. external volume) | The record. Complete history, kept by the background `sync-full` as a single-writer mirror of this machine's hot DB: bound to it on the first sync, it receives whole sessions and the memory captured from them, never the hot DB's own replication, access or policy state. Read opportunistically by federated search; verification anchor for prune. |
 | **Snapshots** | `database.snapshot_dir` | Point-in-time `VACUUM INTO` copies of the full DB, auto-created every `snapshot_interval_days` after a sync, rotated to `snapshot_retention`. Protect the record from corruption that sync would faithfully propagate. |
 
-The full DB is **per-machine**. Cross-machine consolidation is
-`session-sync`'s job: `--tier hot` (default) moves the recent working set
-between hosts (prune-aware — locally pruned sessions are not resurrected);
-`--tier full` consolidates the records (requires `full_db` on the host
-entry in config.yaml).
+The full DB is **per-machine** and, since the mirror contract (ADR-0016,
+2026-10-23), **single-writer**: it is bound to the everyday database that
+first synced into it, and `sync-full` refuses to write anyone else's. Cross-
+machine consolidation through `session-sync --tier full` is therefore not
+available on the current schema: the legacy SQL path refuses any database
+that holds captured memory (`replication/legacy.py`), and a second machine
+writing into a bound full database would contradict the binding. `--tier
+hot` (default) still moves the recent working set between hosts (prune-aware
+— locally pruned sessions are not resurrected). What `--tier full` should
+mean under the mirror contract is an open design item.
 
 ## Configuration
 
@@ -109,19 +114,23 @@ session-sync sync HOST --tier full    # consolidate records across machines
 
 ## Restore procedures
 
-**Hot DB lost** (disk failure, new machine):
+**Hot DB lost** (disk failure, new machine): copy the record into place as the
+new everyday database —
 
 ```bash
-# 1. Copy the record into place
 cp /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db ~/.config/studyloop/sessions.db
-# 2. Trim it back to a working set
-studyloop prune --days 30 --apply
-# 3. Verify
 studyloop doctor
 ```
 
-With `sync_mode: always` the loss window is seconds — whatever the last
-background sync missed.
+— and keep working from it. Two consequences of the binding, until a rebind
+exists (an open design item): the restored everyday database carries the full
+database's own identity, not the one the full database is bound to, so the
+next `sync-full` into that same full file refuses (`instance_mismatch`) —
+point `database.full_db_path` at a new file, which the first run binds, and
+keep the old one; and `studyloop prune` cannot trim the restored copy against
+the old full file for the same reason (it would refuse before verifying). With
+`sync_mode: always` the loss window is seconds — whatever the last background
+sync missed.
 
 **Full DB corrupted or lost:**
 
