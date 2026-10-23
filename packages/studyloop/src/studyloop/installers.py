@@ -200,8 +200,12 @@ _AGENT_CHOICES = RELEASE_HARNESSES
 #
 # The session DB is the single source of truth for cross-harness struggle
 # tracking. Every release harness gets the canonical query skill plus a native
-# automatic export hook. Steering mandates remain belt-and-braces reminders;
-# Codex carries that reminder directly in its installed AGENTS.md.
+# automatic export hook, which owns the export. The steering mandate names the
+# manual `session-export --<flag>` command for when that hook is reported
+# missing or the learner asks. Codex has no steering slot (no _HARNESS_EXPORT
+# row): its launched mentor gets the same instruction, flag-free, from the
+# persona the launcher writes (agents/shared/personas/); its hook is the
+# SessionEnd entry install_codex_session_end_hook merges into ~/.codex/hooks.json.
 
 
 def _grok_home() -> Path:
@@ -230,8 +234,9 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "opencode-only"),
     "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
     # Grok scans every *.md under $GROK_HOME/rules/ for all projects, which is
-    # the global-steering slot the other four use. The per-session AGENTS.md the
-    # launcher writes names the Codex flag, so this file is what carries grok's own.
+    # the global-steering slot the other four use. Grok's own mandate is this
+    # rules file; the per-session AGENTS.md the launcher writes is the shared
+    # persona, which carries no flag.
     "grok": _HarnessExport(_grok_home() / "rules/session-db.md", "grok-only"),
 }
 

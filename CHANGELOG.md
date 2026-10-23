@@ -187,6 +187,27 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Study sessions started from the web dashboard get the real Socratic mentor again. Since
+  2026-09-14 every web-started focus session, on every harness, received a placeholder mentor
+  (four lines: no Socratic engine, no progress tracking, no MCP tools, no wind-down) because the
+  dashboard's `focus` mode had no persona file and the launcher fell back in silence. Sessions
+  started from the CLI (`studyloop study`) were unaffected. `focus` is now served the study
+  persona, and a mode with no persona file logs one warning naming the mode and path.
+- The mentor a launched session receives now knows how to look up your history before teaching:
+  both served personas carry the session-start memory recipe (`session_search`, `memory_search`,
+  `get_concept_context`, each with its CLI fallback for a harness whose MCP server is not
+  connected). Codex sessions, which have no steering file, had never been told.
+- The wind-down's second-brain offer reaches launched sessions: the study mentor offers once to
+  publish when `studyloop brain status --json` says publishing is supported, follows the xTiles
+  wind-down skill when that provider is connected, and otherwise says nothing about either. The
+  co-study companion makes the same offer only at energy above 4, within 30 minutes, and in place
+  of its forward anchor, never as a second close-out.
+- Session export is stated once, consistently: every harness's StudyLoop hook exports the
+  conversation at session end, and the mentor runs `session-export` itself only if you ask or the
+  hook is reported missing. The steering mandate, the OpenCode and pi definitions and both
+  personas said this three different ways (the mandate and two definitions ordered a manual export
+  at every wrap-up). The personas also cite the shared protocol files where they are installed
+  (`~/.agents/shared/`), falling back to the checkout when the hub is absent.
 - `session-maint sync-full`: the legacy-sync refusal now names the `context_*` table(s) that
   triggered it ("Protected rows found in: context_evidence."), so a learner can tell captured
   evidence from a deletion marker or a parked-topic board layout. The protected set is unchanged:
@@ -205,7 +226,6 @@ experience may change before `1.0.0`.
   named.
 - Backup, snapshot and full-tier directories are created owner-only (0700); a directory that
   already exists keeps its mode.
-
 - Scrubber: a PGP private key flattened onto one line with its `Version:`/`Comment:` headers is
   redacted whole; a flattened cut-off key loses every body run, not only the first; `ghp_`/`gho_`
   tokens of 36-255 characters are redacted whole (they were matched at exactly 36); redacting a

@@ -34,7 +34,12 @@ a name outside the six is never loaded, however well formed.
 
 The persona a live session receives is rendered from `agents/shared/personas/<mode>.md` by
 `agent_launcher.build_canonical_persona()`; each adapter's `setup()` then writes it in its own
-format. Separately, four of the six harnesses have an installed mentor definition under
+format. The web dashboard's `focus` mode has no file of its own and is served `study.md` through the
+builder's `_PERSONA_FILE_FOR_MODE` table (the header still says `**Mode:** focus`); a mode with no
+file logs one warning and gets the built-in fallback. Both served personas are hashed in
+`agents/manifest.json` like the installed definitions and carry the session-start memory recipe
+and the wind-down gates themselves, because for Codex and Grok Build they are the only
+instruction. Separately, four of the six harnesses have an installed mentor definition under
 `agents/<harness>/` -- `agents/kiro/study-mentor/persona.md`, `agents/claude/socratic-mentor.md`,
 `agents/opencode/study-mentor.md`, `agents/pi/AGENTS.md`. Codex and Grok Build have none: their
 adapters write the built persona into the session directory as `AGENTS.md`, and that is all they

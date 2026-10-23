@@ -37,8 +37,9 @@ fallbacks.
 
 ## Session Export
 
-At the **end** of every session — when the user wraps up, says goodbye, or the
-work is clearly done — persist this conversation to the session DB:
+Export is the harness's job: pi's StudyLoop extension runs `session-export` at
+session end. Run it yourself only if the learner asks or the hook is reported
+missing — the manual command is:
 
 ```
 session-export --pi-only

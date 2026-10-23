@@ -99,7 +99,7 @@ See `agents/shared/audhd-framework.md` for the complete methodology. Always acti
 Follow `wind-down-protocol.md`:
 1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
 2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
-3. Export the real OpenCode conversation: `session-export --opencode-only`
+3. Export is the harness's job: OpenCode's StudyLoop plugin runs `session-export --opencode-only` at session end. Run it yourself only if the learner asks or the hook is reported missing.
 4. Suggest next review based on spaced repetition intervals
 5. Suggest a concrete next study block in prose (no calendar CLI exists yet)
 6. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break

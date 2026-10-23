@@ -57,6 +57,7 @@ __all__ = [
     "_opencode_setup",
     "build_canonical_persona",
     "detect_agents",
+    "persona_file_for",
     "persona_mode_for",
 ]
 
@@ -74,6 +75,18 @@ AGENTS = get_all_adapters()
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent
 PERSONA_DIR = _REPO_ROOT / "agents" / "shared" / "personas"
 
+#: How the personas cite the shared protocol files: the hub `studyloop install
+#: agents` links `agents/shared` to. Rewritten to the checkout when it is absent.
+_SHARED_HUB = "~/.agents/shared"
+
+#: Persona file stem for each mode that has no file of its own. ``focus`` is
+#: the dashboard's and timer's vocabulary for today's study session (stored by
+#: ``_dashboard.py``, typed by ``_models.py``) and is served ``study.md``; every
+#: other mode is its own stem. From 2026-09-14 (``776a9dc0``) until council
+#: pass 5 ``focus`` resolved to no file and every web-started focus session got
+#: :func:`_default_persona` -- a four-line mentor -- in silence.
+_PERSONA_FILE_FOR_MODE: dict[str, str] = {"focus": "study"}
+
 
 # ---------------------------------------------------------------------------
 # Persona builder — agent-agnostic, lives here permanently.
@@ -85,11 +98,18 @@ def persona_mode_for(purpose: str) -> str:
 
     The one resolver every web start path uses (design §5, D-10): ``planning``
     launches the study-plan architect, anything else is today's ``focus``
-    session. The mode name is the persona file stem under :data:`PERSONA_DIR`,
-    so adding a purpose means adding a persona file and one branch here — never
-    a second literal in a route.
+    session. The mode is a label (it is what the header's ``**Mode:**`` line and
+    the session state carry); :func:`persona_file_for` resolves it to a file
+    under :data:`PERSONA_DIR`, through :data:`_PERSONA_FILE_FOR_MODE` for the
+    modes that share one. Adding a purpose means one branch here and either a
+    persona file or a table row -- never a second literal in a route.
     """
     return "plan-architect" if purpose == "planning" else "focus"
+
+
+def persona_file_for(mode: str) -> Path:
+    """The persona file that serves *mode*: its own stem, or the table's alias."""
+    return PERSONA_DIR / f"{_PERSONA_FILE_FOR_MODE.get(mode, mode)}.md"
 
 
 #: The sentence that frames a planning brief when the caller gives no other.
@@ -127,8 +147,18 @@ def build_canonical_persona(
     sentence and item 4's ``plan close`` a closing-review one. It frames a
     brief and nothing else — with no ``brief`` it renders nothing.
     """
-    persona_path = PERSONA_DIR / f"{mode}.md"
-    template = persona_path.read_text() if persona_path.exists() else _default_persona(mode)
+    persona_path = persona_file_for(mode)
+    if persona_path.exists():
+        template = persona_path.read_text()
+    else:
+        # One line, mode and path only: the topic is learner content and the
+        # fallback is our defect, not theirs (council pass 5, Q1 policy ii).
+        logger.warning(
+            "No persona file for mode %r at %s; serving the built-in fallback persona",
+            mode,
+            persona_path,
+        )
+        template = _default_persona(mode)
     from studyloop import session_state
 
     session_paths = {
@@ -138,6 +168,13 @@ def build_canonical_persona(
     }
     for default_path, runtime_path in session_paths.items():
         template = template.replace(default_path, runtime_path)
+
+    # The personas cite the installed hub (`~/.agents/shared/`, the target of
+    # installers._SHARED_LINKS). A checkout that never ran `studyloop install
+    # agents` has no hub, so the same files are named where they are: in the
+    # repository (council pass 5, Q5).
+    if not (Path.home() / ".agents" / "shared").exists():
+        template = template.replace(_SHARED_HUB, str(_REPO_ROOT / "agents" / "shared"))
 
     session_files = f"""
 ## Session Files for This Run

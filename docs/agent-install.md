@@ -100,7 +100,7 @@ Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/ski
 
 ### Codex
 
-Codex reads the `AGENTS.md` that `studyloop study` writes into each session directory, built from the shared mentor persona, and starts Codex there. `studyloop install agents --tool codex` writes nothing into a repository: it wires the session-end export hook and both StudyLoop MCP servers.
+Codex reads the `AGENTS.md` that `studyloop study` writes into each session directory, built from the shared mentor persona, and starts Codex there. That persona is Codex's only StudyLoop instruction (Codex has no steering slot), so it carries the session-start memory recipe (`session_search`, `memory_search`, `get_concept_context`, each with its CLI fallback) and the wind-down's second-brain gate itself; export is the session-end hook's job, and the persona says so. `studyloop install agents --tool codex` writes nothing into a repository: it wires the session-end export hook and both StudyLoop MCP servers.
 
 Codex needs no skill link of its own: it reads `~/.agents/skills/` natively, which is where the shared `studyloop-xtiles-wind-down` copy lives. The skill stays silent unless your provider is `xtiles` and an `xtiles` MCP server is connected.
 
@@ -145,7 +145,7 @@ agent picker, or launch it through StudyLoop with
 
 ### pi
 
-pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export mandate writes real pi sessions to StudyLoop’s session database; it does not generate fixture or placeholder progress.
+pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export extension writes real pi sessions to StudyLoop’s session database at session end (the mentor runs `session-export --pi-only` itself only if you ask or the extension is reported missing); it does not generate fixture or placeholder progress.
 
 Its `AGENTS.md` carries the same self-gated xTiles line. pi discovers the
 shared `~/.agents/skills/` hub natively, so both the xTiles wind-down skill and

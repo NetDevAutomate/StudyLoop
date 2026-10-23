@@ -10,8 +10,9 @@ harnesses (core tier since 2026-09-16). Its sessions live as one `.jsonl` file p
 `~/.pi/agent/sessions/`; `PiFamilyExporter` walks that tree and upserts into
 `sessions.db`; the installer links pi's `AGENTS.md` **and** a native
 `session_shutdown` extension that runs `session-export --pi-only` at session end,
-with the steering mandate in `~/.pi/agent/session-db.md` as the belt-and-braces
-second path; `studyloop doctor` checks both.
+with the steering mandate in `~/.pi/agent/session-db.md` telling the mentor the
+extension owns that export and naming the manual command for when the learner
+asks or the hook is reported missing; `studyloop doctor` checks both.
 
 Supported harnesses are exactly Kiro CLI, Codex, Claude Code, pi (core) and OpenCode,
 Grok Build (preview) — `packages/studyloop/src/studyloop/harnesses.py`. No
@@ -254,9 +255,12 @@ Two independent paths, in order of reliability:
    `ctx.exec("session-export", ["--pi-only"], { timeout: 30_000 })`, catching all
    errors so a failed export can never block pi's exit. Its first line is the
    `// studyloop:session-export-hook` sentinel the doctor keys on.
-2. **Steering mandate (agent-driven, best-effort).** `~/.pi/agent/session-db.md`
-   plus the *Session Export* section of the installed `AGENTS.md` instruct the
-   agent to run `session-export --pi-only` when the learner wraps up.
+2. **Steering mandate (agent-driven, on request).** `~/.pi/agent/session-db.md`
+   plus the *Session Export* section of the installed `AGENTS.md` tell the agent
+   that the extension owns the export and to run `session-export --pi-only`
+   itself only if the learner asks or the hook is reported missing. (Until
+   council pass 5 both ordered a manual export at every wrap-up; exporters
+   upsert on id, so the redundant run was noise rather than duplicate rows.)
 
 How that compares across the supported harnesses, as wired in `installers.py`
 (`_HARNESS_EXPORT` at `:161-167`, hook paths at `:177-190`) and checked in

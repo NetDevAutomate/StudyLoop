@@ -46,6 +46,12 @@ SHARED_FILES = [
     "shared/network-bridges.md",
     "shared/break-science.md",
     "shared/wind-down-protocol.md",
+    # The served personas: the one mentor document every harness's launched
+    # session reads (Codex and Grok Build read nothing else), hashed like the
+    # installed definitions since council pass 5 so an edit shows as a changed
+    # hash. Admissible because `agents/shared` is an installer link (_SHARED_LINKS).
+    "shared/personas/study.md",
+    "shared/personas/co-study.md",
     # The xTiles skill: one body plus its per-harness notes, installed once into
     # ~/.agents/skills and symlinked into each harness from there.
     "skills/studyloop-xtiles-wind-down/SKILL.md",

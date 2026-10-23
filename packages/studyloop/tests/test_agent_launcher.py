@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 # Inline fixtures only (no conftest.py — pluggy conflict)
 
@@ -240,6 +238,124 @@ class TestBuildCanonicalPersona:
         content = _default_persona("plan-architect")
         assert isinstance(content, str)
         assert content.strip()
+
+    def test_focus_mode_is_served_the_study_persona_under_its_own_label(self) -> None:
+        """``focus`` has no persona file; the builder's mode->file table maps it
+        to ``study.md`` while the header keeps the dashboard's label (council
+        pass 5, Q1 option b)."""
+        from studyloop.agent_launcher import PERSONA_DIR, build_canonical_persona
+
+        study_body = (PERSONA_DIR / "study.md").read_text(encoding="utf-8")
+        focus = build_canonical_persona("focus", "Python", 5)
+
+        assert "**Mode:** focus" in focus
+        # The body is the study persona (after its path substitutions), not the
+        # four-line fallback.
+        assert "# Study Mode — Socratic Mentor (Agent Drives)" in focus
+        assert study_body.splitlines()[0] in focus
+        assert "You are a Socratic study mentor. Drive the session" not in focus
+
+    def test_missing_template_logs_one_warning_naming_mode_and_path_not_topic(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """When no persona file exists the builder still returns a document, and
+        says so ONCE in the log with the mode and the missing path -- never the
+        topic, which is learner content (council pass 5, Q1 fallback policy ii;
+        silence is how the web focus fallback survived five weeks)."""
+        import logging
+
+        import studyloop.agent_launcher as launcher
+
+        monkeypatch.setattr(launcher, "PERSONA_DIR", tmp_path / "no-personas")
+        topic = "A topic that must not be logged"
+
+        with caplog.at_level(logging.WARNING, logger="studyloop.agent_launcher"):
+            content = launcher.build_canonical_persona("study", topic, 5)
+
+        assert content.strip()
+        assert "**Topic:** A topic that must not be logged" in content
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1, [r.getMessage() for r in caplog.records]
+        message = warnings[0].getMessage()
+        assert "study" in message
+        assert str(tmp_path / "no-personas" / "study.md") in message
+        assert topic not in message
+
+    def test_present_template_logs_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        from studyloop.agent_launcher import build_canonical_persona
+
+        with caplog.at_level(logging.WARNING, logger="studyloop.agent_launcher"):
+            build_canonical_persona("study", "Python", 5)
+            build_canonical_persona("focus", "Python", 5)
+
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+# ---------------------------------------------------------------------------
+# Council pass 5, Q5: the personas cite the installed hub, and the builder
+# resolves the hub to the checkout when `studyloop install agents` never ran.
+# ---------------------------------------------------------------------------
+
+_SERVED_PERSONAS = ("study", "co-study")
+
+
+class TestSharedCitations:
+    @staticmethod
+    def _repo_root() -> Path:
+        root = Path(__file__).resolve()
+        while not (root / "agents/manifest.json").exists():
+            root = root.parent
+        return root
+
+    @pytest.mark.parametrize("mode", _SERVED_PERSONAS)
+    def test_persona_cites_the_installed_hub_not_a_repo_relative_path(self, mode: str) -> None:
+        """A session directory is not the checkout: `agents/shared/x.md` resolves
+        to nothing from there. Every citation names `~/.agents/shared/`, the hub
+        `_SHARED_LINKS` installs (file-level, so it is a grep a reviewer can
+        repeat)."""
+        import re
+
+        text = (self._repo_root() / f"agents/shared/personas/{mode}.md").read_text(encoding="utf-8")
+        bare = [
+            m.group(0)
+            for m in re.finditer(r"(?<![\w./~])agents/shared/[\w./-]+", text)
+            if not m.group(0).startswith("~/.")
+        ]
+        assert bare == [], f"{mode}.md cites agents/shared/ without the hub prefix: {bare}"
+        assert "~/.agents/shared/recording-protocol.md" in text
+
+    def test_hub_present_keeps_the_hub_citation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from studyloop.agent_launcher import build_canonical_persona
+
+        (tmp_path / ".agents" / "shared").mkdir(parents=True)
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+        served = build_canonical_persona("study", "Python", 5)
+
+        assert "`~/.agents/shared/socratic-engine.md`" in served
+        assert str(self._repo_root() / "agents" / "shared") not in served
+
+    def test_hub_absent_substitutes_the_checkout_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An un-installed checkout still resolves: with no `~/.agents/shared`
+        the served text names the repository's `agents/shared` instead, the
+        same substitution shape the session paths use."""
+        from studyloop.agent_launcher import build_canonical_persona
+
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+        assert not (tmp_path / ".agents" / "shared").exists()
+
+        served = build_canonical_persona("study", "Python", 5)
+
+        repo_shared = self._repo_root() / "agents" / "shared"
+        assert f"`{repo_shared / 'socratic-engine.md'}`" in served
+        assert f"`{repo_shared / 'recording-protocol.md'}`" in served
+        assert "~/.agents/shared" not in served
 
 
 # ---------------------------------------------------------------------------

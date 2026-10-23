@@ -223,6 +223,34 @@ class TestResolver:
         assert persona_mode_for("planning") == "plan-architect"
         assert persona_mode_for("focus") == "focus"
 
+    def test_every_mode_the_resolver_can_return_has_a_persona_file(self) -> None:
+        """Every web purpose, and both CLI stems, resolves to a persona file on disk.
+
+        ``focus`` is dashboard vocabulary with no file of its own; the builder
+        maps it to ``study.md`` through its mode->file table. Written naively
+        against ``f"{mode}.md"`` this would fail on the intended end state
+        (``focus.md`` must never exist), so it asks the builder's own resolver.
+        The CLI's ``study`` / ``co-study`` never pass through
+        ``persona_mode_for``, so they are pinned here by name (council pass 5,
+        Q1)."""
+        from typing import get_args
+
+        from studyloop.agent_launcher import persona_file_for, persona_mode_for
+        from studyloop.web.routes.session._models import StartSessionRequest
+
+        purposes = get_args(StartSessionRequest.model_fields["purpose"].annotation)
+        assert set(purposes) == {"focus", "planning"}
+        modes = {persona_mode_for(purpose) for purpose in purposes} | {"study", "co-study"}
+
+        missing = {mode: persona_file_for(mode) for mode in sorted(modes)}
+        missing = {mode: path for mode, path in missing.items() if not path.is_file()}
+        assert missing == {}, f"modes with no persona file: {missing}"
+        assert persona_file_for("focus").name == "study.md"
+        assert not (persona_file_for("focus").parent / "focus.md").exists(), (
+            "focus is served by study.md through the alias table; a focus.md would "
+            "silently take over"
+        )
+
     def test_brief_renders_its_own_section_not_a_resume(self) -> None:
         from studyloop.agent_launcher import build_canonical_persona
 
@@ -374,6 +402,43 @@ class TestPlanningPurpose:
         state = read_session_state()
         assert state["mode"] == "focus"
         assert state["purpose"] == "focus"
+
+    @pytest.mark.parametrize(
+        ("transport", "agent"),
+        [("pty", "claude"), ("acp", "kiro")],
+    )
+    def test_focus_start_serves_the_study_persona_not_the_fallback(
+        self,
+        client: TestClient,
+        personas: list[str],
+        _stub_db,
+        transport: str,
+        agent: str,
+    ) -> None:
+        """A web focus start, on either transport, ships the real study mentor.
+
+        From 2026-09-14 (``776a9dc0``) until council pass 5 the resolver's
+        ``focus`` had no persona file, so every web-started focus session got
+        the four-line ``_default_persona`` -- no Socratic engine, no tracking
+        commands, no MCP tools, no wind-down -- while the CLI's ``study`` mode
+        got the full persona. ``test_default_purpose_is_focus_and_unchanged``
+        compares the served text to ``build_canonical_persona("focus", ...)``
+        and so passes for ANY content; this test pins the content."""
+        persona = _persona_for(client, personas, topic="Python", transport=transport, agent=agent)
+
+        assert "**Mode:** focus" in persona, "the dashboard label stays `focus`"
+        for heading in (
+            "## Session Protocol",
+            "Socratic engine",
+            "## Tracking Progress",
+            "## Recording",
+            "## Wind-Down",
+            "## Available MCP Tools",
+        ):
+            assert heading in persona, f"{transport}: served focus persona lacks {heading!r}"
+        assert "You are a Socratic study mentor. Drive the session" not in persona, (
+            f"{transport}: the served focus persona is the built-in fallback"
+        )
 
     def test_unknown_purpose_is_rejected_structurally(
         self, client: TestClient, personas: list[str], _stub_db
