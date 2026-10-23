@@ -214,7 +214,13 @@ _PROSE_HARNESS_TO_TOOL_ID = {
 }
 
 
-@pytest.mark.parametrize("relative", ["agents/pi/AGENTS.md"])
+#: The two personas the launcher serves to every harness's live session. One
+#: file serves pi too, so both hedge memory_search AND get_concept_context in
+#: pi's form (council pass 5, Q2).
+_SERVED_PERSONAS = ("agents/shared/personas/study.md", "agents/shared/personas/co-study.md")
+
+
+@pytest.mark.parametrize("relative", ["agents/pi/AGENTS.md", *_SERVED_PERSONAS])
 def test_memory_search_is_hedged_with_a_session_query_fallback(relative: str) -> None:
     """pi never gets session-db-mcp (installers._MCP_HARNESSES; pi has no MCP
 
@@ -225,7 +231,8 @@ def test_memory_search_is_hedged_with_a_session_query_fallback(relative: str) ->
     opencode` started registering session-db-mcp globally
     (L8-mcp-opencode-grok) -- see
     test_opencode_get_concept_context_is_wired_and_not_hedged below for its
-    unhedged counterpart.
+    unhedged counterpart. The served personas are in the set because the one
+    document reaches pi's launched sessions as well.
     """
     import studyloop.installers as installers
 
@@ -238,6 +245,22 @@ def test_memory_search_is_hedged_with_a_session_query_fallback(relative: str) ->
     assert "session-query" in window, (
         f"{relative} instructs memory_search without hedging it for a harness "
         f"session-db-mcp is not wired into: {window!r}"
+    )
+
+
+@pytest.mark.parametrize("relative", _SERVED_PERSONAS)
+def test_served_personas_hedge_get_concept_context_with_the_mastery_graph_cli(
+    relative: str,
+) -> None:
+    """The persona serves pi, whose adapter wires neither MCP server, so
+    get_concept_context carries the `studyloop mastery graph` fallback within
+    the same window the pi definition is held to."""
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    match = re.search(r"get_concept_context", text)
+    assert match, f"{relative} no longer mentions get_concept_context"
+    window = text[max(0, match.start() - 200) : match.end() + 200]
+    assert 'studyloop mastery graph --topic "<topic>" --format json' in window, (
+        f"{relative}: get_concept_context needs the mastery graph CLI fallback nearby: {window!r}"
     )
 
 

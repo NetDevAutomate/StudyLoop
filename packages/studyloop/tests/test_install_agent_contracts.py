@@ -534,14 +534,24 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # registered set once `studyloop install agents --tool opencode` started
 # registering session-db-mcp globally (L8-mcp-opencode-grok).
 
-# Codex and Grok Build install no definition: their persona is the per-session
-# document the launcher builds from agents/shared/personas/, which names none of
-# these tools (recorded in reviews/.../lanes/review4-J-harness-small.md).
+# Codex and Grok Build install no definition: their mentor is the per-session
+# document the launcher builds from agents/shared/personas/ (the same document
+# every other harness's launched session receives). Since council pass 5 (Q2)
+# both served personas carry a `## Session Memory` block naming the three tools,
+# hedged in pi's form because the one file serves pi too, and embedding the
+# sentence below verbatim so the steering copy and the persona copy cannot drift
+# unchecked. They are listed here for the names test and excluded by name from
+# the identical-instruction parametrisation, which is keyed by harness tool id.
+_SERVED_PERSONAS = (
+    "agents/shared/personas/study.md",
+    "agents/shared/personas/co-study.md",
+)
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",
     "agents/claude/socratic-mentor.md",
     "agents/opencode/study-mentor.md",
     "agents/pi/AGENTS.md",
+    *_SERVED_PERSONAS,
 )
 _SHARED_MEMORY_DOCS = (
     "agents/shared/session-db-mandate.md",
@@ -580,7 +590,12 @@ def test_every_harness_names_the_session_start_memory_tools(relative: str) -> No
     [
         p
         for p in _MENTOR_DEFINITIONS
-        if not p.endswith(".json") and _MENTOR_DEFINITION_TOOL_ID[p] in installers._MCP_HARNESSES
+        # The served personas are not keyed by a harness tool id (one file serves
+        # all six); their copy of the sentence is checked by
+        # test_served_personas_embed_the_session_start_sentence_verbatim below.
+        if p not in _SERVED_PERSONAS
+        and not p.endswith(".json")
+        and _MENTOR_DEFINITION_TOOL_ID[p] in installers._MCP_HARNESSES
     ],
 )
 def test_prose_definitions_carry_the_identical_instruction(relative: str) -> None:
@@ -589,6 +604,59 @@ def test_prose_definitions_carry_the_identical_instruction(relative: str) -> Non
         f"{relative} paraphrases the session-start instruction; keep it identical "
         "across harnesses whose session-db MCP server installers.py registers"
     )
+
+
+#: What the served personas say beside the sentence (council pass 5, Q2): the
+#: steering copy reaches five harnesses too, so the mentor must not run the
+#: lookups twice; a refused or declined tool is reported once, never retried.
+_PERSONA_MEMORY_SENTENCES = (
+    "Do not repeat a startup lookup already completed under the harness's StudyLoop instructions.",
+    "If a tool is unavailable or the learner declines the approval prompt, say so "
+    "in one line and continue; never retry silently.",
+)
+#: The mandate's sentence about the steering FILE; it must not be pasted into a
+#: persona, which is not that file.
+_MANDATE_ONLY_SENTENCE = "This file is shared across harnesses"
+
+
+@pytest.mark.parametrize("relative", _SERVED_PERSONAS)
+def test_served_personas_embed_the_session_start_sentence_verbatim(relative: str) -> None:
+    """The persona is the one document present at launch on all six harnesses,
+    so it carries the session-start recipe itself -- the sentence verbatim (so
+    the steering copy and this copy cannot drift unchecked), hedged for both
+    tools because the same file serves pi, which has neither MCP server."""
+    raw = (_repo_root() / relative).read_text(encoding="utf-8")
+    text = _normalised(raw)
+    assert "## Session Memory" in raw, f"{relative} has no Session Memory section"
+    assert _SESSION_START_SENTENCE in text, f"{relative} paraphrases the session-start sentence"
+    assert "session_search" in text and "session-query" in text, (
+        f"{relative} must name session_search with the session-query CLI fallback"
+    )
+    for sentence in _PERSONA_MEMORY_SENTENCES:
+        assert sentence in text, f"{relative} lacks: {sentence!r}"
+    assert _MANDATE_ONLY_SENTENCE not in text, (
+        f"{relative} pastes the mandate's sentence about the steering file"
+    )
+    co_study_only = (
+        "This context check is not permission to initiate teaching; surface findings "
+        "when the student asks or at a check-in."
+    )
+    if relative.endswith("co-study.md"):
+        assert co_study_only in text, "co-study's companion stays quiet by default"
+    else:
+        assert co_study_only not in text, "the no-teach clause belongs to co-study only"
+
+
+def test_served_persona_session_memory_block_is_short() -> None:
+    """Under 14 lines each (the arbitration's bound): a startup recipe, not a manual."""
+    for relative in _SERVED_PERSONAS:
+        lines = (_repo_root() / relative).read_text(encoding="utf-8").splitlines()
+        start = lines.index("## Session Memory")
+        end = next(
+            (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines)
+        )
+        block = [line for line in lines[start:end] if line.strip()]
+        assert len(block) < 14, f"{relative}: Session Memory is {len(block)} non-blank lines"
 
 
 def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
