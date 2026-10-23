@@ -151,12 +151,16 @@ def get_full_db_path(config: dict[str, Any] | None = None) -> Path | None:
 
 
 def ensure_leaf_dir(path: Path) -> None:
-    """Create *only* the final directory component of ``path``.
+    """Create *only* the final directory component of ``path``, owner-only.
 
     Refuses when the parent is missing. This is the mount-safety guard: on
     macOS an unmounted external volume means ``/Volumes/<name>`` does not
     exist, and a recursive mkdir would silently create a real directory on
     the boot volume that later shadows the mount.
+
+    The leaf holds copies of the 0600 record (the full tier, its snapshots,
+    a compact destination), so it is created 0700. An existing directory
+    keeps its mode; ``session-maint fix-perms`` tightens those on request.
     """
     if path.exists():
         return
@@ -165,7 +169,7 @@ def ensure_leaf_dir(path: Path) -> None:
             f"Parent directory missing: {path.parent} — is the volume mounted? "
             "Create the directory structure once manually, then retry."
         )
-    path.mkdir()
+    path.mkdir(mode=0o700)
 
 
 # ---------------------------------------------------------------------------

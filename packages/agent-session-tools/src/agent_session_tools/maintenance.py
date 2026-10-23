@@ -196,6 +196,22 @@ def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
     return found
 
 
+def _owner_only_directories(cfg: dict) -> list[Path]:
+    """The directories this package creates to hold copies of the record.
+
+    ``database.backup_dir`` always; ``database.snapshot_dir`` (or
+    ``backup_dir`` when unset) only when a full tier is configured, since
+    without one no snapshot is ever written there. Deduplicated, in order.
+    """
+    db_cfg = cfg["database"]
+    directories = [Path(db_cfg["backup_dir"])]
+    if db_cfg.get("full_db_path"):
+        snapshot_dir = Path(db_cfg.get("snapshot_dir") or db_cfg["backup_dir"])
+        if snapshot_dir not in directories:
+            directories.append(snapshot_dir)
+    return directories
+
+
 def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
     """Chmod pre-existing copies of the record to 0600 and report counts (D#2).
 
@@ -204,6 +220,13 @@ def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
     under 022). Only the files ``_owner_only_candidates`` lists are touched. A
     symlink is skipped and named: a chmod through it would change a file that
     may live outside the configured directories.
+
+    The backup and snapshot directories themselves are tightened to 0700 when
+    this user owns them (plan 5, larger #2 item 5): ``get_backup_dir`` and
+    ``ensure_leaf_dir`` create them owner-only now, but a directory made
+    before that -- or made by hand on a shared volume -- keeps the umask's
+    0755, and this opt-in sweep is the only place that changes a directory
+    it did not create. One owned by another user is named and left alone.
 
     ``remote`` runs the ``ssh … chmod 600`` this command otherwise only prints,
     once per configured endpoint path (plan 5, item C). Opt-in: an ssh that
@@ -222,8 +245,43 @@ def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
     )
     print(f"{'=' * 50}")
 
-    tightened: list[Path] = []
+    directories_tightened = 0
     failed: list[Path] = []
+    for directory in _owner_only_directories(cfg):
+        if directory.is_symlink():
+            print(
+                f"⚠️  Skipped directory {directory}: a symlink (its target is not swept)"
+            )
+            continue
+        if not directory.is_dir():
+            continue
+        info = directory.stat()
+        mode = stat.S_IMODE(info.st_mode)
+        if mode & 0o077 == 0:
+            continue
+        if info.st_uid != os.geteuid():
+            print(
+                f"⚠️  Skipped directory {directory}: {mode:04o}, not owned by this user"
+            )
+            continue
+        print(f"{'🔍' if dry_run else '🔧'} directory {directory}: {mode:04o} -> 0700")
+        if not dry_run:
+            try:
+                os.chmod(directory, 0o700)
+            except OSError as exc:
+                failed.append(directory)
+                print(
+                    f"❌ directory {directory}: could not be changed "
+                    f"({exc.strerror or exc})"
+                )
+                logger.warning(
+                    "fix-perms: directory %s left at %04o: %s", directory, mode, exc
+                )
+                continue
+            logger.info("fix-perms: directory %s %04o -> 0700", directory, mode)
+        directories_tightened += 1
+
+    tightened: list[Path] = []
     already = 0
     symlinks: list[Path] = []
     for kind, path in _owner_only_candidates(cfg):
@@ -259,6 +317,8 @@ def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
             "sidecar to sweep."
         )
     summary = f"✅ {verb} {len(tightened)} file(s) to 0600; {already} already 0600"
+    if directories_tightened:
+        summary += f"; {directories_tightened} directory(ies) to 0700"
     if symlinks:
         summary += f"; skipped {len(symlinks)} symlink(s)"
     if failed:

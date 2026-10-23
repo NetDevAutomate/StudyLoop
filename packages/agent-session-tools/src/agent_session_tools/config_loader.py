@@ -406,11 +406,18 @@ def get_db_path(config: dict[str, Any] | None = None) -> Path:
 
 
 def get_backup_dir(config: dict[str, Any] | None = None) -> Path:
-    """Get backup directory from config."""
+    """Get backup directory from config, creating it owner-only when missing.
+
+    The directory holds whole copies of the 0600 record, so a directory this
+    package creates is 0700 (``mkdir`` applies the mode to the leaf only; an
+    existing parent is not touched). A directory that already exists keeps
+    its mode: the learner may have chosen a shared volume deliberately, and
+    ``session-maint fix-perms`` is the explicit, opt-in way to tighten it.
+    """
     if config is None:
         config = load_config()
     backup_dir = Path(config["database"]["backup_dir"])
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     return backup_dir
 
 
@@ -491,9 +498,9 @@ def ensure_config_dir() -> None:
         env_file.touch()
         print(f"✅ Created empty .env: {env_file}")
 
-    # Create backup directory
+    # Create backup directory (owner-only: it will hold copies of the record)
     backup_dir = expand_path(DEFAULT_CONFIG["database"]["backup_dir"])
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
