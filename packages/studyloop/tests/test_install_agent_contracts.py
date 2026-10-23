@@ -53,12 +53,22 @@ _XTILES_LINKED_HARNESSES = ("kiro", "claude")
 #: re-admitted 2026-09-10 (receipts/adapter-scope-2026-09-10.md).
 _XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode", "pi", "grok")
 
+#: The two personas the launcher serves to EVERY harness's live session (Codex
+#: and Grok Build read nothing else). Where a contract applies to "what the
+#: mentor is told", it applies to these.
+_SERVED_PERSONAS = (
+    "agents/shared/personas/study.md",
+    "agents/shared/personas/co-study.md",
+)
+
 #: Harnesses whose definition file carries a self-gated paragraph as well.
-#: Codex and Grok Build have no installed definition (their persona is built per
-#: session from agents/shared/personas/), so there is no file to carry one.
+#: Codex and Grok Build have no installed definition; what their sessions (and
+#: every other harness's launched session) read is the served persona, so the
+#: two personas carry the gate too (council pass 5, Q4).
 _XTILES_PARAGRAPH_FILES = (
     "agents/pi/AGENTS.md",
     "agents/opencode/study-mentor.md",
+    *_SERVED_PERSONAS,
 )
 
 #: Paragraphs name the installed skill, which every harness reaches through the hub.
@@ -314,6 +324,147 @@ def test_xtiles_agent_files_are_tracked_in_the_manifest() -> None:
     } == {}
 
 
+# ---------------------------------------------------------------------------
+# Council pass 5, Q3 + Q4: the served personas' wind-down, and who owns export
+# ---------------------------------------------------------------------------
+#
+# The second-brain offer reached no launched session on any harness: the gate
+# lived in wind-down-protocol.md and the installed definitions, in neither
+# persona. Both sentences are taken verbatim from an installed definition rather
+# than composed anew, so the three copies say the same thing.
+
+#: `agents/claude/socratic-mentor.md` End-of-Session step 3, verbatim.
+_PUBLISH_OFFER_SENTENCE = (
+    "Second brain: If `studyloop brain status --json` reports both `configured` and "
+    "`supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today "
+    "--plan <plan-id>`); otherwise say nothing about second brains."
+)
+#: `agents/opencode/study-mentor.md` closing paragraph, verbatim.
+_XTILES_WIND_DOWN_SENTENCE = (
+    "xTiles second brain: if `studyloop brain status --json` reports `provider: xtiles` and "
+    "an `xtiles` MCP server is connected in this session, follow the "
+    "`studyloop-xtiles-wind-down` skill while wrapping up; otherwise skip it silently and say "
+    "nothing about xTiles."
+)
+#: Export is the hook's: every release harness has an automatic session-end
+#: export (test_every_release_harness_has_a_real_session_export_hook_contract),
+#: so the mentor runs `session-export` only on request or when the hook is
+#: reported missing -- the branch that matters for Codex, whose hook is its sole
+#: export path. Exporters upsert on id, so a redundant run is noise, not data.
+_HOOK_OWNS_EXPORT_OPENER = "Export is the harness's job"
+_HOOK_OWNS_EXPORT_RULE = "Run it yourself only if the learner asks or the hook is reported missing"
+#: The unconditional instructions the hook sentence replaces.
+_UNCONDITIONAL_EXPORT_PHRASES = ("persist this conversation", "Export the real")
+#: Every file that tells a mentor about session export.
+_EXPORT_INSTRUCTION_FILES = (
+    "agents/shared/session-db-mandate.md",
+    "agents/opencode/study-mentor.md",
+    "agents/pi/AGENTS.md",
+    *_SERVED_PERSONAS,
+)
+
+
+def _section(text: str, heading: str) -> str:
+    start = text.index(heading)
+    end = text.find("\n## ", start + len(heading))
+    return text[start : end if end != -1 else len(text)]
+
+
+def _numbered_steps(section: str) -> list[str]:
+    """Top-level `N. ` items of a markdown list; indented sub-bullets stay with their item."""
+    steps: list[str] = []
+    for line in section.splitlines():
+        if re.match(r"^\d+\. ", line):
+            steps.append(line)
+        elif steps and line.strip():
+            steps[-1] += "\n" + line
+    return steps
+
+
+def test_wind_down_sentences_are_verbatim_from_the_installed_definitions() -> None:
+    repo_root = _repo_root()
+    claude = (repo_root / "agents/claude/socratic-mentor.md").read_text(encoding="utf-8")
+    opencode = (repo_root / "agents/opencode/study-mentor.md").read_text(encoding="utf-8")
+    assert _PUBLISH_OFFER_SENTENCE in claude
+    assert _XTILES_WIND_DOWN_SENTENCE in opencode
+
+
+def test_study_persona_wind_down_carries_export_second_brain_and_xtiles_in_order() -> None:
+    """Steps: summary, next step, export (hook-owned), second brain, xTiles, quit."""
+    text = (_repo_root() / "agents/shared/personas/study.md").read_text(encoding="utf-8")
+    steps = _numbered_steps(_section(text, "## Wind-Down"))
+    assert len(steps) == 6, steps
+    assert _HOOK_OWNS_EXPORT_OPENER in steps[2] and _HOOK_OWNS_EXPORT_RULE in steps[2]
+    assert _PUBLISH_OFFER_SENTENCE in steps[3]
+    assert _XTILES_WIND_DOWN_SENTENCE in steps[4]
+    assert "/exit or Ctrl+C" in steps[5], "the quit line stays last"
+
+
+def test_co_study_wind_down_offers_the_second_brain_only_in_the_energy_gt_4_step() -> None:
+    """co-study's own rule: at energy <= 4 or past 30 minutes, "a single
+    low-friction close-out or none at all". The offer therefore lives in the
+    energy > 4 step only, is suppressed past 30 minutes, and REPLACES the forward
+    anchor rather than adding a second close-out (council pass 5, Q4; astra A3)."""
+    text = (_repo_root() / "agents/shared/personas/co-study.md").read_text(encoding="utf-8")
+    steps = _numbered_steps(_section(text, "## Wind-Down"))
+    assert len(steps) == 6, steps
+
+    gated = [i for i, step in enumerate(steps) if "studyloop brain status --json" in step]
+    assert gated == [2], f"the second-brain gate must live in step 3 only, found in {gated}"
+    offer = steps[2]
+    assert offer.startswith("3. If energy > 4")
+    assert "under 30 minutes" in offer
+    assert "in place of the forward anchor" in offer and "never both" in offer
+    assert _PUBLISH_OFFER_SENTENCE in offer
+    assert _XTILES_WIND_DOWN_SENTENCE in offer
+    assert steps[3].startswith("4. If energy ≤ 4, skip reflection"), "step 4 is untouched"
+    assert _HOOK_OWNS_EXPORT_OPENER in steps[4] and _HOOK_OWNS_EXPORT_RULE in steps[4]
+    assert "/exit or Ctrl+C" in steps[5]
+
+
+@pytest.mark.parametrize("relative", _EXPORT_INSTRUCTION_FILES)
+def test_export_instructions_say_the_hook_owns_export(relative: str) -> None:
+    text = _normalised((_repo_root() / relative).read_text(encoding="utf-8"))
+    assert _HOOK_OWNS_EXPORT_OPENER in text, f"{relative} does not say the hook owns export"
+    assert _HOOK_OWNS_EXPORT_RULE in text, f"{relative} lacks the manual-run rule"
+    for phrase in _UNCONDITIONAL_EXPORT_PHRASES:
+        assert phrase not in text, f"{relative} still orders an unconditional export: {phrase!r}"
+
+
+def test_export_instructions_keep_their_manual_command_literals() -> None:
+    """The rendered-flag tests (test_harness_export.py) and the doctor key on
+    these literals; rewording the instruction must not move them."""
+    repo_root = _repo_root()
+    mandate = (repo_root / "agents/shared/session-db-mandate.md").read_text(encoding="utf-8")
+    assert "session-export --SESSION_EXPORT_FLAG" in mandate
+    assert installers._MANDATE_SENTINEL in mandate
+    assert "session-export --opencode-only" in (
+        repo_root / "agents/opencode/study-mentor.md"
+    ).read_text(encoding="utf-8")
+    assert "session-export --pi-only" in (repo_root / "agents/pi/AGENTS.md").read_text(
+        encoding="utf-8"
+    )
+    for relative in _SERVED_PERSONAS:
+        text = (repo_root / relative).read_text(encoding="utf-8")
+        assert not re.search(r"session-export --\w", text), (
+            f"{relative} is served to all six harnesses and must carry no per-harness flag"
+        )
+
+
+def test_served_personas_are_tracked_in_the_manifest() -> None:
+    """The one definition every launched session reads is hashed like the rest,
+    so an edit shows as a changed hash (AGENTS.md rule 1 now applies to them)."""
+    repo_root = _repo_root()
+    manifest = json.loads((repo_root / "agents/manifest.json").read_text(encoding="utf-8"))
+    for relative in _SERVED_PERSONAS:
+        key = relative.removeprefix("agents/")
+        assert key in manifest["agents"], f"{relative} has no manifest row"
+        assert (
+            hashlib.sha256((repo_root / relative).read_bytes()).hexdigest()[:16]
+            == manifest["agents"][key]["hash"]
+        ), f"{relative}: manifest hash is stale"
+
+
 def _rebase(target: str, home: Path) -> str:
     """Point an installer target at a sandbox HOME.
 
@@ -542,10 +693,6 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # sentence below verbatim so the steering copy and the persona copy cannot drift
 # unchecked. They are listed here for the names test and excluded by name from
 # the identical-instruction parametrisation, which is keyed by harness tool id.
-_SERVED_PERSONAS = (
-    "agents/shared/personas/study.md",
-    "agents/shared/personas/co-study.md",
-)
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",
     "agents/claude/socratic-mentor.md",

@@ -16,9 +16,9 @@ The session database is StudyLoop's core knowledge base and the single source
 of truth for what the user is learning and struggling with. It is shared across
 machines and powers cross-harness search.
 
-At the **end** of every session — when the user wraps up, says goodbye, or the
-work is clearly done — persist this conversation and any struggle signals to the
-database by running:
+Export is the harness's job: its StudyLoop hook runs `session-export` for this
+harness at session end. Run it yourself only if the learner asks or the hook is
+reported missing — the manual command for this harness is:
 
 ```
 session-export --SESSION_EXPORT_FLAG

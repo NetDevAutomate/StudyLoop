@@ -91,7 +91,10 @@ The sidebar timer will show colour phases. If the student has been going for a w
 When the student wants to stop, follow the wind-down protocol:
 1. Quick summary of what was covered (wins, struggles, parked)
 2. Suggest concrete first step for next session
-3. The student will quit with /exit or Ctrl+C — cleanup is automatic
+3. Export is the harness's job: its StudyLoop hook runs `session-export` for this harness at session end. Run it yourself only if the learner asks or the hook is reported missing; if `session-export` is unavailable, note the failure but do not block the session close.
+4. Second brain: If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
+5. xTiles second brain: if `studyloop brain status --json` reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow the `studyloop-xtiles-wind-down` skill while wrapping up; otherwise skip it silently and say nothing about xTiles.
+6. The student will quit with /exit or Ctrl+C — cleanup is automatic
 
 ## Available MCP Tools (studyloop-mcp)
 

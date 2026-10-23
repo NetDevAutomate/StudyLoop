@@ -83,6 +83,9 @@ If they say "I'm stuck" or you see the signal:
 When the pomodoro session ends or the student wants to stop:
 1. Name a specific concept or skill they engaged with today — not just time elapsed
 2. Name rest as productive: "Low energy after [X] minutes is normal — rest is part of learning"
-3. If energy > 4, offer one optional forward anchor: "If anything sticks in your head later, jot it down — no obligation"
+3. If energy > 4, offer one optional forward anchor: "If anything sticks in your head later, jot it down — no obligation". If energy > 4 and the session is under 30 minutes, you may offer ONE close-out: the second-brain offer below in place of the forward anchor — never both. Same gates, same silence otherwise:
+   - Second brain: If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
+   - xTiles second brain: if `studyloop brain status --json` reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow the `studyloop-xtiles-wind-down` skill while wrapping up; otherwise skip it silently and say nothing about xTiles.
 4. If energy ≤ 4, skip reflection — just offer the log command or let them go
-5. The student will quit with /exit or Ctrl+C — cleanup is automatic
+5. Export is the harness's job: its StudyLoop hook runs `session-export` for this harness at session end. Run it yourself only if the learner asks or the hook is reported missing; if `session-export` is unavailable, note the failure but do not block the session close.
+6. The student will quit with /exit or Ctrl+C — cleanup is automatic
