@@ -9,6 +9,13 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- `session-maint fix-perms --remote` runs the `ssh <endpoint> chmod 600 <remote db>` it previously
+  only printed, once per configured sync endpoint (BatchMode, 10 s connect / 30 s total), one
+  result row per endpoint with a classified reason (unreachable / permission / timeout / missing);
+  a failed host never stops the sweep and the exit is non-zero at the end. Off by default.
+- `session-maint fix-perms` also tightens the backup and snapshot directories to 0700 when this
+  user owns them (reported per directory; `--dry-run` honoured).
+
 - `session-maint delete --days N --confirm --forget-learner-records` also deletes the old
   sessions that hold learner records (study sessions, teach-backs, parked topics, notes), and
   those records with them, after listing what it will destroy by table. It still needs
@@ -152,17 +159,38 @@ experience may change before `1.0.0`.
   cleartext. Use `--bind ADDRESS` with one address. Until removal `--lan` behaves as
   before, prints a deprecation line and its security caveats, and cannot be combined
   with `--bind`.
-- `session-maint archive` is deprecated and will be removed in the release after
-  the one that deprecates it. It copies only sessions and messages into a
-  separate file that nothing in StudyLoop reads. To move old sessions out of
-  the everyday database, run `session-maint sync-full` and then
+- `session-maint archive` is deprecated. It copies only sessions and messages into a
+  separate file that nothing in StudyLoop reads. The supported way to move old
+  sessions out of the everyday database is `session-maint sync-full` and then
   `session-maint prune` (both need `database.full_db_path`). That is not a
   drop-in replacement: it copies whole sessions into the full database, removes
   from the everyday one only the sessions it has verified there, and keeps any
-  session that holds learner records. Until removal, `archive` prints this
-  notice and otherwise behaves as before.
+  session that holds learner records. Today `sync-full` refuses a database that
+  holds exported evidence — on the current schema, every database with an
+  exported session — because it would leave that evidence behind, so `archive`
+  is not removed until `sync-full` works on the current schema. Until then
+  `archive` prints this notice and otherwise behaves as before.
 
 ### Fixed
+
+- `session-maint sync-full`: the legacy-sync refusal now names the `context_*` table(s) that
+  triggered it ("Protected rows found in: context_evidence."), so a learner can tell captured
+  evidence from a deletion marker or a parked-topic board layout. The protected set is unchanged:
+  every current-schema export writes evidence rows the legacy copier would drop.
+- Scrubber: a private key cut off at the front and flattened onto one line (`<b64> <b64> -----END …
+  PRIVATE KEY-----`, with or without a PGP `=XXXX` checksum, glued or spaced) is redacted whole;
+  only the END armour used to go.
+- `session-maint prune` ages a session by its newest known timestamp
+  (`COALESCE(updated_at, created_at, MAX(messages.timestamp))`, the same rule as `delete`); a Kiro
+  v1 conversation with no `updated_at` is no longer "older than N days" however new it is, and
+  sessions of unknown age are kept and counted.
+- `session-maint delete`, `session-context forget --apply` and `prune` no longer refuse on a
+  pre-existing orphaned row elsewhere in the database ("Purge violated a database dependency"); the
+  dependency check is scoped to what the purge changes, pre-existing orphans are reported by table
+  and left in place, and a dependent the schema does not cascade is still refused with its table
+  named.
+- Backup, snapshot and full-tier directories are created owner-only (0700); a directory that
+  already exists keeps its mode.
 
 - Scrubber: a PGP private key flattened onto one line with its `Version:`/`Comment:` headers is
   redacted whole; a flattened cut-off key loses every body run, not only the first; `ghp_`/`gho_`

@@ -773,23 +773,34 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
 # D4 (council pass 3): the two-table file `archive` writes has no reader, and
 # the schema it hand-writes drifts from the canonical one. The supported path
 # differs in what it moves and what it checks, so the notice says how rather
-# than calling it a replacement. The removal is stated relative to the release
-# that carries this deprecation (ADR-0016: deprecate now, remove one release
-# later), never as a version number the next release may not have.
+# than calling it a replacement. Plan 5 (lane Q, read-and-prove): that path
+# refuses every database holding exported evidence -- on schema >= 41 every
+# database with an exported session, because one `session-export` writes
+# `context_evidence` per message and `sync_to_full` copies only sessions,
+# messages and file references -- so the removal is no longer promised for a
+# release; it waits on `sync-full` carrying the current schema (ADR-0016,
+# amendment 2026-10-23). The notice says so, instead of sending the learner to a
+# command that will refuse them.
 _ARCHIVE_DEPRECATION = (
-    "⚠️  'session-maint archive' is deprecated and will be removed in the release "
-    "after the one that deprecates it.\n"
-    "   Use 'session-maint sync-full' then 'session-maint prune' instead (both "
-    "need database.full_db_path set).\n"
-    "   That is not a drop-in replacement. sync-full copies whole sessions "
-    "(every column, every message,\n"
-    "   file references) into the full database, which has the same schema as "
-    "this one; prune then removes\n"
+    "⚠️  'session-maint archive' is deprecated: it copies sessions and messages only, "
+    "into a two-table file\n"
+    "   that nothing in StudyLoop reads. It will not be removed until its replacement "
+    "works on the current\n"
+    "   schema, so it stays available for now.\n"
+    "   The replacement is 'session-maint sync-full' then 'session-maint prune' (both "
+    "need database.full_db_path).\n"
+    "   That is not a drop-in replacement: sync-full copies whole sessions (every "
+    "column, every message,\n"
+    "   file references) into the full database, which has the same schema as this "
+    "one; prune then removes\n"
     "   from this database only the sessions it has verified there, keeps any "
     "session that owns learner\n"
-    "   records, and is a dry run until --no-dry-run. This command copies "
-    "sessions and messages only,\n"
-    "   into a two-table file that nothing in StudyLoop reads."
+    "   records, and is a dry run until --no-dry-run.\n"
+    "   Today sync-full refuses a database that holds exported evidence -- on the "
+    "current schema, every\n"
+    "   database with an exported session -- because it would leave that evidence "
+    "behind; until that is\n"
+    "   fixed neither command moves anything for you."
 )
 
 
@@ -1365,9 +1376,10 @@ def archive(
 ) -> None:
     """Archive old sessions to a separate two-table database.
 
-    Deprecated; removed in the release after the one that deprecates it. Use
-    'session-maint sync-full' then 'session-maint prune', which move whole
-    sessions and verify them first.
+    Deprecated, but not removed until 'session-maint sync-full' then
+    'session-maint prune' (which move whole sessions and verify them first)
+    work on the current schema; today sync-full refuses a database that holds
+    exported evidence, so this command stays available.
     """
     db_path = db if db else _get_db_path()
     exit_code = _archive(db_path, days, backup=not no_backup)

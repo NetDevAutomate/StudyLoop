@@ -100,9 +100,17 @@ def _ids(path: Path) -> set[str]:
 
 def _assert_notice(out: str) -> None:
     assert "'session-maint archive' is deprecated" in out
-    # The removal is stated relative to the deprecating release, never as a
-    # version number: the next release's number is not known here (G#5a).
-    assert "removed in the release after the one that deprecates it" in out
+    # Plan 5 (lane Q, read-and-prove): the named replacement refuses every
+    # database that holds exported evidence -- on schema >= 41 that is every
+    # database with an exported session -- because `sync_to_full` copies only
+    # sessions, messages and file references and would drop the evidence tier.
+    # So the removal is no longer promised for "the release after"; it waits on
+    # `sync-full` carrying the current schema, and the notice says why the
+    # replacement will refuse the learner today instead of sending them to it.
+    assert "removed in the release after the one that deprecates it" not in out
+    assert "will not be removed until" in out
+    assert "refuses" in out
+    assert "exported evidence" in out
     assert "0.7.0" not in out
     assert "session-maint sync-full" in out
     assert "session-maint prune" in out

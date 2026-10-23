@@ -603,14 +603,14 @@ session-sync all                         # Push all peers before pulling all pee
 session-sync status|endpoints            # Show configured peers / listener status
 session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
 session-maint vacuum|reindex|schema      # Database maintenance
-session-maint archive --days N           # DEPRECATED: removed in the release after the one that deprecates it;
-                                          # use sync-full then prune (not a drop-in replacement)
+session-maint archive --days N           # DEPRECATED, not yet removed: its replacement (sync-full then prune, not a
+                                          # drop-in) refuses a database holding exported evidence on the current schema
 session-maint delete --days N --confirm   # Permanently delete old sessions; keeps sessions that own learner records
 session-maint delete --days N --confirm --forget-learner-records
                                           # ...and also deletes those sessions and their learner records
 session-maint delete ... --allow-unmigrated
                                           # Delete refuses a pre-41 (no tombstone) database; this flag allows it, with a warning
-session-maint find-duplicates|fts-check|fix-perms|compact  # Integrity and rescue; fix-perms chmods existing snapshots/backups/sidecars to 0600
+session-maint find-duplicates|fts-check|fix-perms|compact  # Integrity and rescue; fix-perms chmods existing snapshots/backups/sidecars to 0600 and their directories to 0700; --remote runs the per-endpoint ssh chmod it otherwise prints
 session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune (prune is a dry run until --no-dry-run)
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
                                           # Migrate the DB if behind, then embed the backlog (doctor's embeddings_alignment remediation)

@@ -65,6 +65,32 @@ shows the refusal as a traceback (`maintenance.py:1209` catches only `ValueError
 `FileNotFoundError`; `LegacySyncRefused` is a `RuntimeError`). `archive` must not be removed until
 those learners have a path; ledgered as a larger follow-up.*
 
+*Amendment, 2026-10-23 (plan 5, lane Q, merged `d20c355c`; coordinator unit): the blocker above is
+wider than "a large class of learners" — it is every learner with an exported session. Lane Q's
+read-and-prove, reproduced by the coordinator against source: one ordinary `session-export` writes
+a `context_evidence` row per message (`exporters/base.py:198-200` → `context/capture.py`,
+`ContextStore.capture`), so `check_database` refuses every current database, and it refuses
+correctly — with the guard bypassed, `sync_to_full` (`tiering.py:447-531`) copies only `sessions`,
+`messages` and `file_references` (`_copy_table` at `:505,:511,:525`) and the full copy loses the
+session's evidence tier; `prune_hot` then verifies nothing (`_archive_context_complete`, `:867`,
+requires hot's whole context set ⊆ full, which the copier never produces) and evicts nothing. Both
+halves of the replacement this record names are therefore inert on schema ≥ 41 for any real
+database, independent of parking or deletion, and exempting `context_board_columns` /
+`context_tombstones` from the guard would unblock nobody (a real post-delete database also carries
+`context_retirements` and `context_erasure_pending`); the protected set was deliberately left
+unchanged and the refusal now names the offending table(s) (`49c90373`). Consequence for this
+record: the decision (deprecate; one mechanism on the canonical schema) stands, but its premise that
+`sync-full` + `prune` is the supported path today was wrong, so the removal is no longer promised
+for "the release after the one that deprecates it" — it waits on `sync-full` carrying the current
+schema. The notice (`maintenance.py` `_ARCHIVE_DEPRECATION`), `docs/cli-reference.md`,
+`docs/setup-guide.md` and the changelog now say so instead of sending learners to a command that
+refuses them. Owner decision recorded for the next cycle, coordinator's recommendation first: (a)
+make `sync-full` carry the whole context tier — `tiering.compact_database` (`:358-430`) is the only
+all-tables copier in the package and `_archive_context_complete` already states the acceptance
+condition, so this is the path that makes the ADR true; or (b) supersede this record and un-deprecate
+`archive`. (a) is recommended because `archive`'s two-table file also drops the evidence tier, so
+un-deprecating it would bless the same loss under a different name.*
+
 Grounding adopted: single source of truth for the schema (one migration path, one reader set);
 Keep a Changelog's deprecate-then-remove.
 

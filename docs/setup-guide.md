@@ -1062,8 +1062,9 @@ session-maint prune --days 30    # Preview what sync-full has verified there; ad
 ```
 
 `prune` removes from the everyday database only the sessions `sync-full` has verified in the full
-database, and keeps any session that owns learner records. `sync-full` stops with
-`LegacySyncRefused` on a database that holds scoped or protected memory rows (for example after a
-topic has been parked); it moves nothing in that case. `session-maint archive` is deprecated and
-will be removed in the release after the one that deprecates it: it copied sessions and messages
-only, into a file nothing in StudyLoop reads.
+database, and keeps any session that owns learner records. Today `sync-full` refuses a database that
+holds exported evidence — on the current schema that is every database with an exported session,
+because `sync-full` copies sessions, messages and file references only and would leave the
+evidence behind — so neither command moves anything yet. `session-maint archive` is deprecated (it
+copies sessions and messages only, into a file nothing in StudyLoop reads) but stays available until
+`sync-full` works on the current schema.
