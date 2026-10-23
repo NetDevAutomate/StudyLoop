@@ -69,6 +69,10 @@ def hash_file(path: Path) -> str:
 def main() -> None:
     today = date.today().isoformat()
     agents: dict[str, dict[str, str]] = {}
+    manifest_path = AGENTS_DIR / "manifest.json"
+    previous: dict[str, dict[str, str]] = {}
+    if manifest_path.exists():
+        previous = json.loads(manifest_path.read_text()).get("agents", {})
 
     all_files = []
     for files in TRACKED_FILES.values():
@@ -78,10 +82,15 @@ def main() -> None:
     for rel_path in sorted(set(all_files)):
         full_path = AGENTS_DIR / rel_path
         if full_path.exists():
-            agents[rel_path] = {"hash": hash_file(full_path), "updated": today}
+            digest = hash_file(full_path)
+            prior = previous.get(rel_path)
+            # Only a changed definition moves its date: a regeneration must not
+            # claim every unchanged row was updated today (plan 5, lane P #1;
+            # the convention commits 5871862c / 711459c1 followed by hand).
+            updated = prior["updated"] if prior and prior.get("hash") == digest else today
+            agents[rel_path] = {"hash": digest, "updated": updated}
 
     manifest = {"version": 1, "agents": agents}
-    manifest_path = AGENTS_DIR / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Updated {manifest_path} with {len(agents)} entries")
 

@@ -84,14 +84,17 @@ _CLI_FALLBACK_SUBCOMMANDS: tuple[str, ...] = (
 _MCP_HEADING_RE = re.compile(r"^#{2,3} .*\bMCP\b.*$", re.MULTILINE)
 _CLI_HEADING_RE = re.compile(r"^#{2,3} .*\bCLI fallback\b.*$", re.MULTILINE)
 
-# ``build_canonical_persona("focus", "Python", 5)`` at 205819c7 (the tip
-# feat/p4-13b branched from), with the three session paths fixed below so the
-# digest does not depend on the machine's config directory. A change here is a
-# change to what every default session ships — make it deliberately, in the same
-# commit as the persona edit, never as a side effect of an architect change.
+# ``build_canonical_persona("focus", "Python", 5)`` after council pass 5 (lane
+# P, 2026-10-23), with the three session paths fixed below and the shared hub
+# pinned present so the digest depends on neither the machine's config
+# directory nor whether `studyloop install agents` ran. The digest pinned at
+# 205819c7 was of the 631-byte `_default_persona` fallback: `focus` had no
+# persona file, so this guard certified the defect for five weeks. A change here
+# is a change to what every default session ships — make it deliberately, in the
+# same commit as the persona edit, never as a side effect of an architect change.
 # A content digest of a public persona rendering, not a credential.
-_FOCUS_SHA256_AT_205819C7 = (
-    "2d35c22a99ed72fbc91e8a79ad05312b04af2e36bbb5a7bb4d7ac4a0e9ef11e0"  # pragma: allowlist secret
+_FOCUS_SHA256_AFTER_PASS5 = (
+    "84bac5974e4fcea34bb590f26891828ffcc40a0e60f1916fb9bef898b3b432b8"  # pragma: allowlist secret
 )
 
 
@@ -205,14 +208,19 @@ def test_find_agent_repo_root_fails_when_marker_is_absent(tmp_path: Path) -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_focus_persona_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_focus_persona_unchanged(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(session_state, "STATE_FILE", Path("/fixed/session-state.json"))
     monkeypatch.setattr(session_state, "TOPICS_FILE", Path("/fixed/session-topics.md"))
     monkeypatch.setattr(session_state, "PARKING_FILE", Path("/fixed/session-parking.md"))
+    # The builder rewrites `~/.agents/shared` to the checkout when the hub is
+    # absent (council pass 5, Q5); pin it present so the digest is one value.
+    (tmp_path / ".agents" / "shared").mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
 
     content = build_canonical_persona("focus", "Python", 5)
 
-    assert hashlib.sha256(content.encode("utf-8")).hexdigest() == _FOCUS_SHA256_AT_205819C7
+    assert "# Study Mode — Socratic Mentor (Agent Drives)" in content, "focus serves study.md"
+    assert hashlib.sha256(content.encode("utf-8")).hexdigest() == _FOCUS_SHA256_AFTER_PASS5
 
 
 @pytest.mark.parametrize(
