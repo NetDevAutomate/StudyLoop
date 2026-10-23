@@ -32,8 +32,8 @@ def check_config(config):
         raise LegacySyncRefused(MESSAGE)
 
 
-def protected_queries(tables, schema=None):
-    """Metadata-only existence predicates; no source identities or bodies returned."""
+def _protected(tables, schema=None):
+    """(table, existence predicate) pairs; metadata-only, no identities or bodies."""
     if schema is not None and not re.fullmatch(r"[A-Za-z_]\w*", schema):
         raise ValueError("Invalid internal legacy schema")
     for table in sorted(tables):
@@ -53,7 +53,23 @@ def protected_queries(tables, schema=None):
             if table == "context_lifecycle_mode"
             else ""
         )
-        yield f"SELECT 1 FROM {quoted}{condition} LIMIT 1"
+        yield table, f"SELECT 1 FROM {quoted}{condition} LIMIT 1"
+
+
+def protected_queries(tables, schema=None):
+    """Metadata-only existence predicates; no source identities or bodies returned."""
+    for _table, query in _protected(tables, schema):
+        yield query
+
+
+def refusal_message(tables):
+    """The fixed refusal plus the protected table(s) that hold rows.
+
+    Every current-schema export writes ``context_evidence``; a delete writes
+    ``context_tombstones`` (and its retirement/erasure markers); parking seeds
+    ``context_board_columns``. Naming the trigger lets a learner tell which it was.
+    """
+    return MESSAGE + " Protected rows found in: " + ", ".join(sorted(tables)) + "."
 
 
 def check_database(conn, schema="main"):
@@ -65,10 +81,13 @@ def check_database(conn, schema="main"):
             f"SELECT name FROM {schema}.sqlite_master WHERE type='table'"
         )
     }
-    if any(
-        conn.execute(query).fetchone() for query in protected_queries(tables, schema)
-    ):
-        raise LegacySyncRefused(MESSAGE)
+    offending = [
+        table
+        for table, query in _protected(tables, schema)
+        if conn.execute(query).fetchone()
+    ]
+    if offending:
+        raise LegacySyncRefused(refusal_message(offending))
 
 
 def check_path(path, *, whole_file=False):
