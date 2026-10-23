@@ -812,3 +812,28 @@ def test_sync_full_then_prune_evicts_a_real_exported_session(mirror):  # R1
     assert (
         count(mirror["full"], "SELECT count(*) FROM sessions WHERE id=?", recent) == 1
     )
+
+
+def test_a_trigger_that_rolls_back_is_reported_as_a_refusal(mirror):
+    """RAISE(ROLLBACK) ends the transaction itself; the refusal must still be a
+    TieringRefused, not 'cannot rollback - no transaction is active'."""
+    a = export(mirror, "alpha", ["alpha one"], day=1)
+    sync_to_full()
+    with closing(sqlite3.connect(mirror["full"])) as conn:
+        conn.execute(
+            "CREATE TRIGGER fixture_veto BEFORE INSERT ON context_evidence "
+            "BEGIN SELECT RAISE(ROLLBACK, 'fixture veto'); END"
+        )
+        conn.commit()
+    export(mirror, "alpha", ["alpha one", "alpha two"], day=1)
+    before = rows(mirror["full"], "messages")
+
+    with pytest.raises(TieringRefused) as info:
+        sync_to_full()
+
+    assert info.value.reason == "constraint_violation"
+    assert "fixture veto" in str(info.value)
+    assert rows(mirror["full"], "messages") == before
+    assert (
+        count(mirror["hot"], "SELECT count(*) FROM messages WHERE session_id=?", a) == 2
+    )

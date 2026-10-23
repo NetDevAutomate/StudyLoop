@@ -1050,7 +1050,9 @@ def _mirror_copy(hot: Path, full: Path, plan: _MirrorPlan) -> SyncStats:
             ).fetchone()[0]
             conn.execute("COMMIT")
         except sqlite3.IntegrityError as exc:
-            conn.execute("ROLLBACK")
+            # A trigger's RAISE(ROLLBACK) has already ended the transaction.
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
             reason = (
                 "orphan_row" if "FOREIGN KEY" in str(exc) else "constraint_violation"
             )
