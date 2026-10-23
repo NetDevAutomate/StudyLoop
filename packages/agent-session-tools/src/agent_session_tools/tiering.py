@@ -31,6 +31,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -117,6 +118,98 @@ class SyncStats:
     messages_synced: int = 0
     file_references_synced: int = 0
     sessions_total_full: int = 0
+    #: Rows written per table (inserted or updated) by this run.
+    rows_copied: dict[str, int] = field(default_factory=dict)
+    #: True when this run bound an empty full tier to hot's instance.
+    bound: bool = False
+    #: True when the receipt proved nothing changed and no write ran.
+    fast_path: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Mirror refusals
+# ---------------------------------------------------------------------------
+
+_REFUSAL_FIXES = {
+    "distinct_paths": (
+        "database.path and database.full_db_path must name two different files"
+    ),
+    "noncanonical_override": (
+        "sync-full mirrors the configured database.path into database.full_db_path; "
+        "run it without --db, or point the config at the database you meant"
+    ),
+    "schema_mismatch": (
+        "run any session-export (it migrates the hot database), or upgrade this "
+        "installation if the full database is newer, then run sync-full again"
+    ),
+    "peer_ledger_present": (
+        "this database has taken part in structured replication; the SQL mirror "
+        "does not carry it -- use the structured sync coordinator instead"
+    ),
+    "unbound_full": (
+        "the full database was not written by this mirror: move it aside (keep it "
+        "as a backup) and run sync-full again to create a bound mirror"
+    ),
+    "instance_mismatch": (
+        "the full database belongs to another instance (hot was rebuilt or "
+        "compacted, or the file is another machine's): point database.full_db_path "
+        "at a new file, or move the old full database aside"
+    ),
+    "unclassified_table": (
+        "this build does not know that table, so it cannot mirror or verify it; "
+        "upgrade agent-session-tools -- nothing was copied"
+    ),
+    "controls_unstable": (
+        "another process changed permanent deletions during the sync; run sync-full again"
+    ),
+    "controls_changed": (
+        "a permanent deletion arrived between reconciliation and the copy; "
+        "run sync-full again -- nothing was copied"
+    ),
+    "immutable_collision": (
+        "the full database holds a different version of an immutable row; nothing "
+        "was copied -- inspect that row before syncing (another tool wrote the full tier)"
+    ),
+    "orphan_row": (
+        "the hot database holds a row whose parent is missing "
+        "(PRAGMA foreign_key_check); repair it before syncing -- nothing was copied"
+    ),
+    "constraint_violation": (
+        "a row could not be mirrored without breaking a uniqueness rule in the "
+        "full database; nothing was copied"
+    ),
+    "full_store_unavailable": "mount the volume holding the full database and retry",
+    "managed_store_busy_or_unavailable": (
+        "another process holds a database write lock; sync-full will retry on the "
+        "next trigger, or run it again"
+    ),
+}
+
+
+class TieringRefused(ValueError):
+    """The hot -> full mirror refused; ``reason`` is a stable code, ``fix`` the remedy.
+
+    A ``ValueError`` so the ``sync-full`` and ``prune`` handlers render it; it is
+    deliberately not :class:`replication.legacy.LegacySyncRefused`, which keeps
+    meaning "this needs the structured protocol" for peer and legacy paths.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        detail: str = "",
+        *,
+        table: str | None = None,
+        key: object = None,
+    ) -> None:
+        self.reason = reason
+        self.table = table
+        self.key = key
+        self.fix = _REFUSAL_FIXES.get(reason, "run sync-full again")
+        message = f"sync-full refused ({reason})"
+        if detail:
+            message += f": {detail}"
+        super().__init__(message)
 
 
 @dataclass
@@ -472,6 +565,176 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
 
 
 # ---------------------------------------------------------------------------
+# Incremental sync (hot -> full): preflight and binding
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _MirrorPlan:
+    """What the read-only preflight established about the hot/full pair."""
+
+    instance: str
+    revision: int
+    full_exists: bool
+    bound: bool
+    receipt: int | None
+
+
+def _open_ro(path: Path) -> sqlite3.Connection:
+    return sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    if a.resolve() == b.resolve():
+        return True
+    return a.exists() and b.exists() and a.samefile(b)
+
+
+def _refuse_peer_ledger(conn: sqlite3.Connection, schema: str, label: str) -> None:
+    from .tiering_registry import PEER_LEDGER
+
+    tables = set(_user_tables(conn, schema))
+    holding = [
+        entry.name
+        for entry in PEER_LEDGER
+        if entry.name in tables
+        and conn.execute(f"SELECT 1 FROM {schema}.{entry.name} LIMIT 1").fetchone()
+    ]
+    if holding:
+        raise TieringRefused(
+            "peer_ledger_present",
+            f"the {label} database holds structured-replication rows in "
+            + ", ".join(holding),
+        )
+
+
+def _populated(conn: sqlite3.Connection, schema: str) -> list[str]:
+    """Payload or control tables in ``schema`` that hold any row."""
+    from .tiering_registry import CONTROL, PAYLOAD
+
+    tables = set(_user_tables(conn, schema))
+    return [
+        entry.name
+        for entry in (*PAYLOAD, *CONTROL)
+        if entry.name in tables
+        and conn.execute(f'SELECT 1 FROM {schema}."{entry.name}" LIMIT 1').fetchone()
+    ]
+
+
+def _mirror_preflight(
+    hot: Path, full: Path, configured_hot: Path, configured_full: Path
+) -> _MirrorPlan:
+    """Read-only checks before anything in the full tier is migrated or written."""
+    from .migrations import CURRENT_VERSION
+    from .tiering_registry import MIRROR_TABLE, UnclassifiedTable, classify_database
+
+    if _same_file(hot, full):
+        raise TieringRefused("distinct_paths", f"both name {hot.resolve()}")
+    if not _same_file(hot, configured_hot) or not _same_file(full, configured_full):
+        raise TieringRefused(
+            "noncanonical_override",
+            f"asked to mirror {hot} into {full}; configured pair is "
+            f"{configured_hot} -> {configured_full}",
+        )
+    with closing(_open_ro(hot)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version != CURRENT_VERSION:
+            raise TieringRefused(
+                "schema_mismatch",
+                f"the hot database is at schema {version}; this build mirrors "
+                f"schema {CURRENT_VERSION}",
+            )
+        try:
+            classify_database(conn)
+        except UnclassifiedTable as exc:
+            raise TieringRefused(
+                "unclassified_table", str(exc), table=exc.table
+            ) from exc
+        _refuse_peer_ledger(conn, "main", "hot")
+        instance = conn.execute(
+            "SELECT instance FROM context_access_state WHERE id=1"
+        ).fetchone()[0]
+        revision = conn.execute(
+            "SELECT revision FROM context_replica_content_state WHERE id=1"
+        ).fetchone()[0]
+    plan = _MirrorPlan(instance, revision, False, False, None)
+    if not full.exists() or full.stat().st_size == 0:
+        return plan
+    plan.full_exists = True
+    with closing(_open_ro(full)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version > CURRENT_VERSION:
+            raise TieringRefused(
+                "schema_mismatch",
+                f"the full database is at schema {version}, newer than this build "
+                f"({CURRENT_VERSION})",
+            )
+        _refuse_peer_ledger(conn, "main", "full")
+        if _table_exists(conn, MIRROR_TABLE):
+            row = conn.execute(
+                f"SELECT canonical_instance, last_source_revision FROM {MIRROR_TABLE} "
+                "WHERE id=1"
+            ).fetchone()
+            if row is not None:
+                if row[0] != instance:
+                    raise TieringRefused(
+                        "instance_mismatch",
+                        f"the full database is bound to instance {row[0]}; the hot "
+                        f"database is instance {instance}",
+                    )
+                plan.bound, plan.receipt = True, row[1]
+                return plan
+        holding = _populated(conn, "main")
+        if holding:
+            raise TieringRefused(
+                "unbound_full",
+                f"{full} holds rows (in {', '.join(holding[:5])}"
+                + (", ..." if len(holding) > 5 else "")
+                + ") and no mirror binding",
+            )
+    return plan
+
+
+def _bind_full(conn: sqlite3.Connection, plan: _MirrorPlan) -> bool:
+    """Create/verify the binding inside the content transaction; True when bound now.
+
+    The table is created here, in the full tier only, rather than by a migration:
+    migrations are tier-agnostic (``init_db`` runs the same chain on hot and full),
+    and a hot carrying an empty binding table would mean nothing.
+    """
+    from .tiering_registry import MIRROR_TABLE
+
+    conn.execute(
+        f"""CREATE TABLE IF NOT EXISTS main.{MIRROR_TABLE} (
+            id INTEGER PRIMARY KEY CHECK(id=1),
+            canonical_instance TEXT NOT NULL,
+            bound_at TEXT NOT NULL,
+            last_source_revision INTEGER
+        )"""
+    )
+    row = conn.execute(
+        f"SELECT canonical_instance FROM main.{MIRROR_TABLE} WHERE id=1"
+    ).fetchone()
+    if row is not None:
+        if row[0] != plan.instance:
+            raise TieringRefused(
+                "instance_mismatch",
+                f"the full database is bound to instance {row[0]}",
+            )
+        return False
+    holding = _populated(conn, "main")
+    if holding:
+        raise TieringRefused(
+            "unbound_full", f"rows appeared in {', '.join(holding[:5])} during sync"
+        )
+    conn.execute(
+        f"INSERT INTO main.{MIRROR_TABLE} VALUES (1, ?, ?, NULL)",
+        (plan.instance, datetime.now(UTC).isoformat()),
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Incremental sync (hot -> full)
 # ---------------------------------------------------------------------------
 
@@ -489,10 +752,14 @@ def sync_to_full(
     a changed session are replaced wholesale; the full DB's FTS triggers
     keep its index consistent.
     """
+    from .replication.legacy import check_config
+
     cfg = config or load_config()
-    hot = hot or get_db_path(cfg)
-    full = full or get_full_db_path(cfg)
-    if full is None:
+    configured_hot = get_db_path(cfg)
+    configured_full = get_full_db_path(cfg)
+    hot = hot or configured_hot
+    full = full or configured_full
+    if full is None or configured_full is None:
         raise ValueError(
             "database.full_db_path is not configured — set it in config.yaml "
             "to enable tiering"
@@ -500,6 +767,9 @@ def sync_to_full(
     if not hot.exists():
         raise FileNotFoundError(f"Hot database not found: {hot}")
 
+    # The structured protocol still owns every scoped/peer configuration.
+    check_config(cfg)
+    plan = _mirror_preflight(hot, full, configured_hot, configured_full)
     _require_legacy_copy(hot, full, cfg)
 
     from agent_session_tools.export_sessions import init_db
@@ -514,6 +784,7 @@ def sync_to_full(
         with conn:
             conn.execute("BEGIN IMMEDIATE")
             _check_legacy_attached(conn, "hot", cfg)
+            stats.bound = _bind_full(conn, plan)
             conn.execute(
                 """
                 CREATE TEMP TABLE changed_ids AS
