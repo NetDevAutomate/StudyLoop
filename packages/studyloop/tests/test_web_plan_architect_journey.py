@@ -276,6 +276,17 @@ def _wait_for_planning_label(page: Page) -> list[str]:
     return _visible_purpose_labels(page)
 
 
+def _live(state: dict) -> bool:
+    """A LIVE claim: an id whose state is not ``mode=ended``.
+
+    Since plan 5 (larger #1) a web ending keeps the saved ``mode=ended`` state
+    file so the dashboard's summary view can render from it; the server render,
+    ``session_state.has_active_session`` and both JS components all read that as
+    "no session". "Released" therefore means no live claim, not an absent id.
+    """
+    return bool(state.get("study_session_id")) and state.get("mode") != "ended"
+
+
 def _session_state(page: Page) -> dict:
     return page.evaluate(
         "async () => (await fetch('/api/session/state', {cache: 'no-store'})).json()"
@@ -436,7 +447,7 @@ def test_manual_new_plan_form_still_works(page: Page) -> None:
     )
     assert _plans(page)["count"] == before + 1
     # No session was started by the manual path.
-    assert not _session_state(page).get("study_session_id")
+    assert not _live(_session_state(page))
 
 
 def test_one_console_one_websocket(page: Page) -> None:
@@ -602,8 +613,12 @@ def test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan(
     )
 
     state = _session_state(page)
-    assert not state.get("study_session_id"), state
-    assert state.get("purpose") in (None, "focus"), "no planning label survives the abandon"
+    assert not _live(state), state
+    # The saved ``mode=ended`` record says what the session WAS (plan 5 keeps it
+    # for the summary view); the label that must not survive is the LIVE one,
+    # asserted on the page below (``_visible_purpose_labels(page) == []``).
+    assert state.get("mode") == "ended", state
+    assert state.get("purpose") == "planning", "the ended record keeps its truthful purpose"
     assert _plans(page) == plans_before, "the abandoned interview created no plan"
     assert sorted(p.name for p in world["plans"].glob("*.md")) == files_before
     probe = _probe(page)
@@ -721,7 +736,7 @@ def test_leaving_before_the_launch_lands_leaves_a_session_like_any_other(
     # The learner leaves before the server has answered.
     page.evaluate("() => window.Alpine.store('nav').go('study-plans')")
     page.locator('[data-testid="plan-new"]').wait_for(state="visible", timeout=8000)
-    assert not _session_state(page).get("study_session_id"), "nothing exists yet: the POST is held"
+    assert not _live(_session_state(page)), "nothing exists yet: the POST is held"
 
     def _is_start(response) -> bool:  # type: ignore[no-untyped-def]
         return response.request.method == "POST" and response.url.endswith("/api/session/start")

@@ -710,10 +710,13 @@ class TestLiveRefresh:
                 after = live_page.evaluate(
                     "async () => (await fetch('/api/session/state', { cache: 'no-store' })).json()"
                 )
-                if not after.get("study_session_id"):
+                # Released = no LIVE claim: since plan 5 (larger #1) a web end keeps
+                # the saved ``mode=ended`` state file so the summary view can
+                # render from it; every client reads that as inactive.
+                if not after.get("study_session_id") or after.get("mode") == "ended":
                     break
                 time.sleep(0.3)
-            assert not after.get("study_session_id"), (
+            assert not after.get("study_session_id") or after.get("mode") == "ended", (
                 f"explicit end did not release the session: {after!r}"
             )
 

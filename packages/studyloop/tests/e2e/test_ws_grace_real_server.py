@@ -73,6 +73,17 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
+def _live(state: dict) -> bool:
+    """A LIVE claim: an id whose state is not ``mode=ended``.
+
+    Since plan 5 (larger #1) a web ending keeps the saved ``mode=ended`` state
+    file so the dashboard's summary view can render from it; the server render,
+    ``session_state.has_active_session`` and both JS components all read that as
+    "no session". "Released" therefore means no live claim, not an absent id.
+    """
+    return bool(state.get("study_session_id")) and state.get("mode") != "ended"
+
+
 def _agent_pids() -> set[int]:
     """PIDs of every live fake-agent process.
 
@@ -267,7 +278,7 @@ class TestGraceAgainstARealAgent:
         agent_pid = next(iter(_agent_pids() - before))
 
         _await(
-            lambda: not server.state().get("study_session_id"),
+            lambda: not _live(server.state()),
             "the grace window to expire and release the session",
             timeout=GRACE_S + 10,
         )
@@ -294,7 +305,7 @@ class TestGraceAgainstARealAgent:
         os.kill(agent_pid, signal.SIGKILL)
         killed_at = time.monotonic()
         _await(
-            lambda: not server.state().get("study_session_id"),
+            lambda: not _live(server.state()),
             "the dead session to be released",
             timeout=GRACE_S + 10,
         )
@@ -356,7 +367,7 @@ class TestGraceAgainstARealAgent:
 
         status, _ = server.post("/api/session/end")
         assert status == 200
-        assert not server.state().get("study_session_id")
+        assert not _live(server.state())
         _await(lambda: agent_pid not in _agent_pids(), "the agent child to be reaped on end")
 
     def test_end_then_start_gets_a_working_socket(self, server: Server) -> None:

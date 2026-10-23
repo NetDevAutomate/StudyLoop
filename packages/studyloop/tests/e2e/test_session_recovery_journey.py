@@ -291,7 +291,8 @@ class TestStudyPickerRecovery:
             """async () => {
               const res = await fetch('/api/session/state');
               const s = await res.json();
-              return !s.study_session_id;
+              // released = no LIVE claim (plan 5 keeps the ended state file)
+              return !s.study_session_id || s.mode === 'ended';
             }""",
             timeout=10.0,
             what="the session to be released server-side",
@@ -452,7 +453,8 @@ class TestStudyPickerRecovery:
             """async () => {
               const res = await fetch('/api/session/state');
               const state = await res.json();
-              return !state.study_session_id;
+              // released = no LIVE claim (plan 5 keeps the ended state file)
+              return !state.study_session_id || state.mode === 'ended';
             }""",
             timeout=10.0,
             what="the conflicting session to be ended server-side",
