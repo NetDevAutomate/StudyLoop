@@ -6,7 +6,7 @@ import importlib.util
 import sqlite3
 from typing import TYPE_CHECKING
 
-from studyloop.doctor.models import CheckResult
+from studyloop.doctor.models import CheckResult, split_fix_hint
 from studyloop.harnesses import SESSION_SOURCE_BY_HARNESS
 
 if TYPE_CHECKING:
@@ -58,8 +58,7 @@ def check_review_db() -> list[CheckResult]:
                 "review_db",
                 "warn",
                 f"Review DB not found: {db_path}",
-                "studyloop review will create it on first use",
-                fix_auto=False,
+                fix_note="studyloop review will create it on first use",
             )
         ]
     try:
@@ -79,20 +78,11 @@ def check_review_db() -> list[CheckResult]:
                     "review_db",
                     "fail",
                     f"Review DB missing tables: {', '.join(sorted(missing))}",
-                    "studyloop review --rebuild",
+                    fix_command="studyloop review --rebuild",
                     fix_auto=True,
                 )
             ]
-        return [
-            CheckResult(
-                "database",
-                "review_db",
-                "pass",
-                f"Review DB healthy: {db_path}",
-                "",
-                fix_auto=False,
-            )
-        ]
+        return [CheckResult("database", "review_db", "pass", f"Review DB healthy: {db_path}")]
     except sqlite3.DatabaseError as exc:
         return [
             CheckResult(
@@ -100,8 +90,8 @@ def check_review_db() -> list[CheckResult]:
                 "review_db",
                 "fail",
                 f"Review DB corrupt: {exc}",
-                f"Delete and recreate: rm {db_path}",
-                fix_auto=False,
+                fix_command=f"rm {db_path}",
+                fix_note="delete it; it is recreated on the next run",
             )
         ]
 
@@ -115,8 +105,7 @@ def check_sessions_db() -> list[CheckResult]:
                 "sessions_db",
                 "info",
                 "agent-session-tools not installed — sessions DB not checked",
-                "studyloop install tools",
-                fix_auto=False,
+                fix_command="studyloop install tools",
             )
         ]
     db_path = _get_sessions_db_path()
@@ -127,22 +116,14 @@ def check_sessions_db() -> list[CheckResult]:
                 "sessions_db",
                 "warn",
                 f"Sessions DB not found: {db_path}",
-                "Run any agent session tool to create it",
-                fix_auto=False,
+                fix_note="Run any agent session tool to create it",
             )
         ]
     try:
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA integrity_check")
         results = [
-            CheckResult(
-                "database",
-                "sessions_db",
-                "pass",
-                f"Sessions DB healthy: {db_path}",
-                "",
-                fix_auto=False,
-            )
+            CheckResult("database", "sessions_db", "pass", f"Sessions DB healthy: {db_path}")
         ]
         results.extend(_check_fts_drift(conn, db_path))
         results.extend(_check_embeddings_alignment(conn, db_path))
@@ -156,8 +137,8 @@ def check_sessions_db() -> list[CheckResult]:
                 "sessions_db",
                 "fail",
                 f"Sessions DB corrupt: {exc}",
-                f"Delete and recreate: rm {db_path}",
-                fix_auto=False,
+                fix_command=f"rm {db_path}",
+                fix_note="delete it; it is recreated on the next run",
             )
         ]
 
@@ -197,16 +178,7 @@ def _check_legacy_sources(conn: sqlite3.Connection) -> list[CheckResult]:
 
     total = sum(count for _, count in rows)
     if total == 0:
-        return [
-            CheckResult(
-                "database",
-                "legacy-sources",
-                "pass",
-                "no legacy-source sessions",
-                "",
-                fix_auto=False,
-            )
-        ]
+        return [CheckResult("database", "legacy-sources", "pass", "no legacy-source sessions")]
 
     breakdown = ", ".join(f"{source or '(null)'} {count:,}" for source, count in rows)
     sessions_word = "session" if total == 1 else "sessions"
@@ -218,8 +190,7 @@ def _check_legacy_sources(conn: sqlite3.Connection) -> list[CheckResult]:
             "info",
             f"{total:,} {sessions_word} in {len(rows)} retired {sources_word} "
             f"(hidden from search, not deleted): {breakdown}",
-            "Legacy rows stay for history; they are not searchable. Nothing to fix.",
-            fix_auto=False,
+            fix_note="Legacy rows stay for history; they are not searchable. Nothing to fix.",
         )
     ]
 
@@ -244,12 +215,7 @@ def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResul
     if drift == 0:
         return [
             CheckResult(
-                "database",
-                "sessions_fts",
-                "pass",
-                f"FTS index consistent ({fts_rows:,} rows)",
-                "",
-                fix_auto=False,
+                "database", "sessions_fts", "pass", f"FTS index consistent ({fts_rows:,} rows)"
             )
         ]
     # Any drift is an invariant violation; large drift means the index is
@@ -261,7 +227,7 @@ def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResul
             "sessions_fts",
             severity,
             f"FTS index drift: {fts_rows:,} index rows for {messages:,} messages ({drift:+,})",
-            "session-maint fts-check --fix",
+            fix_command="session-maint fts-check --fix",
             # Auto-fixable: `doctor --fix` calls tiering.repair_fts() directly.
             # This was False while the remedy string was still shown, so
             # `doctor --fix` printed the repair command and never ran it.
@@ -345,6 +311,9 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
     if missing_modules and report.rows == 0:
         from agent_session_tools import embedding_store
 
+        # install_hint() is built outside doctor/ in the one-line
+        # "<command>  (<note>)" shape; split it so the command stays runnable.
+        install_command, install_note = split_fix_hint(embedding_store.install_hint())
         return [
             CheckResult(
                 "database",
@@ -352,8 +321,8 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
                 "info",
                 f"semantic layer not installed ({', '.join(missing_modules)} missing); "
                 f"0 message_embeddings rows, {report.eligible:,} messages eligible",
-                embedding_store.install_hint(),
-                fix_auto=False,
+                fix_command=install_command,
+                fix_note=install_note,
             )
         ]
 
@@ -365,8 +334,6 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
                 "pass",
                 f"message_embeddings aligned ({report.rows:,} vectors for "
                 f"{report.eligible:,} eligible messages, model {model})",
-                "",
-                fix_auto=False,
             )
         ]
 
@@ -387,7 +354,7 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
                 "embeddings_alignment",
                 "fail",
                 f"message_embeddings misaligned: {states} (of {report.rows:,} vectors)",
-                "session-maint embed-check --fix",
+                fix_command="session-maint embed-check --fix",
                 # Auto-fixable: cli/_doctor.py calls embedding_alignment.sweep()
                 # directly, then rebuilds the derived sidecar index when the
                 # sqlite-vec extension is present.
@@ -402,9 +369,8 @@ def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list
             "warn",
             f"message_embeddings backlog: {report.missing:,} of {report.eligible:,} "
             f"eligible messages have no vector for {model}",
-            "session-maint embed",
+            fix_command="session-maint embed",
             # NOT auto-fixable: shrinking the backlog means running the model,
             # which doctor must never do on the learner's behalf (D-7).
-            fix_auto=False,
         )
     ]

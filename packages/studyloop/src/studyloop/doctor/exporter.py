@@ -104,11 +104,9 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
                 category="harness",
                 name="exporter_schema",
                 status="warn",
-                message=(
-                    f"pinned exporter {exporter} is not installed and no session database "
-                    "exists yet; nothing is captured until `studyloop install tools` runs"
-                ),
-                fix_hint="studyloop install tools",
+                message=f"pinned exporter {exporter} is not installed and no session database "
+                "exists yet; nothing is captured until `studyloop install tools` runs",
+                fix_command="studyloop install tools",
                 fix_auto=True,
             )
         return CheckResult(
@@ -116,7 +114,7 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
             name="exporter_schema",
             status="fail",
             message=f"pinned exporter {exporter} is missing; every export hook fails",
-            fix_hint="studyloop install tools",
+            fix_command="studyloop install tools",
             fix_auto=True,
         )
     supported = exporter_schema_version(exporter)
@@ -125,12 +123,8 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
             category="harness",
             name="exporter_schema",
             status="pass",
-            message=(
-                f"no session database yet; the first export creates it "
-                f"(exporter schema v{supported})"
-            ),
-            fix_hint="",
-            fix_auto=False,
+            message=f"no session database yet; the first export creates it "
+            f"(exporter schema v{supported})",
         )
     current = database_user_version(db_path)
     if supported is None or current is None:
@@ -138,24 +132,18 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
             category="harness",
             name="exporter_schema",
             status="warn",
-            message=(
-                f"could not compare schemas (exporter {supported}, database {current}); "
-                f"run {exporter} once and read {installers.EXPORT_HOOK_LOG}"
-            ),
-            fix_hint="",
-            fix_auto=False,
+            message=f"could not compare schemas (exporter {supported}, database {current}); "
+            f"run {exporter} once and read {installers.EXPORT_HOOK_LOG}",
         )
     if supported < current:
         return CheckResult(
             category="harness",
             name="exporter_schema",
             status="fail",
-            message=(
-                f"the exporter the hooks call supports schema v{supported} but the database "
-                f"is v{current}: every export fails as 'newer than supported'; nothing is captured"
-            ),
-            fix_hint="studyloop install tools  (reinstall the pinned tools from this release)",
-            fix_auto=False,
+            message=f"the exporter the hooks call supports schema v{supported} but the database "
+            f"is v{current}: every export fails as 'newer than supported'; nothing is captured",
+            fix_command="studyloop install tools",
+            fix_note="reinstall the pinned tools from this release",
         )
     if supported > current:
         return CheckResult(
@@ -163,19 +151,15 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
             name="exporter_schema",
             status="warn",
             message=(
-                f"the exporter supports schema v{supported}; the database is v{current} and its "
-                f"first run will migrate it -- take a backup first if that matters to you"
+                f"the exporter supports schema v{supported}; the database is v{current} and "
+                "its first run will migrate it -- take a backup first if that matters to you"
             ),
-            fix_hint="",
-            fix_auto=False,
         )
     return CheckResult(
         category="harness",
         name="exporter_schema",
         status="pass",
         message=f"exporter and database agree on schema v{current}",
-        fix_hint="",
-        fix_auto=False,
     )
 
 
@@ -265,7 +249,8 @@ def check_export_freshness(
             name="export_freshness",
             status="warn",
             message="no exported messages found; the hooks have never captured a session",
-            fix_hint="studyloop doctor --fix  (installs the export hooks), then close one session",
+            fix_command="studyloop doctor --fix",
+            fix_note="installs the export hooks; then close one session",
             fix_auto=True,
         )
     now = now or datetime.now(UTC)
@@ -298,9 +283,8 @@ def check_export_freshness(
                 f"does not read that store yet, so newer Kiro sessions are not in the "
                 f"database. By harness: {listing}"
             ),
-            fix_hint="Nothing to repair locally; the exporter has to learn this store "
+            fix_note="Nothing to repair locally; the exporter has to learn this store "
             "(StudyLoop #49). The session files stay on disk for a later backfill.",
-            fix_auto=False,
         )
 
     age_hours = (now - newest).total_seconds() / 3600
@@ -315,16 +299,12 @@ def check_export_freshness(
                 f"{by_harness}; if you have used a harness since, read "
                 f"{installers.EXPORT_HOOK_LOG}"
             ),
-            fix_hint="",
-            fix_auto=False,
         )
     return CheckResult(
         category="harness",
         name="export_freshness",
         status="pass",
         message=f"newest exported message is {age_hours:.1f} h old",
-        fix_hint="",
-        fix_auto=False,
     )
 
 

@@ -109,6 +109,7 @@ def _start(
     bind: str | None = None,
     password: str = "",
     lan_ip: str = "192.168.1.42",
+    lan_hosts: tuple[str, ...] | None = None,
 ) -> MagicMock:
     """Run ``start_session`` with the environment stubbed; return the web-launch spy.
 
@@ -133,7 +134,13 @@ def _start(
             ("studyloop.session.cleanup.auto_clean_zombies", MagicMock()),
             ("studyloop.session.orchestrator.start_web_background", launch),
             ("studyloop.session.orchestrator._get_web_port", MagicMock(return_value=8567)),
-            ("socket.gethostbyname", MagicMock(return_value=lan_ip)),
+            # The launcher asks the shared helper (studyloop.web.lan_hosts) for the
+            # LAN address, the same one `studyloop web` prints; patched where the
+            # launcher looks it up.
+            (
+                "studyloop.session.start.candidate_lan_hosts",
+                MagicMock(return_value=(lan_ip,) if lan_hosts is None else lan_hosts),
+            ),
         ):
             stack.enter_context(patch(target, replacement))
         stack.enter_context(
@@ -193,6 +200,19 @@ class TestPrintedAddressCarriesTheToken:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ):
         _start(tmp_path, web=True, lan=True, lan_ip="192.168.1.42")
+        out = capsys.readouterr().out
+        line = next((ln for ln in out.splitlines() if "Dashboard:" in ln), "")
+        assert f"http://192.168.1.42:8567/session?token={TOKEN}" in line, out
+
+    def test_lan_skips_a_loopback_candidate_for_the_first_reachable_one(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ):
+        """A hostname resolving to 127.0.1.1 (Debian's default) is no use to another device.
+
+        The launcher used to print whatever ``gethostbyname`` said; it now hands
+        every candidate to ``build_web_access_info``, which drops the loopback.
+        """
+        _start(tmp_path, web=True, lan=True, lan_hosts=("127.0.1.1", "192.168.1.42"))
         out = capsys.readouterr().out
         line = next((ln for ln in out.splitlines() if "Dashboard:" in ln), "")
         assert f"http://192.168.1.42:8567/session?token={TOKEN}" in line, out

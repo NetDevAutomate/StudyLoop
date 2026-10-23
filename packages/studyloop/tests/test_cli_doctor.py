@@ -13,18 +13,32 @@ from click.testing import CliRunner
 from studyloop.doctor.models import CheckResult
 
 HEALTHY_RESULTS = [
-    CheckResult("core", "python_version", "pass", "Python 3.12.0", "", False),
-    CheckResult("core", "config_file", "pass", "Config valid", "", False),
+    CheckResult("core", "python_version", "pass", "Python 3.12.0"),
+    CheckResult("core", "config_file", "pass", "Config valid"),
 ]
 WARN_AUTO_RESULTS = [
-    CheckResult("core", "python_version", "pass", "Python 3.12.0", "", False),
-    CheckResult("updates", "update_studyloop", "warn", "2.0.0 -> 2.1.0", "studyloop upgrade", True),
+    CheckResult("core", "python_version", "pass", "Python 3.12.0"),
+    CheckResult(
+        "updates",
+        "update_studyloop",
+        "warn",
+        "2.0.0 -> 2.1.0",
+        fix_command="studyloop upgrade",
+        fix_auto=True,
+    ),
 ]
 FAIL_RESULTS = [
-    CheckResult("core", "config_file", "fail", "Config missing", "studyloop config init", True),
+    CheckResult(
+        "core",
+        "config_file",
+        "fail",
+        "Config missing",
+        fix_command="studyloop config init",
+        fix_auto=True,
+    ),
 ]
 CORE_FAIL_RESULTS = [
-    CheckResult("core", "studyloop_installed", "fail", "studyloop not found", "", False),
+    CheckResult("core", "studyloop_installed", "fail", "studyloop not found"),
 ]
 
 
@@ -74,6 +88,65 @@ class TestDoctorCommand:
         data = json.loads(result.output)
         assert isinstance(data, list)
         assert data[0]["category"] == "core"
+
+    def test_json_carries_the_command_and_the_note_separately(self, runner: CliRunner):
+        """A consumer (the install-mentor, a script) runs ``fix_command`` and shows
+        ``fix_note``; ``fix_hint`` stays for readers that predate the split."""
+        from studyloop.cli._doctor import doctor
+
+        rows = [
+            CheckResult(
+                "agents",
+                "claude_definition",
+                "warn",
+                "installed definition predates the fix",
+                fix_command="studyloop install agents --tool claude",
+                fix_note="your copy predates the fix",
+            )
+        ]
+        with patch("studyloop.cli._doctor._get_registry") as mock_reg:
+            mock_reg.return_value.run_all.return_value = rows
+            result = runner.invoke(doctor, ["--json"], catch_exceptions=False)
+        (row,) = json.loads(result.output)
+        assert row["fix_command"] == "studyloop install agents --tool claude"
+        assert row["fix_note"] == "your copy predates the fix"
+        assert row["fix_hint"] == (
+            "studyloop install agents --tool claude  (your copy predates the fix)"
+        )
+
+    def test_table_prints_the_command_in_backticks_on_its_own_line_and_the_note_beneath(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+    ):
+        from studyloop.cli._doctor import doctor
+
+        rows = [
+            CheckResult(
+                "agents",
+                "claude_definition",
+                "warn",
+                "predates the fix",
+                fix_command="studyloop install agents --tool claude",
+                fix_note="your copy predates the fix",
+            )
+        ]
+        # Rich wraps the Fix column to the terminal; a wide one keeps each
+        # line whole so the layout, not the wrapping, is what is asserted.
+        monkeypatch.setenv("COLUMNS", "200")
+        with patch("studyloop.cli._doctor._get_registry") as mock_reg:
+            mock_reg.return_value.run_all.return_value = rows
+            result = runner.invoke(doctor, catch_exceptions=False)
+
+        lines = result.output.splitlines()
+        command_line = next(
+            (i for i, ln in enumerate(lines) if "`studyloop install agents --tool claude`" in ln),
+            None,
+        )
+        assert command_line is not None, result.output
+        note_line = next(
+            (i for i, ln in enumerate(lines) if "your copy predates the fix" in ln), None
+        )
+        assert note_line is not None and note_line > command_line, result.output
+        assert "(your copy predates the fix)" not in result.output, "the old one-line hint shape"
 
     def test_quiet_output(self, runner: CliRunner):
         from studyloop.cli._doctor import doctor

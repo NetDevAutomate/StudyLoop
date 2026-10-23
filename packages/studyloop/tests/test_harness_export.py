@@ -415,10 +415,18 @@ class TestHarnessDoctorCheck:
             patch.object(installers, "detect_available_agent_tools", return_value=["claude"]),
             patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
         ):
-            before = {r.name: r.status for r in check_harness_export()}
+            before_rows = {r.name: r for r in check_harness_export()}
+        before = {name: r.status for name, r in before_rows.items()}
         assert before["export_mandate_claude"] == "warn"
         assert before["session_memory_skill_claude"] == "warn"
         assert before["session_export_hook_claude"] == "warn"
+        # The repair is an exact command plus a note, not one line of mixed prose
+        # (review 5, larger #4b); `fix_hint` is the two joined for older readers.
+        skill_row = before_rows["session_memory_skill_claude"]
+        assert skill_row.fix_command == "studyloop doctor --fix"
+        assert skill_row.fix_note == "installs agent skills"
+        assert skill_row.fix_hint == "studyloop doctor --fix  (installs agent skills)"
+        assert skill_row.fix_auto is True
 
         # Apply the same three capability layers the top-level installer owns.
         installers.install_session_db_mandate(repo_root, tools=["claude"])
@@ -431,10 +439,13 @@ class TestHarnessDoctorCheck:
             patch.object(installers, "detect_available_agent_tools", return_value=["claude"]),
             patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
         ):
-            after = {r.name: r.status for r in check_harness_export()}
+            after_rows = {r.name: r for r in check_harness_export()}
+        after = {name: r.status for name, r in after_rows.items()}
         assert after["export_mandate_claude"] == "pass"
         assert after["session_memory_skill_claude"] == "pass"
         assert after["session_export_hook_claude"] == "pass"
+        passed = after_rows["session_memory_skill_claude"]
+        assert passed.fix_command is None and passed.fix_note is None and passed.fix_hint == ""
 
     def test_all_release_harnesses_get_skill_and_hook_results(
         self, home: Path, monkeypatch: pytest.MonkeyPatch

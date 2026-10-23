@@ -167,8 +167,9 @@ def check_module_prerequisites(
                 "module_prereq_lockfile",
                 "fail",
                 f"modules.lock.json is unreadable: {exc}",
-                "Fix or remove the lockfile, then `studyloop module add` the modules again",
-                False,
+                fix_note=(
+                    "Fix or remove the lockfile, then `studyloop module add` the modules again"
+                ),
             )
         ]
     results: list[CheckResult] = []
@@ -179,8 +180,8 @@ def check_module_prerequisites(
                 f"module_prereq_{module_id}",
                 "fail",
                 f"installed module {module_id}: snapshot module.yaml is missing or invalid",
-                f"studyloop module remove {module_id}, then add it again from its source",
-                False,
+                fix_command=f"studyloop module remove {module_id}",
+                fix_note="then add it again from its source",
             )
         )
     for tool in sorted(needs):
@@ -191,7 +192,9 @@ def check_module_prerequisites(
         hint = _INSTALL_HINTS.get(tool, f"Install {tool}")
         if not probe.found:
             results.append(
-                CheckResult("deps", name, "fail", f"{tool} not found (needed by {by})", hint, False)
+                CheckResult(
+                    "deps", name, "fail", f"{tool} not found (needed by {by})", fix_note=hint
+                )
             )
             continue
         if probe.version is None:
@@ -202,9 +205,8 @@ def check_module_prerequisites(
                     "warn",
                     f"{tool} is installed but its version is unknown: {probe.detail} "
                     f"(needed by {by})",
-                    f"Run `{' '.join([tool, *version_argv(tool)])}` yourself; the module README "
-                    "names the version needed",
-                    False,
+                    fix_command=" ".join([tool, *version_argv(tool)]),
+                    fix_note="run it yourself; the module README names the version needed",
                 )
             )
             continue
@@ -220,12 +222,11 @@ def check_module_prerequisites(
                     name,
                     "warn",
                     f"{tool} {probe.version} is below the minimum: {'; '.join(too_old)}",
-                    f"Upgrade {tool}; {hint}",
-                    False,
+                    fix_note=f"Upgrade {tool}; {hint}",
                 )
             )
             continue
         results.append(
-            CheckResult("deps", name, "pass", f"{tool} {probe.version} (needed by {by})", "", False)
+            CheckResult("deps", name, "pass", f"{tool} {probe.version} (needed by {by})")
         )
     return results

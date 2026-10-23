@@ -162,14 +162,7 @@ def check_agent_smoke_tests() -> list[CheckResult]:
         ok, detail = _smoke_test(binary_path)
         if ok:
             results.append(
-                CheckResult(
-                    "agents",
-                    f"smoke_{tool}",
-                    "pass",
-                    f"{tool} responds ({detail})",
-                    "",
-                    False,
-                )
+                CheckResult("agents", f"smoke_{tool}", "pass", f"{tool} responds ({detail})")
             )
         else:
             results.append(
@@ -178,8 +171,7 @@ def check_agent_smoke_tests() -> list[CheckResult]:
                     f"smoke_{tool}",
                     "warn",
                     f"{tool} installed but smoke test failed: {detail}",
-                    f"Check {binary} installation",
-                    False,
+                    fix_note=f"Check {binary} installation",
                 )
             )
     return results
@@ -253,11 +245,9 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                 "agents",
                 name,
                 "warn",
-                (
-                    f"kiro {KIRO_ACP_AGENT_NAME} agent not installed"
-                    " -- web (ACP) Kiro sessions need it"
-                ),
-                "studyloop install agents --tool kiro",
+                f"kiro {KIRO_ACP_AGENT_NAME} agent not installed"
+                " -- web (ACP) Kiro sessions need it",
+                fix_command="studyloop install agents --tool kiro",
                 fix_auto=True,
             )
         ]
@@ -285,8 +275,8 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                     name,
                     "warn",
                     f"kiro-cli rejects the {KIRO_ACP_AGENT_NAME} agent: {rejection}",
-                    "studyloop install agents --tool kiro, then re-run studyloop doctor",
-                    False,
+                    fix_command="studyloop install agents --tool kiro",
+                    fix_note="then re-run studyloop doctor",
                 )
             ]
         listed = subprocess.run(
@@ -302,8 +292,7 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                 name,
                 "warn",
                 f"could not ask kiro-cli about the {KIRO_ACP_AGENT_NAME} agent: {exc}",
-                "Check kiro-cli installation",
-                False,
+                fix_note="Check kiro-cli installation",
             )
         ]
 
@@ -320,12 +309,9 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                 "agents",
                 name,
                 "warn",
-                (
-                    f"a built-in kiro-cli agent is also named {KIRO_ACP_AGENT_NAME}, so kiro-cli"
-                    " ignores StudyLoop's agent file"
-                ),
-                "Report this to the StudyLoop maintainers: the agent needs a new name",
-                False,
+                f"a built-in kiro-cli agent is also named {KIRO_ACP_AGENT_NAME}, so kiro-cli"
+                " ignores StudyLoop's agent file",
+                fix_note="Report this to the StudyLoop maintainers: the agent needs a new name",
             )
         ]
     if not ours:
@@ -334,12 +320,10 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                 "agents",
                 name,
                 "warn",
-                (
-                    f"kiro-cli does not list the {KIRO_ACP_AGENT_NAME} agent at {path}, so web"
-                    " (ACP) Kiro sessions silently fall back to kiro-cli's built-in default"
-                ),
-                "studyloop install agents --tool kiro, then re-run studyloop doctor",
-                False,
+                f"kiro-cli does not list the {KIRO_ACP_AGENT_NAME} agent at {path}, so web"
+                " (ACP) Kiro sessions silently fall back to kiro-cli's built-in default",
+                fix_command="studyloop install agents --tool kiro",
+                fix_note="then re-run studyloop doctor",
             )
         ]
     return [
@@ -348,8 +332,6 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
             name,
             "pass",
             f"kiro {KIRO_ACP_AGENT_NAME} agent loads (kiro-cli validates and lists it)",
-            "",
-            False,
         )
     ]
 
@@ -364,29 +346,31 @@ def check_agent_definitions() -> list[CheckResult]:
                 "no_ai_tools",
                 "info",
                 "No AI coding tools detected",
-                "Install Kiro CLI, Codex, Claude Code, OpenCode, pi, or Grok Build",
-                False,
+                fix_note="Install Kiro CLI, Codex, Claude Code, OpenCode, pi, or Grok Build",
             )
         ]
 
     manifest, reason = _fetch_manifest_with_reason()
     if manifest is None:
-        detail, fix = {
+        detail, command, note = {
             "not-published": (
                 "Agent manifest not published yet — agents install from this checkout",
                 "studyloop install agents",
+                None,
             ),
             "malformed": (
                 "Agent manifest fetched but could not be parsed",
                 "studyloop install agents",
+                None,
             ),
             "http-error": (
                 "Agent manifest fetch failed (server error)",
-                "Retry later, or: studyloop install agents",
+                "studyloop install agents",
+                "or retry later",
             ),
         }.get(
             reason,
-            ("Could not fetch agent manifest (offline?)", "Check network connection"),
+            ("Could not fetch agent manifest (offline?)", None, "Check network connection"),
         )
         return [
             CheckResult(
@@ -394,8 +378,8 @@ def check_agent_definitions() -> list[CheckResult]:
                 "manifest_fetch",
                 "info",
                 detail,
-                fix,
-                False,
+                fix_command=command,
+                fix_note=note,
             )
         ]
 
@@ -417,8 +401,6 @@ def check_agent_definitions() -> list[CheckResult]:
                     f"agent_{tool}",
                     "info",
                     f"{tool} persona is written per session by the launcher (no installed file)",
-                    "",
-                    False,
                 )
             )
             continue
@@ -434,9 +416,7 @@ def check_agent_definitions() -> list[CheckResult]:
             ]
         if not tool_keys:
             results.append(
-                CheckResult(
-                    "agents", f"agent_{tool}", "info", f"No manifest entry for {tool}", "", False
-                )
+                CheckResult("agents", f"agent_{tool}", "info", f"No manifest entry for {tool}")
             )
             continue
 
@@ -458,7 +438,7 @@ def check_agent_definitions() -> list[CheckResult]:
                         check_name,
                         "warn",
                         f"{tool} detected but agent definition not installed{shared}",
-                        "studyloop upgrade --component agents",
+                        fix_command="studyloop upgrade --component agents",
                         fix_auto=True,
                     )
                 )
@@ -469,12 +449,7 @@ def check_agent_definitions() -> list[CheckResult]:
             if local_hash == expected_hash:
                 results.append(
                     CheckResult(
-                        "agents",
-                        check_name,
-                        "pass",
-                        f"{label} agent definition current{shared}",
-                        "",
-                        False,
+                        "agents", check_name, "pass", f"{label} agent definition current{shared}"
                     )
                 )
             else:
@@ -483,12 +458,10 @@ def check_agent_definitions() -> list[CheckResult]:
                         "agents",
                         check_name,
                         "warn",
-                        (
-                            f"{label} agent definition outdated"
-                            f" (local={local_hash[:8]}... expected={expected_hash[:8]}...)"
-                            f"{shared}"
-                        ),
-                        "studyloop upgrade --component agents",
+                        f"{label} agent definition outdated"
+                        f" (local={local_hash[:8]}... expected={expected_hash[:8]}...)"
+                        f"{shared}",
+                        fix_command="studyloop upgrade --component agents",
                         fix_auto=True,
                     )
                 )
@@ -532,8 +505,7 @@ def check_mcp_registration() -> list[CheckResult]:
                 f"mcp_{tool}",
                 "pass" if registered else "warn",
                 message,
-                "" if registered else "studyloop install agents",
-                False,
+                fix_command=None if registered else "studyloop install agents",
             )
         )
     return results

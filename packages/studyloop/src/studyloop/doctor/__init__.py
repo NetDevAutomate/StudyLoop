@@ -37,8 +37,7 @@ class CheckerRegistry:
                         name=fn.__name__,
                         status="fail",
                         message=f"Checker crashed: {exc}",
-                        fix_hint="Report this bug",
-                        fix_auto=False,
+                        fix_note="Report this bug",
                     )
                 )
         return results
@@ -59,8 +58,7 @@ class CheckerRegistry:
                         name=fn.__name__,
                         status="fail",
                         message=f"Checker crashed: {exc}",
-                        fix_hint="Report this bug",
-                        fix_auto=False,
+                        fix_note="Report this bug",
                     )
                 )
         return results

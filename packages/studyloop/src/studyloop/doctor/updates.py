@@ -83,8 +83,7 @@ def check_pypi_versions() -> list[CheckResult]:
                     "pypi_check",
                     "info",
                     "Could not reach PyPI (offline?)",
-                    "Check network connection",
-                    False,
+                    fix_note="Check network connection",
                 )
             ]
     else:
@@ -102,8 +101,7 @@ def check_pypi_versions() -> list[CheckResult]:
                 "pypi_check",
                 "info",
                 "No published release on PyPI — install and update from the git checkout",
-                "git pull && ./scripts/install.sh",
-                False,
+                fix_command="git pull && ./scripts/install.sh",
             )
         ]
 
@@ -115,16 +113,12 @@ def check_pypi_versions() -> list[CheckResult]:
         latest = latest_versions.get(pkg)
         if latest is None:
             results.append(
-                CheckResult(
-                    "updates", f"update_{pkg}", "info", f"{pkg} not found on PyPI", "", False
-                )
+                CheckResult("updates", f"update_{pkg}", "info", f"{pkg} not found on PyPI")
             )
             continue
         if installed == latest:
             results.append(
-                CheckResult(
-                    "updates", f"update_{pkg}", "pass", f"{pkg} {installed} (latest)", "", False
-                )
+                CheckResult("updates", f"update_{pkg}", "pass", f"{pkg} {installed} (latest)")
             )
         else:
             results.append(
@@ -133,7 +127,7 @@ def check_pypi_versions() -> list[CheckResult]:
                     f"update_{pkg}",
                     "warn",
                     f"{pkg} {installed} -> {latest} available",
-                    "studyloop upgrade --component packages",
+                    fix_command="studyloop upgrade --component packages",
                     fix_auto=True,
                 )
             )

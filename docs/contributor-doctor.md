@@ -17,10 +17,14 @@ machine.
 ## 1. Where it lives
 
 - `packages/studyloop/src/studyloop/doctor/models.py` — `CheckResult(category, name, status,
-  message, fix_hint, fix_auto)`, a frozen dataclass. `status` must be one of `pass warn fail
-  info`; `category` one of `core database config agents deps voice updates harness`
-  (`VALID_STATUSES`, `VALID_CATEGORIES`); anything else raises at construction. `to_dict()` is
-  the shape `studyloop doctor --json` prints, so renaming a field is a contract change.
+  message, *, fix_command=None, fix_note=None, fix_auto=False)`, a frozen dataclass.
+  `fix_command` is an exact copy-pasteable command and nothing else; `fix_note` is prose; both
+  are keyword-only, and `fix_hint` is a read-only property joining them (`<command>  (<note>)`)
+  for readers that predate the split. `status` must be one of `pass warn fail info`; `category`
+  one of `core database config agents deps voice updates harness` (`VALID_STATUSES`,
+  `VALID_CATEGORIES`); anything else raises at construction. `to_dict()` is the shape
+  `studyloop doctor --json` prints (it carries `fix_command`, `fix_note` and the derived
+  `fix_hint`), so renaming a field is a contract change.
 - `packages/studyloop/src/studyloop/doctor/__init__.py` — `CheckerRegistry`: `register(category)`
   and `run_all()` / `run_category()`. A checker that raises becomes a `fail` row named after the
   function with the message `Checker crashed: …`, so one bad check never hides the others.
@@ -37,8 +41,8 @@ machine.
 
 Read `check_optional_deps()` in `packages/studyloop/src/studyloop/doctor/deps.py` (40 lines).
 It walks a dict of optional imports, asks `importlib.util.find_spec()` and emits one row per
-dependency: `pass` with an empty `fix_hint` when present, `info` with the exact install command
-when absent, `fix_auto=False` both ways because installing is the learner's decision. It reads
+dependency: `pass` with no fix when present, `info` with the exact install command as
+`fix_command` when absent, `fix_auto=False` both ways because installing is the learner's decision. It reads
 no file, runs no process and has no branch that cannot be reached by faking one function.
 
 ```bash
@@ -93,9 +97,11 @@ line on the site is resolved against the Click tree by `packages/studyloop/tests
 - No side effects: the check reads, probes and returns. Repairs live in `_apply_fixes()` behind
   `--fix`, and a row with `fix_auto=True` has a matching branch there — otherwise the summary line
   promises a fix that does not exist.
-- Honest wording: `message` states what was observed (`session-export: not found on PATH`), and
-  `fix_hint` is a command or a sentence the learner can act on; `warn` is for degraded, `fail`
-  for broken, `info` for optional-and-absent — never `fail` for a missing optional extra.
+- Honest wording: `message` states what was observed (`session-export: not found on PATH`);
+  `fix_command` is one command the learner can paste, `fix_note` the sentence that says what it
+  does or what to do when there is no command — never prose inside `fix_command`; `warn` is for
+  degraded, `fail` for broken, `info` for optional-and-absent — never `fail` for a missing
+  optional extra.
 - One row per fact, named stably (`dep_fastapi`, `session_memory_executable_session-export`):
   tests and the JSON consumers key on `name`.
 - The unit test fakes the lookup at the seam the check uses and covers present, absent and

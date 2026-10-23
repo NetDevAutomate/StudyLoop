@@ -22,9 +22,7 @@ def check_optional_deps() -> list[CheckResult]:
         spec = importlib.util.find_spec(import_name)
         if spec is not None:
             results.append(
-                CheckResult(
-                    "deps", f"dep_{import_name}", "pass", f"{display_name} installed", "", False
-                )
+                CheckResult("deps", f"dep_{import_name}", "pass", f"{display_name} installed")
             )
         else:
             results.append(
@@ -33,8 +31,7 @@ def check_optional_deps() -> list[CheckResult]:
                     f"dep_{import_name}",
                     "info",
                     f"{display_name} not installed (optional)",
-                    install_cmd,
-                    False,
+                    fix_command=install_cmd,
                 )
             )
     return results

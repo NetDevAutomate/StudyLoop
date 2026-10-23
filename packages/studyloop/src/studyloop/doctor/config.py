@@ -26,8 +26,7 @@ def check_obsidian_vault() -> list[CheckResult]:
                 "obsidian_vault",
                 "info",
                 "Obsidian vault not configured",
-                "studyloop config init",
-                False,
+                fix_command="studyloop config init",
             )
         ]
     vault_path = Path(vault).expanduser()
@@ -38,8 +37,7 @@ def check_obsidian_vault() -> list[CheckResult]:
                 "obsidian_vault",
                 "warn",
                 f"Obsidian vault not found: {vault_path}",
-                f"Create directory or update config: {vault_path}",
-                False,
+                fix_note=f"Create directory or update config: {vault_path}",
             )
         ]
     obsidian_marker = vault_path / ".obsidian"
@@ -50,20 +48,10 @@ def check_obsidian_vault() -> list[CheckResult]:
                 "obsidian_vault",
                 "warn",
                 "Vault path exists but .obsidian/ not found",
-                "Ensure this is your Obsidian vault root",
-                False,
+                fix_note="Ensure this is your Obsidian vault root",
             )
         ]
-    return [
-        CheckResult(
-            "config",
-            "obsidian_vault",
-            "pass",
-            f"Obsidian vault: {vault_path}",
-            "",
-            False,
-        )
-    ]
+    return [CheckResult("config", "obsidian_vault", "pass", f"Obsidian vault: {vault_path}")]
 
 
 def check_review_directories() -> list[CheckResult]:
@@ -77,8 +65,7 @@ def check_review_directories() -> list[CheckResult]:
                 "review_directories",
                 "info",
                 "No review topics configured",
-                "studyloop config init",
-                False,
+                fix_command="studyloop config init",
             )
         ]
     results = []
@@ -88,14 +75,7 @@ def check_review_directories() -> list[CheckResult]:
         d = Path(str(raw_dir)).expanduser()
         if d.is_dir():
             results.append(
-                CheckResult(
-                    "config",
-                    f"review_dir_{topic.name}",
-                    "pass",
-                    f"Review dir exists: {d}",
-                    "",
-                    False,
-                )
+                CheckResult("config", f"review_dir_{topic.name}", "pass", f"Review dir exists: {d}")
             )
         else:
             results.append(
@@ -104,7 +84,7 @@ def check_review_directories() -> list[CheckResult]:
                     f"review_dir_{topic.name}",
                     "warn",
                     f"Review dir missing: {d}",
-                    f"mkdir -p {d}",
+                    fix_command=f"mkdir -p {d}",
                     fix_auto=True,
                 )
             )
@@ -130,8 +110,7 @@ def check_active_topic_limit() -> list[CheckResult]:
                 "active_topic_limit",
                 "fail",
                 "Invalid topics config: expected a list",
-                "Fix config.yaml so 'topics' is a list of topic names or topic mappings.",
-                False,
+                fix_note="Fix config.yaml so 'topics' is a list of topic names or topic mappings.",
             )
         ]
 
@@ -145,8 +124,8 @@ def check_active_topic_limit() -> list[CheckResult]:
             "warn",
             f"{len(topics)} study topics configured; StudyLoop activates the first "
             f"{MAX_ACTIVE_TOPICS}",
-            'Move extra study ideas to the backlog with: studyloop backlog add "topic"',
-            False,
+            fix_command='studyloop backlog add "topic"',
+            fix_note="move extra study ideas to the backlog",
         )
     ]
 
@@ -154,24 +133,14 @@ def check_active_topic_limit() -> list[CheckResult]:
 def check_pandoc() -> list[CheckResult]:
     """Check that pandoc is available on PATH."""
     if shutil.which("pandoc"):
-        return [
-            CheckResult(
-                "config",
-                "pandoc",
-                "pass",
-                "pandoc available",
-                "",
-                False,
-            )
-        ]
+        return [CheckResult("config", "pandoc", "pass", "pandoc available")]
     return [
         CheckResult(
             "config",
             "pandoc",
             "info",
             "pandoc not installed (needed for content pipeline)",
-            "brew install pandoc",
-            False,
+            fix_command="brew install pandoc",
         )
     ]
 
@@ -192,9 +161,8 @@ def _obsidian_export_disabled(vault: object, memory_dir: str) -> list[CheckResul
             "info",
             "Obsidian session-memory export disabled: obsidian.export_enabled is not true. "
             "It is independent of second_brain, which only chooses where study notes go.",
-            f"To write session notes into {target}, set export_enabled: true under the "
+            fix_note=f"To write session notes into {target}, set export_enabled: true under the "
             "obsidian: section of config.yaml",
-            False,
         )
     ]
 
@@ -224,8 +192,7 @@ def check_obsidian_export() -> list[CheckResult]:
                 "obsidian_export",
                 "warn",
                 f"Obsidian export enabled but vault not found: {vault_path}",
-                f"Create directory or update config: {vault_path}",
-                False,
+                fix_note=f"Create directory or update config: {vault_path}",
             )
         ]
 
@@ -243,8 +210,7 @@ def check_obsidian_export() -> list[CheckResult]:
                 "obsidian_export",
                 "warn",
                 f"Obsidian export enabled but memory dir does not exist yet: {memory_dir}",
-                f"mkdir -p {memory_dir}",
-                False,
+                fix_command=f"mkdir -p {memory_dir}",
             )
         ]
 
@@ -255,8 +221,7 @@ def check_obsidian_export() -> list[CheckResult]:
                 "obsidian_export",
                 "warn",
                 f"Obsidian export enabled but memory dir is not writable: {memory_dir}",
-                f"Check the permissions on {memory_dir}",
-                False,
+                fix_note=f"Check the permissions on {memory_dir}",
             )
         ]
 
@@ -266,8 +231,6 @@ def check_obsidian_export() -> list[CheckResult]:
             "obsidian_export",
             "pass",
             f"Obsidian export enabled; memory dir: {memory_dir}",
-            "",
-            False,
         )
     ]
 
@@ -302,8 +265,7 @@ def check_second_brain() -> list[CheckResult]:
                 "second_brain_config",
                 "warn",
                 f"The second_brain section does not load: {exc}",
-                "Fix the second_brain section in config.yaml, or remove it.",
-                False,
+                fix_note="Fix the second_brain section in config.yaml, or remove it.",
             )
         ]
 
@@ -337,27 +299,17 @@ def check_second_brain() -> list[CheckResult]:
                 "info",
                 f"Second brain: xTiles (no programmatic backend). {skill}; it offers to "
                 f"write only in a session with an xtiles MCP server connected, and {where}.",
-                "See docs/second-brain.md for the xTiles setup and the three prompts.",
-                False,
+                fix_note="See docs/second-brain.md for the xTiles setup and the three prompts.",
             )
         ]
 
     results = [
-        CheckResult(
-            "config",
-            "second_brain_provider",
-            "info",
-            f"Second brain: {config.provider}",
-            "",
-            False,
-        )
+        CheckResult("config", "second_brain_provider", "info", f"Second brain: {config.provider}")
     ]
 
     vault = Path(config.vault_path).expanduser()
     if vault.is_dir() and os.access(vault, os.W_OK):
-        results.append(
-            CheckResult("config", "second_brain_vault", "pass", f"Vault: {vault}", "", False)
-        )
+        results.append(CheckResult("config", "second_brain_vault", "pass", f"Vault: {vault}"))
     elif vault.is_dir():
         results.append(
             CheckResult(
@@ -365,8 +317,7 @@ def check_second_brain() -> list[CheckResult]:
                 "second_brain_vault",
                 "warn",
                 f"Vault is not writable: {vault}",
-                f"Check the permissions on {vault}",
-                False,
+                fix_note=f"Check the permissions on {vault}",
             )
         )
     else:
@@ -376,8 +327,8 @@ def check_second_brain() -> list[CheckResult]:
                 "second_brain_vault",
                 "warn",
                 f"Vault not found: {vault}",
-                "Mount it, or run: studyloop brain enable obsidian --vault <path>",
-                False,
+                fix_command="studyloop brain enable obsidian --vault <path>",
+                fix_note="mount the vault, or point StudyLoop at one that exists",
             )
         )
 
@@ -387,8 +338,6 @@ def check_second_brain() -> list[CheckResult]:
             "second_brain_folder",
             "info",
             f"StudyLoop writes into {config.folder}/ inside the vault",
-            "",
-            False,
         )
     )
 

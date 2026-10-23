@@ -50,22 +50,12 @@ def check_voice_readiness() -> list[CheckResult]:
                 "backend",
                 "fail",
                 str(exc),
-                f"Set tts.backend to one of the supported backends in config.yaml"
+                fix_note=f"Set tts.backend to one of the supported backends in config.yaml"
                 f" (got {raw_backend!r})",
-                False,
             )
         )
         return results
-    results.append(
-        CheckResult(
-            "voice",
-            "backend",
-            "pass",
-            f"tts.backend resolved to {backend!r}",
-            "",
-            False,
-        )
-    )
+    results.append(CheckResult("voice", "backend", "pass", f"tts.backend resolved to {backend!r}"))
 
     # Only study-speak's local ``kokoro`` backend reads these files, and it
     # downloads them itself on first use (agent_session_tools.speak). For any
@@ -75,12 +65,7 @@ def check_voice_readiness() -> list[CheckResult]:
         if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
             results.append(
                 CheckResult(
-                    "voice",
-                    "kokoro_models",
-                    "pass",
-                    "Kokoro model and voices are available",
-                    "",
-                    False,
+                    "voice", "kokoro_models", "pass", "Kokoro model and voices are available"
                 )
             )
         else:
@@ -91,9 +76,10 @@ def check_voice_readiness() -> list[CheckResult]:
                     "info",
                     "Kokoro model files (about 354 MB) are not downloaded yet; "
                     "study-speak fetches them on first use",
-                    "Nothing to do. To fetch them now instead of on first use, see "
-                    "docs/voice-output.md",
-                    False,
+                    fix_note=(
+                        "Nothing to do. To fetch them now instead of on first use, see "
+                        "docs/voice-output.md"
+                    ),
                 )
             )
 
@@ -104,8 +90,7 @@ def check_voice_readiness() -> list[CheckResult]:
             "afplay",
             "pass" if afplay else "info",
             f"afplay available ({afplay})" if afplay else "afplay not found",
-            "" if afplay else "Install/use macOS audio tools, or avoid OpenVox playback",
-            False,
+            fix_note=None if afplay else "Install/use macOS audio tools, or avoid OpenVox playback",
         )
     )
 
@@ -120,9 +105,10 @@ def check_voice_readiness() -> list[CheckResult]:
                 f"OpenVox API reachable at {base_url}"
                 if reachable
                 else f"OpenVox API is not reachable at {base_url}",
-                "Start OpenVox and enable its local API, or set backend: kokoro "
-                "under the tts: section",
-                False,
+                fix_note=(
+                    "Start OpenVox and enable its local API, or set backend: kokoro under the "
+                    "tts: section"
+                ),
             )
         )
     else:
@@ -136,8 +122,10 @@ def check_voice_readiness() -> list[CheckResult]:
                 # "tts.backend: openvox" hint taught users to write a single
                 # dotted top-level key, which YAML does NOT nest (the loader
                 # now normalises that form too, but the nested one is canonical).
-                "Set backend: openvox under the tts: section of config.yaml to enable this check",
-                False,
+                fix_note=(
+                    "Set backend: openvox under the tts: section of config.yaml to enable "
+                    "this check"
+                ),
             )
         )
     return results

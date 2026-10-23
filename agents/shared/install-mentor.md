@@ -112,17 +112,23 @@ Parse the JSON output. It is an array; each check result has this structure:
   "name": "config_file",
   "status": "pass|warn|fail|info",
   "message": "Human-readable description",
+  "fix_command": "studyloop doctor --fix",
+  "fix_note": "what the command does, or what to do when there is no command",
   "fix_hint": "Command or instruction to fix this",
   "fix_auto": true
 }
 ```
 
+`fix_command` is an exact command and nothing else (`null` when there is none); `fix_note` is prose
+(`null` when there is none); `fix_hint` is the two joined into one line, kept for older readers.
+Run only `fix_command`; show `fix_note` as the explanation.
+
 **For each `warn` or `fail` result** (`pass` and `info` need no action):
 
-1. **If `fix_auto` is `true`**: Run `studyloop doctor --fix --json`, which applies every safe automatic fix and re-runs the checks. Explain what the `fix_hint` says it will do.
-2. **If `fix_auto` is `false`**: Show the user the `fix_hint` and explain why manual intervention is needed (permissions, user choice, external service, etc.).
+1. **If `fix_auto` is `true`**: Run `studyloop doctor --fix --json`, which applies every safe automatic fix and re-runs the checks. Explain what the `fix_note` (or `fix_hint`) says it will do.
+2. **If `fix_auto` is `false`**: Show the user the `fix_command` and `fix_note` (or `fix_hint`) and explain why manual intervention is needed (permissions, user choice, external service, etc.).
 
-**Never hardcode fixes** — always use the `fix_hint` value from the JSON. The doctor knows the correct fix for the current environment; you do not.
+**Never hardcode fixes** — always use the `fix_command` / `fix_hint` value from the JSON. The doctor knows the correct fix for the current environment; you do not.
 
 ### Example interaction pattern
 ```
