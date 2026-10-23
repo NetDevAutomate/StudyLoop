@@ -64,6 +64,19 @@ The removal commit deletes the 443 tracked files, drops the three `experiments/â
 branch. The archive branch must be pushed alongside `main`; a branch that exists on one machine is
 the state the retired repository's clones are in now.
 
+*Amendment, 2026-10-23 (owner decision, 11:10 BST): the archive refs are withdrawn; the removal
+stands.* The owner chose not to publish a second ref for a paused tree. The branch
+`archive/experiments-evidence-context` and the tag `archive/experiments-evidence-context-2026-10-22`
+were deleted locally before either had been pushed (`git ls-remote origin` listed neither). Nothing
+is lost by this: the branch pointed at `65e29965`, a commit on `main`, and its only unique content
+was the 23-line marker file. The tree is preserved by `main`'s own history, which every clone
+carries, and the restore is still one command against the last `main` commit that holds it:
+`git checkout 6c9571c8 -- experiments/` (`git ls-tree -r --name-only 6c9571c8 -- experiments | wc -l`
+prints 443). The push requirement in the paragraph above no longer applies, the `lane-A.md`
+citation now names that commit, and the "delete without an archive ref" alternative below is the
+shape the decision has taken: discoverability comes from this record rather than from a ref. The
+two Verification commands below that name the refs were true on 2026-10-22 and no longer resolve.*
+
 ## Alternatives considered
 
 - **(a) Keep in `main` with an expiry condition** (the coordinator's original recommendation):

@@ -13,8 +13,8 @@ live DB was opened only as `file:~/.config/studyloop/sessions.db?mode=ro`.
   `format_suggested_context`, `_fts_search`, `_vector_search` is a test
   (`tests/test_semantic_search.py:22-31`, `tests/test_context_public_scope.py:127-133,172-198`,
   `tests/test_project_aliases.py:7`) or an experiment
-  (`experiments/evidence_context/retrieval_matrix/pilot.py:316`, now on the archive branch
-  `archive/experiments-evidence-context`; the tree left `main` on 2026-10-22, ADR-0021).
+  (`experiments/evidence_context/retrieval_matrix/pilot.py:316`, readable at `6c9571c8`, the last
+  `main` commit carrying the tree; it left `main` on 2026-10-22, ADR-0021).
 - `backfill_embeddings`, `embed_session`, `embed_session_messages`, `embed_message` have **no
   non-test caller**, and there is no embed command: `session-maint` exposes
   `vacuum, schema, reindex, archive, delete, find-duplicates, fts-check, sync-full` + 3 more
