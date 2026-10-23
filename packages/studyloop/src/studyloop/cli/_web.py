@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING
 import click
 
 from studyloop.cli._shared import console
+
+# One implementation of "the LAN address", shared with the session launcher
+# (studyloop.web.lan_hosts). Re-exported under this module's name so the
+# command's callers, and the tests that patch it here, are unchanged.
+from studyloop.web.lan_hosts import candidate_lan_hosts as _candidate_lan_hosts
 from studyloop.web.runtime_feedback import (
     LanCredentialFeedback,
     build_web_access_info,
@@ -18,17 +23,6 @@ from studyloop.web.runtime_feedback import (
 
 if TYPE_CHECKING:
     from types import FrameType as _FrameType
-
-
-def _candidate_lan_hosts() -> tuple[str, ...]:
-    """Best-effort LAN address discovery for runtime feedback."""
-    hosts: list[str] = []
-    with contextlib.suppress(OSError), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.connect(("8.8.8.8", 80))
-        hosts.append(sock.getsockname()[0])
-    with contextlib.suppress(OSError):
-        hosts.append(socket.gethostbyname(socket.gethostname()))
-    return tuple(hosts)
 
 
 def _is_local_address(address: str) -> bool:

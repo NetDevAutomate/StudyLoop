@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from studyloop.output import console
+from studyloop.web.lan_hosts import candidate_lan_hosts
 from studyloop.web.runtime_feedback import (
     LanCredentialFeedback,
     build_web_access_info,
@@ -574,24 +575,20 @@ def start_session(
         # browser-facing state endpoint echoes every key not named `*_token` /
         # `*_secret`, and nothing reads it back.
         if exposed and sign_in_token:
-            import socket
-
             from studyloop.session.orchestrator import _get_web_port
             from studyloop.web.ws_origin import BOOTSTRAP_QUERY
 
             web_port = _get_web_port()
-            if bind is not None:
-                reach_host = bind
-            else:
-                try:
-                    reach_host = socket.gethostbyname(socket.gethostname())
-                except Exception:
-                    reach_host = "<your-ip>"
+            # The same discovery `studyloop web` uses (studyloop.web.lan_hosts);
+            # build_web_access_info drops candidates another device cannot use
+            # (a hostname that resolves to 127.0.1.1) and keeps the first that
+            # remains. The placeholder stands in when nothing answers.
+            lan_hosts: tuple[str, ...] = (bind,) if bind is not None else candidate_lan_hosts()
             access_info = build_web_access_info(
                 bind_host="0.0.0.0" if lan else bind or "127.0.0.1",
                 port=web_port,
                 lan_enabled=True,
-                lan_hosts=(reach_host,),
+                lan_hosts=lan_hosts or ("<your-ip>",),
                 path=f"/session?{BOOTSTRAP_QUERY}={sign_in_token}",
             )
             reach_url = access_info.lan_urls[0] if access_info.lan_urls else access_info.local_url
