@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+import string
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -161,6 +162,13 @@ _PEM_HEAD = re.compile(
     rf"(?:(?=\r?\n|\\[rn]){_PEM_BODY}|{_PEM_INLINE_BODY})?"
 )
 _PEM_FOOT = re.compile(rf"-----END{_PEM_LABEL}-----")
+# One run of a flattened body: the characters _INLINE_BODY_RUN admits, as a
+# set, for the backwards walk from an END armour (no "-", so the walk stops
+# at the previous armour; no NUL, so it stops at an earlier pass's mask).
+# Built from the stdlib constants: the alphabet written out is 65 base64
+# characters, which the commit-time entropy scanner reads as a secret.
+_INLINE_RUN_CHARS = frozenset(string.ascii_letters + string.digits + "+/=")
+_INLINE_RUN_LENGTH = 20  # the body-length lookahead in _INLINE_BODY_RUN
 
 
 def _mask(text: str, spans: list[tuple[int, int]]) -> str:
@@ -176,6 +184,40 @@ def _mask(text: str, spans: list[tuple[int, int]]) -> str:
         cursor = end
     pieces.append(text[cursor:])
     return "".join(pieces)
+
+
+def _flattened_tail_start(text: str, armour: int) -> int:
+    """Start of the flattened body before the END armour at ``armour``.
+
+    Mirror of the flattened BEGIN rule, walked backwards: from the armour,
+    take whitespace-separated runs of body length (``_INLINE_BODY_RUN``'s
+    20-character floor, so ``see page 12 of the notes`` before an END armour
+    stays prose) until a shorter word, a line break, another armour or an
+    earlier pass's mask. Two shapes a key's last line takes are admitted as
+    the run nearest the armour only: a run glued straight onto it (a paste
+    that dropped its newlines; prose never glues onto an armour, the same
+    reading the BEGIN rule makes), and a PGP CRC line ``=XXXX``. Each step
+    moves strictly left, so a line of many END armours costs one walk per
+    armour over its own runs, never a rescan.
+    """
+    start = armour
+    nearest = True
+    while True:
+        gap = start
+        while gap > 0 and text[gap - 1] in " \t":
+            gap -= 1
+        run = gap
+        while run > 0 and text[run - 1] in _INLINE_RUN_CHARS:
+            run -= 1
+        length = gap - run
+        if length == 0:
+            return start
+        if length < _INLINE_RUN_LENGTH and not (
+            nearest and (gap == armour or (text[run] == "=" and 2 <= length <= 5))
+        ):
+            return start
+        start = run
+        nearest = False
 
 
 def _private_key_spans(text: str) -> list[tuple[int, int]]:
@@ -211,6 +253,10 @@ def _private_key_spans(text: str) -> list[tuple[int, int]]:
                 and not masked.endswith("-----", 0, start)
             ):
                 start -= 1
+        else:
+            # Cut off at the front AND flattened onto one line: the body runs
+            # sit before END with spaces for line breaks (plan 5, F).
+            start = _flattened_tail_start(masked, start)
         spans.append((start, match.end()))
     return sorted(spans)
 

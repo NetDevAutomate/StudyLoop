@@ -928,6 +928,138 @@ def test_prose_after_an_armour_line_and_an_inline_header_is_still_prose() -> Non
 
 
 # ===========================================================================
+# A block cut off at the FRONT and flattened onto one line (plan 5, F; lane
+# L's found-not-fixed #4). The END-armour walk-back required a line break
+# before END, so "<b64> <b64> -----END ...-----" redacted only the armour and
+# every body run survived. Mirror of the flattened BEGIN rule: from the END
+# armour, walk back over whitespace-separated runs of body length.
+# ===========================================================================
+
+
+def test_flattened_front_cut_pem_leaves_no_body_and_keeps_the_prose_before_it() -> None:
+    body = _pem_body("front-cut-flat")[3:]
+    text = (
+        "Here is the tail: "
+        + " ".join(body)
+        + " "
+        + _pem_marker("END", "RSA")
+        + " and that was it."
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert result.text == "Here is the tail: [PRIVATE_KEY-001] and that was it."
+
+
+def test_flattened_front_cut_pgp_block_takes_its_checksum_too() -> None:
+    """The PGP CRC line ``=XXXX`` sits between the body and END; it goes with
+    the body (lane L's shape: ``<b64> <b64> =chk -----END PGP ...-----``)."""
+    body = _pem_body("front-cut-pgp")[2:]
+    text = (
+        "paste: "
+        + " ".join(body)
+        + " "
+        + _pgp_checksum("front-cut-pgp")
+        + " "
+        + _pgp_marker("END")
+        + " [end]"
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert _pgp_checksum("front-cut-pgp") not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001] [end]"
+
+
+def test_flattened_front_cut_pem_glued_to_its_end_armour_leaves_no_body() -> None:
+    """A paste that dropped its newlines entirely glues the last run onto END."""
+    body = _pem_body("front-cut-glued")[4:]
+    text = "x " + " ".join(body) + _pem_marker("END", "EC") + " y"
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert result.text == "x [PRIVATE_KEY-001] y"
+
+
+def test_short_words_before_an_end_armour_on_one_line_are_prose() -> None:
+    """Nothing before END is body unless it is a run of body length; a page
+    reference and a date are words, not base64 lines."""
+    text = "see page 12 of the 2026-01-01 notes " + _pem_marker("END", "RSA") + " ok"
+    result = Scrubber().scrub(text)
+    assert result.text == "see page 12 of the 2026-01-01 notes [PRIVATE_KEY-001] ok"
+
+
+def test_front_cut_walk_back_stops_at_the_first_word_that_is_not_body() -> None:
+    """Runs of body length are taken until a shorter word; prose in front of
+    the key is left exactly as it was, including its spacing."""
+    body = _pem_body("front-cut-stop")[:2]
+    text = "token: abc123 " + " ".join(body) + " " + _pem_marker("END", "RSA")
+    result = Scrubber().scrub(text)
+    assert result.text == "token: abc123 [PRIVATE_KEY-001]"
+
+
+@pytest.mark.parametrize(("length", "is_body"), [(19, False), (20, True)])
+def test_front_cut_body_run_length_boundary_matches_the_begin_rule(
+    length: int, is_body: bool
+) -> None:
+    run = "A" * length
+    text = "w " + run + " " + _pem_marker("END", "RSA")
+    result = Scrubber().scrub(text)
+    assert (run not in result.text) is is_body
+
+
+def test_two_front_cut_tails_on_one_line_are_two_redactions() -> None:
+    """The walk-back from the second END must stop at the first END armour."""
+    first = _pem_body("front-cut-two-a")[5:]
+    second = _pem_body("front-cut-two-b")[5:]
+    text = (
+        " ".join(first)
+        + " "
+        + _pem_marker("END", "RSA")
+        + " then "
+        + " ".join(second)
+        + " "
+        + _pem_marker("END", "RSA")
+    )
+    result = Scrubber().scrub(text)
+    for line in first + second:
+        assert line not in result.text
+    assert result.text.count("[PRIVATE_KEY-") == 2
+    assert " then " in result.text
+
+
+def test_front_cut_flattened_tail_does_not_change_the_newline_form() -> None:
+    """The line-break form (lane D) keeps its exact span -- the walk-back over
+    body characters includes the line break before the first body line, as it
+    always did -- because the two rules are disjoint on the character before END."""
+    body = _pem_body("tail-unchanged")[3:]
+    text = "...\n" + "\n".join(body) + "\n" + _pem_marker("END", "RSA") + "\nnext"
+    result = Scrubber().scrub(text)
+    assert result.text == "...[PRIVATE_KEY-001]\nnext"
+
+
+def _many_flattened_tails(count: int) -> str:
+    """``count`` flattened front-cut tails on ONE line: two body runs, then END."""
+    tail = "A" * 64 + " " + "B" * 64 + " " + _pem_marker("END", "RSA")
+    return " ".join([tail] * count)
+
+
+def test_front_cut_walk_back_cost_grows_linearly_with_end_armours() -> None:
+    """Ten times the END armours on one line may cost ten times the work: each
+    walk-back must stop at the armour before it, never rescan the line."""
+    from agent_session_tools.scrubber import _private_key_spans
+
+    small, large = _many_flattened_tails(200), _many_flattened_tails(2000)
+    assert len(_private_key_spans(large)) == 2000
+    per_tail_small = _best_of(lambda: _private_key_spans(small), 7) / 200
+    per_tail_large = _best_of(lambda: _private_key_spans(large), 5) / 2000
+    assert per_tail_large <= 3 * per_tail_small, (
+        f"per-tail cost grew {per_tail_large / per_tail_small:.1f}x "
+        "from 200 to 2000 flattened tails; the walk-back is not linear"
+    )
+
+
+# ===========================================================================
 # _private_key_spans cost (plan 4, D#1). The masking loop used to rebuild the
 # whole string once per matched span, so a text with many armour lines cost
 # quadratic time (20 000 bare armour lines: 1.24 s). The spans it returns

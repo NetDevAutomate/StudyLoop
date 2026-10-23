@@ -115,6 +115,9 @@ class PruneStats:
     verified: int = 0
     skipped_unverified: int = 0
     skipped_anchored: int = 0
+    # Sessions with no updated_at, created_at or message timestamp: their age
+    # is unknown, so they are never "older than N days" (F-AST-06 rule).
+    skipped_undated: int = 0
     sessions_deleted: int = 0
     messages_deleted: int = 0
     reclaimed_mb: float = 0.0
@@ -151,12 +154,16 @@ def get_full_db_path(config: dict[str, Any] | None = None) -> Path | None:
 
 
 def ensure_leaf_dir(path: Path) -> None:
-    """Create *only* the final directory component of ``path``.
+    """Create *only* the final directory component of ``path``, owner-only.
 
     Refuses when the parent is missing. This is the mount-safety guard: on
     macOS an unmounted external volume means ``/Volumes/<name>`` does not
     exist, and a recursive mkdir would silently create a real directory on
     the boot volume that later shadows the mount.
+
+    The leaf holds copies of the 0600 record (the full tier, its snapshots,
+    a compact destination), so it is created 0700. An existing directory
+    keeps its mode; ``session-maint fix-perms`` tightens those on request.
     """
     if path.exists():
         return
@@ -165,7 +172,7 @@ def ensure_leaf_dir(path: Path) -> None:
             f"Parent directory missing: {path.parent} — is the volume mounted? "
             "Create the directory structure once manually, then retry."
         )
-    path.mkdir()
+    path.mkdir(mode=0o700)
 
 
 # ---------------------------------------------------------------------------
@@ -725,11 +732,24 @@ def prune_hot(
             # Hold verification and eviction in the same attached-DB transaction.
             conn.execute("BEGIN IMMEDIATE")
 
+        # A session's age is its newest known timestamp -- the rule delete and
+        # archive apply (F-AST-06, maintenance._SESSION_AGE_SQL). updated_at
+        # is NULL for every Kiro v1 conversation and for any harness that gave
+        # none; the old predicate (updated_at < ? OR updated_at IS NULL) made
+        # such a session "older than N days" however new it was, so a
+        # conversation from yesterday was evicted from hot. Unknown age is
+        # never old: those sessions are kept and counted.
+        age = (
+            "COALESCE(s.updated_at, s.created_at, "
+            "(SELECT MAX(m.timestamp) FROM main.messages m WHERE m.session_id = s.id))"
+        )
+        stats.skipped_undated = conn.execute(
+            f"SELECT COUNT(*) FROM main.sessions s WHERE {age} IS NULL"
+        ).fetchone()[0]
         candidate_ids = [
             r["id"]
             for r in conn.execute(
-                "SELECT id FROM main.sessions "
-                "WHERE updated_at < ? OR updated_at IS NULL",
+                f"SELECT s.id FROM main.sessions s WHERE {age} < ?",
                 (cutoff,),
             )
         ]
