@@ -410,13 +410,115 @@ def auto_clean_zombies() -> None:
             )
 
 
+def record_harness_export_check(state: dict) -> None:
+    """Record whether pi exported this session to the sessions database.
+
+    pi exports its own transcript from a ``session_shutdown`` extension
+    (``agents/pi/extensions/studyloop-session-export.ts`` runs
+    ``session-export --pi-only``), and pi 1.1.0 awaits that handler before its
+    process exits -- so when the tmux wrapper runs :func:`cleanup_on_exit` the
+    export has either landed or failed, and this is the one moment StudyLoop
+    can tell which (review 2026-10-21, lane O's design for F#5 / plan-5 D).
+
+    No-op unless ``state["agent"] == "pi"``. The database is opened read-only
+    (``mode=ro``): a missing file, a database without a ``sessions`` table or
+    any other read failure is a ``missing`` verdict, never an exception -- the
+    caller is about to tear the session down and must not be stopped. A row
+    counts when ``source='pi'``, its ``project_path`` resolves to the same
+    directory as the session's ``session_dir`` (node's ``process.cwd()`` is the
+    physical path; the sessions dir may be a symlink) and its ``updated_at`` --
+    the last message's stamp, in ``Z`` -- is not before this session's
+    ``started_at`` (a row for the same directory from an earlier run is last
+    time's export). An empty session the exporter wrote no row for reads as
+    ``missing`` too; the line the dashboard shows is advice, not an error.
+
+    Writes ``export_check`` into the session state, which survives the tmux
+    kill and is what the dashboard's ended view reads.
+    """
+    if state.get("agent") != "pi":
+        return
+    import contextlib
+    from datetime import UTC, datetime
+
+    from studyloop.session_state import write_session_state
+
+    status = "ok" if _pi_export_row_exists(state) else "missing"
+    with contextlib.suppress(Exception):
+        write_session_state(
+            {
+                "export_check": {
+                    "harness": "pi",
+                    "status": status,
+                    "checked_at": datetime.now(UTC).isoformat(),
+                }
+            }
+        )
+
+
+def _pi_export_row_exists(state: dict) -> bool:
+    """Whether the sessions database holds pi's export of this session. Never raises."""
+    import sqlite3
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from studyloop.settings import get_db_path
+
+    def _utc(stamp: str) -> datetime:
+        # Both writers stamp UTC: StudyLoop as ``+00:00``, pi (node's
+        # ``toISOString``) as ``Z``. A naive stamp is read as UTC too.
+        parsed = datetime.fromisoformat(stamp)
+        return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+    session_dir = state.get("session_dir")
+    started_at = state.get("started_at")
+    if not session_dir or not isinstance(started_at, str):
+        return False
+    try:
+        started = _utc(started_at)
+        wanted = Path(session_dir).resolve()
+    except (ValueError, OSError):
+        return False
+
+    # The SQL bound is a conservative prefix -- ``started_at`` in UTC to the
+    # second, no offset -- which compares correctly as text against both
+    # ``...Z`` and ``...+00:00`` stamps. The exact comparison is Python's.
+    lower_bound = started.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        conn = sqlite3.connect(f"file:{get_db_path()}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return False
+    try:
+        rows = conn.execute(
+            "SELECT project_path, updated_at FROM sessions "
+            "WHERE source = 'pi' AND updated_at IS NOT NULL AND updated_at >= ?",
+            (lower_bound,),
+        ).fetchall()
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+
+    for project_path, updated_at in rows:
+        if not project_path or not isinstance(updated_at, str):
+            continue
+        try:
+            if Path(project_path).resolve() == wanted and _utc(updated_at) >= started:
+                return True
+        except (ValueError, OSError):
+            continue
+    return False
+
+
 def cleanup_on_exit() -> None:
     """Auto-cleanup when the agent process exits.
 
     Called by the wrapper shell command in the main tmux pane. This runs
     inside the tmux session, so tmux will SIGHUP us when sessions are
-    killed -- all operations are wrapped in contextlib.suppress via
-    end_session_common().
+    killed -- all operations are wrapped in contextlib.suppress.
+
+    Order matters: :func:`teardown_session` kills this pane's own tmux
+    session, so anything after it never executes. The session is saved first,
+    then the harness export check is recorded, then the teardown runs.
     """
     import contextlib
 
@@ -424,7 +526,11 @@ def cleanup_on_exit() -> None:
 
     with contextlib.suppress(Exception):
         state = read_session_state()
+        if not state.get("study_session_id"):
+            return
         # Best effort, as before: the agent has already exited and nothing is
         # left to retry the end, so a failed DB write must not leave the tmux
         # session and IPC files behind.
-        end_session_common(state, raise_if_not_persisted=False)
+        persist_session_end(state, raise_if_not_persisted=False)
+        record_harness_export_check(state)  # BEFORE teardown: it kills this pane
+        teardown_session(state)
