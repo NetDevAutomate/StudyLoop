@@ -88,6 +88,15 @@ def selected_records(conn, session_id):
         conn.execute(f"DROP TABLE IF EXISTS {study}")
 
 
+class PurgeDependencyError(sqlite3.IntegrityError):
+    """SQLite refused a purge delete that would orphan a dependent row.
+
+    Still an ``IntegrityError`` (callers that roll back on that type keep
+    working); the message adds which dependent table(s) still reference the
+    session, which SQLite's own "FOREIGN KEY constraint failed" does not say.
+    """
+
+
 def _dependent_tables(conn):
     """Tables holding a foreign key into a table ``purge_session`` deletes from.
 
@@ -188,15 +197,17 @@ def purge_session(conn, session_id, *, permanent=True):
             _purge_rows(conn, session_id, selected, permanent=permanent)
         except sqlite3.IntegrityError as exc:
             # Only SQLite's own refusal of a delete that would orphan a dependent
-            # row is translated and named; any other integrity failure (a
-            # trigger's RAISE, a CHECK) is the caller's to see as it is.
+            # row is re-raised with the dependents named; any other integrity
+            # failure (a trigger's RAISE, a CHECK) is the caller's to see as it
+            # is. The type stays IntegrityError: the replication withdrawal path
+            # rolls back on exactly that type (test_replica_ledger pins it).
             if "FOREIGN KEY constraint failed" not in str(exc):
                 raise
             holding = _tables_still_referencing(conn, dependents, session_id)
-            raise RuntimeError(
-                "Purge would orphan rows in "
+            raise PurgeDependencyError(
+                f"{exc}: rows in "
                 + (", ".join(holding) if holding else "a dependent table")
-                + f" that still reference session {session_id}; "
+                + f" still reference session {session_id}; "
                 "transaction must roll back"
             ) from exc
     created = _dependency_violations(conn, dependents) - before

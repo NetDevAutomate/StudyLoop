@@ -187,6 +187,10 @@ class TestPreExistingOrphansDoNotStrandTheLearner:
 
 class TestAnOrphanThePurgeWouldCreateIsStillRefused:
     def test_a_dependent_the_schema_does_not_cascade_names_its_table(self, tmp_path):
+        """SQLite's own refusal, re-raised as the same type (the replication
+        withdrawal path rolls back on IntegrityError) with the table named."""
+        from agent_session_tools.context.lifecycle import PurgeDependencyError
+
         path = _db(tmp_path)
         _plant(
             path,
@@ -197,9 +201,11 @@ class TestAnOrphanThePurgeWouldCreateIsStillRefused:
             ],
         )
 
-        with pytest.raises(RuntimeError, match="local_ref") as excinfo:
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY") as excinfo:
             _purge(path, "held")
 
+        assert isinstance(excinfo.value, PurgeDependencyError)
+        assert "local_ref" in str(excinfo.value)
         assert "transaction must roll back" in str(excinfo.value)
         assert _ids(path) == {"held"}
         assert _violations(path) == []
@@ -218,10 +224,28 @@ class TestAnOrphanThePurgeWouldCreateIsStillRefused:
             ],
         )
 
-        with pytest.raises(RuntimeError, match="local_ref") as excinfo:
+        with pytest.raises(sqlite3.IntegrityError, match="local_ref") as excinfo:
             _purge(path, "held")
 
         assert "context_relations" not in str(excinfo.value)
+
+    def test_another_integrity_failure_passes_through_unchanged(self, tmp_path):
+        """A trigger's RAISE mid-purge is not a dependency refusal and is not
+        re-labelled (test_local_lifecycle pins the fixture-interruption shape)."""
+        path = _db(tmp_path)
+        _plant(
+            path,
+            _session("held")
+            + [
+                "CREATE TRIGGER fixture_fail BEFORE DELETE ON messages "
+                "BEGIN SELECT RAISE(ABORT,'fixture interruption'); END"
+            ],
+        )
+
+        with pytest.raises(sqlite3.IntegrityError, match="fixture interruption") as e:
+            _purge(path, "held")
+
+        assert type(e.value) is sqlite3.IntegrityError
 
 
 class TestTheCheckIsScopedToWhatPurgeChanges:
