@@ -1082,11 +1082,15 @@ database:
   refused, and so is one bound to a different everyday database. Point `database.full_db_path` at a
   new file rather than reusing one, and keep the old file: it may hold sessions that are no longer
   anywhere else.
-- **What it copies.** Whole sessions with their messages and file references, and the memory
-  captured from them (evidence, assertions, observations and the links between them). Deletions
-  and permanent forgets reach the full database first, so a forgotten session is never brought
-  back. Captured memory is never overwritten: if the full database holds a different version of the
-  same record, `sync-full` refuses instead.
+- **What it copies.** Whole sessions with their messages and file references; the memory captured
+  from them (evidence, assertions, observations and the links between them); session notes, tags
+  and learning metadata; your learner records (study sessions, teach-backs, parked topics, study
+  notes, practice attempts, the parking board's columns) and the concept graph they point at.
+  Deletions and permanent forgets reach the full database first, so a forgotten session is never
+  brought back; an ordinary edit or delete of a mutable record (a note, a parked topic) is mirrored
+  as an update, and a plain delete leaves the old row in the full database — it is an archive.
+  Captured memory is never overwritten: if the full database holds a different version of the same
+  record, `sync-full` refuses instead.
 - **What it never copies.** This machine's own state — access generations, replication receipts and
   peer history, policy and lifecycle mode, capture runs, retention origins, quarantine. The full
   database's search index follows the rows it receives; embeddings are not copied.
@@ -1094,13 +1098,13 @@ database:
   StudyLoop also starts a quiet `sync-full` in the background after exports and study-session
   starts (`database.sync_mode`); it prints nothing, so run `session-maint sync-full` by hand to see
   why it refused.
-- **A refusal** prints `❌`, a reason code and the fix, and copies no session into the full
-  database. Each reason is explained in
+- **A refusal** prints `❌`, a reason code and the fix, and copies no session or memory row into
+  the full database (the first-run binding and the permanent controls are written before content,
+  so those may already be there). Each reason is explained in
   [Troubleshooting](troubleshooting.md#session-maint-sync-full-refuses).
 
 `prune` removes from the everyday database only the sessions the full database verifiably holds,
 together with everything else `sync-full` copies from this database, and keeps any session that owns
 learner records; run `sync-full` first. `session-maint archive` is deprecated (it copies sessions
-and messages only, into a file nothing in StudyLoop reads) but stays available until `sync-full`
-carries the whole context tier; its removal is planned for the release after the one in which it
-does.
+and messages only, into a file nothing in StudyLoop reads) and will be removed in the release after
+the one that ships the mirror; until then it behaves as before.

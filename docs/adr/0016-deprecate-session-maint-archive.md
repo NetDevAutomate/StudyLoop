@@ -147,6 +147,14 @@ in full; the foreign-key check and both full-text invariants hold; a repeat sync
 a permanent forget never resurrects; and every existing peer refusal pin stays green. Until then the
 docs describe the mirror contract but name no removal release.*
 
+*Condition met, 2026-10-23 (coordinator, after lane T merged as `ee0750eb`): the end-to-end
+acceptance test R1 (`test_sync_full_then_prune_evicts_a_real_exported_session`) is green on `main`
+with the full gate (9038 passed, 0 failed), and a live run of the CLI on an exporter-built database
+bound, copied, no-op'd, pruned and re-synced as the contract says. The removal promise therefore
+returns in the concrete form of this record's original decision: `archive` is removed in the
+release after the one that ships the mirror. The notice, `docs/cli-reference.md`,
+`docs/setup-guide.md` and the changelog say so.*
+
 Grounding adopted: single source of truth for the schema (one migration path, one reader set);
 Keep a Changelog's deprecate-then-remove.
 

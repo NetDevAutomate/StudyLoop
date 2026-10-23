@@ -813,18 +813,18 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
 _ARCHIVE_DEPRECATION = (
     "⚠️  'session-maint archive' is deprecated: it copies sessions and messages only, "
     "into a two-table file\n"
-    "   that nothing in StudyLoop reads. It will not be removed until its replacement "
-    "works on the current\n"
-    "   schema, so it stays available for now.\n"
+    "   that nothing in StudyLoop reads. It will be removed in the release after the "
+    "one that ships this\n"
+    "   notice; until then it behaves as before.\n"
     "   The replacement is 'session-maint sync-full' then 'session-maint prune' (both "
     "need database.full_db_path).\n"
     "   That is not a drop-in replacement: sync-full mirrors whole sessions with "
     "their evidence, notes and\n"
     "   learner records into the full database, which has the same schema as this "
-    "one; prune then removes\n"
-    "   from this database only the sessions it has verified there, keeps any "
-    "session that owns learner\n"
-    "   records, and is a dry run until --no-dry-run.\n"
+    "one and is bound to it on\n"
+    "   the first run; prune then removes from this database only the sessions it "
+    "has verified there, keeps\n"
+    "   any session that owns learner records, and is a dry run until --no-dry-run.\n"
     "   sync-full refuses, and says why, when the full database was written by "
     "something else or belongs\n"
     "   to another database: it never overwrites another history."
@@ -1403,10 +1403,10 @@ def archive(
 ) -> None:
     """Archive old sessions to a separate two-table database.
 
-    Deprecated, but not removed until 'session-maint sync-full' then
-    'session-maint prune' (which move whole sessions and verify them first)
-    work on the current schema; today sync-full refuses a database that holds
-    exported evidence, so this command stays available.
+    Deprecated; removed in the release after the one that ships this notice.
+    Use 'session-maint sync-full' then 'session-maint prune': they mirror whole
+    sessions with the memory captured from them into the full database and
+    verify them there before removing anything from this one.
     """
     db_path = db if db else _get_db_path()
     exit_code = _archive(db_path, days, backup=not no_backup)

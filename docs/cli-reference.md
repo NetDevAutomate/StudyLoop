@@ -603,8 +603,8 @@ session-sync all                         # Push all peers before pulling all pee
 session-sync status|endpoints            # Show configured peers / listener status
 session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
 session-maint vacuum|reindex|schema      # Database maintenance
-session-maint archive --days N           # DEPRECATED, not a drop-in for sync-full then prune; stays until sync-full carries
-                                          # the context tier, removal planned for the release after the one in which it does
+session-maint archive --days N           # DEPRECATED, not a drop-in for sync-full then prune; removed in the release
+                                          # after the one that ships the mirror (sync-full now carries the context tier)
 session-maint delete --days N --confirm   # Permanently delete old sessions; keeps sessions that own learner records
 session-maint delete --days N --confirm --forget-learner-records
                                           # ...and also deletes those sessions and their learner records

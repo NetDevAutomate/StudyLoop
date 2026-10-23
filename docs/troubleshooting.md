@@ -395,6 +395,21 @@ Each reason, and what to do:
   `database.path`; the mirror belongs to the configured everyday database only. Run without `--db`.
 - **`unclassified tier table: <name>`** — the everyday database has a memory table this version of
   StudyLoop does not know how to mirror, usually because a newer StudyLoop wrote it. Run the
+`distinct_paths` — `database.path` and `database.full_db_path` name the same file. Point
+`full_db_path` at a different file (on the external volume) and run `sync-full` again.
+
+`schema_mismatch` — the everyday database is not on the current schema, or the full database could
+not be brought to it. Run `session-maint schema` on each; an unwritable full volume is the usual cause.
+
+`unclassified_table` — the everyday database holds a `context_*` table the mirror does not know (a
+newer migration than this install). Upgrade StudyLoop; the mirror and `prune` both refuse rather
+than copy a table whose role they cannot name.
+
+`orphan_row` — a row in the everyday database points at a parent that exists in neither database
+(left by a deletion made with foreign keys off, before the lifecycle fixes). Nothing is copied. List
+the rows with `sqlite3 <database.path> "PRAGMA foreign_key_check"`; there is no repair command yet,
+so back the file up, delete the listed rows by hand, and run `sync-full` again.
+
   current StudyLoop on this machine, then `sync-full` again. `prune` refuses the same way.
 - **The two databases are on different schema versions**, or the everyday one is behind. Upgrade
   StudyLoop, run `session-export` once (it migrates the everyday database), then `sync-full`.

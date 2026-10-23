@@ -185,13 +185,19 @@ experience may change before `1.0.0`.
   drop-in replacement: `sync-full` mirrors whole sessions, with the memory
   captured from them, into the full database, and `prune` removes from the
   everyday one only the sessions it has verified there and keeps any session
-  that holds learner records. `archive` stays available until `sync-full`
-  carries the whole context tier; its removal is planned for the release after
-  the one in which it does. Until then `archive` prints this notice and
-  otherwise behaves as before.
+  that holds learner records. `sync-full` carries the whole context tier as of
+  this release, so `archive` will be removed in the release after this one;
+  until then it prints this notice and otherwise behaves as before.
 
 ### Fixed
 
+- `session-maint sync-full` re-syncs a session whose transcript grew since the last sync. The old
+  copier detected change by `sessions.content_hash`, which no exporter ever writes, so a re-export
+  with new turns was never copied again; the mirror compares the session's messages and file
+  references in both directions.
+- Annotation retirements (a retired note, tags or learning record) now reach the full database as a
+  permanent control, so a record you retired in the everyday database is not resurrected from the
+  archive by the next sync.
 - Study sessions started from the web dashboard get the real Socratic mentor again. Since
   2026-09-14 every web-started focus session, on every harness, received a placeholder mentor
   (four lines: no Socratic engine, no progress tracking, no MCP tools, no wind-down) because the

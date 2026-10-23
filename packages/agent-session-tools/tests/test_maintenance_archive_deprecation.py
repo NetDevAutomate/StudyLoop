@@ -108,9 +108,15 @@ def _assert_notice(out: str) -> None:
     # `sync-full` carrying the current schema. Plan 6 (lane T) made sync-full
     # carry it, so the notice no longer says it refuses every exported database
     # (that became false); it names the refusals the mirror does make.
-    assert "removed in the release after the one that deprecates it" not in out
-    assert "will not be removed until" in out
-    assert "refuses a database that holds exported evidence" not in out
+    # Plan 6 (council pass 7; R1 green on main at ee0750eb): sync-full carries the
+    # whole context tier, so the removal promise returns -- concretely, not as a
+    # version number and not as a condition. The notice wraps for the terminal,
+    # so phrases are checked on whitespace-normalised text.
+    flat = " ".join(out.split())
+    assert "removed in the release after the one that ships this notice" in flat
+    assert "will not be removed until" not in flat
+    assert "refuses a database that holds exported evidence" not in flat
+    assert "release after the one that deprecates it" not in flat
     assert "evidence" in out and "refuses" in out
     assert "never overwrites another history" in out
     assert "0.7.0" not in out
