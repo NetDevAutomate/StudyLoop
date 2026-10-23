@@ -134,3 +134,42 @@ class TestMcpConfigWriter:
 
         with pytest.raises(ValueError, match="Unknown MCP config format"):
             write_mcp_config(tmp_path, fmt="bogus")
+
+
+class TestMcpCommand:
+    """``_mcp_command`` has two branches; each argv is pinned exactly.
+
+    ``write_mcp_config`` only ever exercised whichever branch the developer's
+    PATH happened to take, and the ``dev=True`` cases monkeypatch the function
+    away (review 4 lane O, found-not-fixed #2). The launcher's dead copy, deleted
+    in that lane, returned the ABSOLUTE path on the PATH branch; the live
+    function returns the bare console-script name, so the MCP config stays valid
+    when the tool venv moves.
+    """
+
+    def test_on_path_yields_the_bare_console_script(self, monkeypatch) -> None:
+        from studyloop.adapters import _strategies
+
+        monkeypatch.setattr(
+            _strategies.shutil,
+            "which",
+            lambda name: "/opt/tools/bin/studyloop-mcp" if name == "studyloop-mcp" else None,
+        )
+
+        assert _strategies._mcp_command() == ["studyloop-mcp"]
+
+    def test_off_path_falls_back_to_uv_run_against_the_workspace_package(self, monkeypatch) -> None:
+        from studyloop.adapters import _strategies
+
+        monkeypatch.setattr(_strategies.shutil, "which", lambda name: None)
+        # The same six-levels-up walk the function documents, from the module's own
+        # location, so the pin follows a moved checkout without hardcoding a path.
+        repo_root = Path(_strategies.__file__).parents[5]
+
+        assert _strategies._mcp_command() == [
+            "uv",
+            "run",
+            "--project",
+            str(repo_root / "packages" / "studyloop"),
+            "studyloop-mcp",
+        ]
