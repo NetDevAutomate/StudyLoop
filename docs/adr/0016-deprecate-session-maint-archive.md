@@ -91,6 +91,19 @@ condition, so this is the path that makes the ADR true; or (b) supersede this re
 `archive`. (a) is recommended because `archive`'s two-table file also drops the evidence tier, so
 un-deprecating it would bless the same loss under a different name.*
 
+*Decision, 2026-10-23 (owner, after plan 5): option (a) is adopted — `session-maint sync-full` is to
+carry the whole context tier, so that `prune`'s acceptance condition (`_archive_context_complete`)
+can be met by a real database and this record's removal of `archive` becomes achievable; option (b)
+is rejected for the reason given above. What is decided is the goal, not the copier: the legacy
+guard (`replication/legacy.py`, `4eb649fa`) was written on the principle that protected context
+moves only through the structured replica protocol, never by executable SQL, and the full tier is
+already lifecycle-reconciled by `context.managed_history.reconcile_full` (controls, no bodies). How
+the content phase of a local hot → full transfer is built — SQL copy of the verified table set under a
+narrowed guard, or the structured data plane (`replication/snapshot.py` → `content.py`) run locally —
+is the design question for the implementation cycle; it is put to a council (pass 7) before the lane
+is briefed, and this record will be amended with the outcome. Until the implementation lands, the
+notice, docs and changelog keep the wording the previous amendment gave them.*
+
 Grounding adopted: single source of truth for the schema (one migration path, one reader set);
 Keep a Changelog's deprecate-then-remove.
 
