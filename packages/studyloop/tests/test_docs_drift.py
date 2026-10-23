@@ -8,8 +8,10 @@ because docs aren't executed, and a learner following the docs hits a
 traceback. Two independent checks, both fast, no network, no subprocess:
 
 (a) ``test_studyloop_example_resolves`` + ``test_session_query_since_examples``
-    -- every ``studyloop ...`` example in a fenced code block of
-    docs/cli-reference.md, and every ``studyloop ...`` line inside a Click
+    -- every ``studyloop ...`` example in a fenced code block of README.md,
+    CONTRIBUTING.md and every top-level ``docs/*.md`` page (``_covered_docs``;
+    ``_DRIFT_ALLOWLIST`` names the exceptions with a reason each), and every
+    ``studyloop ...`` line inside a Click
     command's ``Examples:`` docstring section, is resolved against the real
     Click command tree rooted at the ``studyloop`` entry point (read from
     packages/studyloop/pyproject.toml's ``[project.scripts]``, not
@@ -31,12 +33,13 @@ traceback. Two independent checks, both fast, no network, no subprocess:
     ``agent_session_tools.query_utils.parse_date`` rejects) until both pages
     were corrected to ``--since last-7-days``.
 
-(b) ``test_yaml_block_keys_are_known`` -- every fenced ```yaml block in
-    docs/setup-guide.md and docs/cli-reference.md (docs/configuration.md
-    does not exist, so it isn't scanned) is parsed and every top-level key
-    checked against every config key some real loader in the codebase
-    reads. See ``_known_top_level_keys`` for exactly which functions that
-    is derived from and why it's more than just studyloop.settings.
+(b) ``test_yaml_block_keys_are_known`` -- every fenced ```yaml block on the
+    same covered pages is parsed and every top-level key checked against
+    every config key some real loader in the codebase reads (a block whose
+    top-level keys mark it as a playbook, a note's frontmatter or a workflow
+    is skipped, see ``_NON_CONFIG_MARKER_KEYS``). See ``_known_top_level_keys``
+    for exactly which functions that is derived from and why it's more than
+    just studyloop.settings.
 
 Both known-drift cases the review found (R-31, R-61) were once pinned as
 ``pytest.mark.xfail(strict=True, ...)`` on the exact failing case, so the
@@ -266,51 +269,67 @@ def _validate_example(example: str, root: click.Group, root_ctx: click.Context) 
     return problems
 
 
+#: Prose pages that are deliberately OUTSIDE the drift checks, by repo-relative
+#: path, each with the reason. Everything else at the repository root
+#: (README.md, CONTRIBUTING.md) and at the top level of ``docs/`` is covered --
+#: see ``_covered_docs``. A page is allowlisted only when its fenced
+#: ``studyloop ...`` lines or ```yaml blocks are, by design, not the product's
+#: commands or config; an entry for a file that no longer exists is itself a
+#: failure (``test_drift_allowlist_names_existing_files``), so the list cannot
+#: rot. Until review 5 (steer row larger #4) the check ran on an explicit tuple
+#: of 23 pages, so README.md, CONTRIBUTING.md and twenty-odd ``docs/`` pages
+#: could show a command that did not exist and nothing failed.
+_DRIFT_ALLOWLIST: dict[str, str] = {}
+
+
+def _covered_docs() -> tuple[str, ...]:
+    """Repo-relative paths of every prose page the drift checks cover.
+
+    The root prose files plus the top level of ``docs/`` (not its
+    subdirectories: ``docs/adr``, ``docs/architecture``, ``docs/handoffs``,
+    ``docs/security`` and ``docs/superpowers`` are source-only under
+    ``mkdocs.yml``'s ``exclude_docs`` allowlist -- decision records, plans and
+    council hand-offs, not pages a learner follows), minus ``_DRIFT_ALLOWLIST``.
+    """
+    candidates = [REPO_ROOT / "README.md", REPO_ROOT / "CONTRIBUTING.md"]
+    candidates.extend(sorted(DOCS_DIR.glob("*.md")))
+    covered = []
+    for path in candidates:
+        relative = path.relative_to(REPO_ROOT).as_posix()
+        if path.is_file() and relative not in _DRIFT_ALLOWLIST:
+            covered.append(relative)
+    return tuple(covered)
+
+
 #: Pages whose fenced ``studyloop ...`` lines must resolve against the real CLI.
-#:
-#: second-brain.md joins the list because its whole purpose is to tell a learner
-#: which commands to run: a guide naming a command that does not exist is worse
-#: than no guide, since the learner concludes the tool is broken rather than the
-#: page.
-#:
-#: The twenty contributor-guide pages (openspec/changes/contributor-guide-v1,
-#: design.md §2) join for the same reason, and because K4 of that plan relies on
-#: this test failing any fenced ``studyloop module ...`` / ``studyloop drill ...``
-#: line a proposal page might show as though it existed. Their structure, links
-#: and ``uv run ...`` commands are pinned by test_contributor_guide_drift.py.
-_STUDYLOOP_EXAMPLE_DOCS = (
-    "cli-reference.md",
-    "second-brain.md",
-    "contributing.md",
-    "contributor-environment.md",
-    "contributor-debugging.md",
-    "contributor-cli.md",
-    "contributor-web.md",
-    "contributor-mcp.md",
-    "contributor-doctor.md",
-    "contributor-harnesses-agents.md",
-    "contributor-content.md",
-    "contributor-documentation.md",
-    "contributor-testing.md",
-    "acceptance-testing.md",
-    "contributor-changelog.md",
-    "contributor-pull-requests.md",
-    "contributor-issues-prioritisation.md",
-    "contributor-ai.md",
-    "contributor-code-map.md",
-    "contributor-conventions.md",
-    "contributor-modules.md",
-    "contributor-module-index.md",
-    "module-contract.md",
-)
+#: Kept under this name because docs/contributor-documentation.md points writers
+#: at it; it is derived, not hand-maintained -- a new page under ``docs/`` is
+#: covered the moment it exists.
+_STUDYLOOP_EXAMPLE_DOCS = _covered_docs()
+
+
+def test_drift_allowlist_names_existing_files() -> None:
+    """A stale allowlist entry would silently exempt nothing; delete it."""
+    missing = sorted(rel for rel in _DRIFT_ALLOWLIST if not (REPO_ROOT / rel).is_file())
+    assert not missing, f"_DRIFT_ALLOWLIST names files that do not exist: {missing}"
+
+
+def test_every_root_and_top_level_docs_page_is_covered_or_allowlisted() -> None:
+    """The coverage rule, pinned: root prose + ``docs/*.md`` = covered plus allowlisted."""
+    expected = {"README.md", "CONTRIBUTING.md"} | {
+        f"docs/{path.name}" for path in DOCS_DIR.glob("*.md")
+    }
+    assert set(_STUDYLOOP_EXAMPLE_DOCS) | set(_DRIFT_ALLOWLIST) == expected
+    assert not set(_STUDYLOOP_EXAMPLE_DOCS) & set(_DRIFT_ALLOWLIST)
+    for page in ("README.md", "CONTRIBUTING.md", "docs/cli-reference.md", "docs/setup-guide.md"):
+        assert page in _STUDYLOOP_EXAMPLE_DOCS, page
 
 
 def _build_studyloop_cases() -> list[tuple[str, str]]:
     doc_cases = [
         (f"{doc_name}:{line_no}", text)
         for doc_name in _STUDYLOOP_EXAMPLE_DOCS
-        if (DOCS_DIR / doc_name).is_file()
-        for line_no, text in _iter_fenced_lines(DOCS_DIR / doc_name, _STUDYLOOP_LINE_RE)
+        for line_no, text in _iter_fenced_lines(REPO_ROOT / doc_name, _STUDYLOOP_LINE_RE)
     ]
     root = _load_cli_group()
     ctx = click.Context(root, info_name="studyloop")
@@ -376,8 +395,8 @@ def _build_session_query_since_cases() -> list[tuple[str, str, str]]:
     """(location, example, since_value) for every session-query example that
     passes a --since value, across both docs pages that cite it."""
     cases = []
-    for doc_name in ("setup-guide.md", "cli-reference.md"):
-        for line_no, text in _iter_fenced_lines(DOCS_DIR / doc_name, _SESSION_QUERY_LINE_RE):
+    for doc_name in _STUDYLOOP_EXAMPLE_DOCS:
+        for line_no, text in _iter_fenced_lines(REPO_ROOT / doc_name, _SESSION_QUERY_LINE_RE):
             match = _SINCE_VALUE_RE.search(text)
             if match:
                 cases.append((f"{doc_name}:{line_no}", text, match.group(1)))
@@ -514,16 +533,17 @@ def _iter_yaml_blocks(doc_path: Path) -> list[tuple[int, int, str]]:
     return blocks
 
 
-#: Pages whose fenced ```yaml blocks are checked against the real config keys.
-_YAML_BLOCK_DOCS = ("setup-guide.md", "cli-reference.md", "second-brain.md")
+#: Pages whose fenced ```yaml blocks are checked against the real config keys:
+#: the same covered set as the command check (it was three pages until review 5).
+#: A block that is not a config.yaml example is skipped by the marker-key rule
+#: below, not by leaving its page out.
+_YAML_BLOCK_DOCS = _STUDYLOOP_EXAMPLE_DOCS
 
 
 def _yaml_block_params() -> list:
     params = []
     for doc_name in _YAML_BLOCK_DOCS:
-        if not (DOCS_DIR / doc_name).is_file():
-            continue
-        for idx, start_line, _text in _iter_yaml_blocks(DOCS_DIR / doc_name):
+        for idx, start_line, _text in _iter_yaml_blocks(REPO_ROOT / doc_name):
             location = f"{doc_name}:{start_line}"
             params.append(pytest.param(doc_name, idx, id=location))
     return params
@@ -576,7 +596,7 @@ def test_known_key_derivation_has_not_shrunk() -> None:
 
 @pytest.mark.parametrize(("doc_name", "block_index"), _yaml_block_params())
 def test_yaml_block_keys_are_known(doc_name: str, block_index: int) -> None:
-    _idx, start_line, text = _iter_yaml_blocks(DOCS_DIR / doc_name)[block_index]
+    _idx, start_line, text = _iter_yaml_blocks(REPO_ROOT / doc_name)[block_index]
     location = f"{doc_name}:{start_line}"
 
     try:

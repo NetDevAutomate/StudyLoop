@@ -34,11 +34,13 @@ allowlist of read-only commands actually executed (`--version`, `--help`, `git l
 other fenced command is resolved against the justfile, the Click tree or the filesystem.
 Three files do it, all under `packages/studyloop/tests/`:
 
-- `test_docs_drift.py` -- every fenced line beginning `studyloop …` on a page listed in its
-  `_STUDYLOOP_EXAMPLE_DOCS` tuple must resolve against the real Click command tree (a renamed
-  option or subcommand fails the page that still shows it); `--since` examples must parse; YAML
-  blocks on the configuration pages may use only known keys; and five tests pin single sentences
-  against the source they describe.
+- `test_docs_drift.py` -- every fenced line beginning `studyloop …` in `README.md`,
+  `CONTRIBUTING.md` and every top-level `docs/*.md` page (`_STUDYLOOP_EXAMPLE_DOCS`, derived from
+  the filesystem minus the reasoned `_DRIFT_ALLOWLIST`) must resolve against the real Click command
+  tree (a renamed option or subcommand fails the page that still shows it); `--since` examples must
+  parse; YAML blocks on the same pages may use only known keys (a block whose top-level keys mark
+  it as a playbook, a note's frontmatter or a workflow is skipped); and five tests pin single
+  sentences against the source they describe.
 - `test_contributor_guide_drift.py` -- the twenty guide pages: fenced `just` recipes exist, fenced
   `pytest` paths exist, backticked repository paths exist, links and anchors resolve, the page has
   one H1, an answer-first block, a numbered list and no more than its line cap (150; the router
@@ -53,12 +55,13 @@ Run them together whenever you touch `docs/` or `mkdocs.yml`:
 uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py -q
 ```
 
-To pin a **new command example**: put it in a fenced block on a page that is in
-`_STUDYLOOP_EXAMPLE_DOCS` (every guide page already is), and the Click-tree test picks it up with
-no test code. To pin a **new sentence** (a tier, a count, a default): add one test beside the five
-pinned-claim tests in `test_docs_drift.py` that reads the sentence and the source symbol and
-compares them -- parse the sentence, never copy it into the test. A documented command you have
-not run is a defect, not a draft.
+To pin a **new command example**: put it in a fenced block on any top-level `docs/` page (or
+`README.md` / `CONTRIBUTING.md`) and the Click-tree test picks it up with no test code -- a new page
+is covered the moment it exists; a page whose commands are deliberately not the product's goes in
+`_DRIFT_ALLOWLIST` with its reason. To pin a **new sentence** (a tier, a count, a default): add one
+test beside the five pinned-claim tests in `test_docs_drift.py` that reads the sentence and the
+source symbol and compares them -- parse the sentence, never copy it into the test. A documented
+command you have not run is a defect, not a draft.
 
 ## What stays out of the site, and why
 
