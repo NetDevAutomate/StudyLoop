@@ -9,6 +9,7 @@ import logging
 import os
 import sqlite3
 import stat
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -195,7 +196,7 @@ def _owner_only_candidates(cfg: dict) -> list[tuple[str, Path]]:
     return found
 
 
-def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
+def _fix_perms(cfg: dict, dry_run: bool = False, remote: bool = False) -> int:
     """Chmod pre-existing copies of the record to 0600 and report counts (D#2).
 
     Snapshots, backups and sidecars are created owner-only since 92186d77 /
@@ -203,6 +204,12 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
     under 022). Only the files ``_owner_only_candidates`` lists are touched. A
     symlink is skipped and named: a chmod through it would change a file that
     may live outside the configured directories.
+
+    ``remote`` runs the ``ssh … chmod 600`` this command otherwise only prints,
+    once per configured endpoint path (plan 5, item C). Opt-in: an ssh that
+    prompts would hang a local sweep, so ``BatchMode=yes`` and a connect
+    timeout bound each call, and a failed endpoint is one reported row, never
+    an abort -- the sweep finishes and the exit code says it was not clean.
     """
     import shlex
 
@@ -258,18 +265,112 @@ def _fix_perms(cfg: dict, dry_run: bool = False) -> int:
         summary += f"; {len(failed)} could not be changed"
     print(summary + ".")
 
+    remote_ok = 0
+    remote_failed = 0
     for name, endpoint in sorted(get_endpoints(cfg).items()):
-        # The remote copy session-sync seeded takes the remote umask; this
-        # command reaches local files only, so say what to run there.
-        ip = endpoint.get("ip_address", {}).get("primary_ip") or "<host>"
+        # The remote copy session-sync seeded takes the remote umask; without
+        # --remote this command reaches local files only, so say what to run.
+        ip = endpoint.get("ip_address", {}).get("primary_ip") or ""
+        user = endpoint.get("username", "")
+        host = f"{user}@{ip}" if user and ip else ip
         paths = [endpoint.get("path", ""), endpoint.get("full_path", "")]
         for remote_path in filter(None, paths):
-            print(
-                f"ℹ️  Remote copy on '{name}' is not reached from here; run: "
-                f"ssh {endpoint.get('username', '<user>')}@{ip} chmod 600 "
-                f"{shlex.quote(remote_path)}"
+            quoted = shlex.quote(remote_path)
+            shown_host = host or f"{user or '<user>'}@<host>"
+            command = f"ssh {shown_host} chmod 600 {quoted}"
+            if not remote:
+                print(
+                    f"ℹ️  Remote copy on '{name}' is not reached from here; run: {command}"
+                )
+                continue
+            label = f"Remote '{name}' {shown_host}:{remote_path}"
+            if not ip:
+                remote_failed += 1
+                print(f"❌ {label}: no address configured for this endpoint")
+                continue
+            if dry_run:
+                print(f"🔍 {label}: would run {command}")
+                continue
+            reason = _remote_chmod(host, quoted)
+            if reason is None:
+                remote_ok += 1
+                print(f"✅ {label} -> 0600")
+                logger.info("fix-perms: remote %s %s -> 0600", name, remote_path)
+            else:
+                remote_failed += 1
+                print(f"❌ {label}: {reason}")
+                logger.warning(
+                    "fix-perms: remote %s %s not changed: %s", name, remote_path, reason
+                )
+    if remote and not dry_run and (remote_ok or remote_failed):
+        line = f"✅ Tightened {remote_ok} remote cop{'y' if remote_ok == 1 else 'ies'}"
+        if remote_failed:
+            line += (
+                f"; {remote_failed} remote cop{'y' if remote_failed == 1 else 'ies'} "
+                "could not be changed"
             )
-    return 1 if failed else 0
+        print(line + ".")
+    return 1 if failed or remote_failed else 0
+
+
+def _remote_chmod(host: str, quoted_path: str) -> str | None:
+    """Run ``chmod 600`` on one remote copy; None on success, else a short reason.
+
+    List argv, no shell. ssh joins the remote words with spaces for the remote
+    shell, so the path arrives already quoted (the same ``shlex.quote`` the
+    printed hint uses). ``BatchMode=yes`` turns any prompt into a refusal
+    instead of a hang; the connect and overall timeouts bound an unreachable
+    host. The reason classifies ssh's own exit (255) apart from chmod's, and
+    carries the first stderr line so the learner sees what the host said.
+    """
+    argv = [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        host,
+        "chmod",
+        "600",
+        quoted_path,
+    ]
+    try:
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        return "timeout (no answer within 30s)"
+    except FileNotFoundError:
+        return "ssh not found on this machine"
+    if result.returncode == 0:
+        return None
+    detail = (result.stderr or result.stdout or "").strip().splitlines()
+    first = detail[0] if detail else ""
+    lowered = first.lower()
+    if result.returncode == 255:
+        # ssh itself failed: it never ran chmod.
+        kind = (
+            "permission"
+            if "permission denied" in lowered
+            else "unreachable"
+            if any(
+                word in lowered
+                for word in (
+                    "connection refused",
+                    "timed out",
+                    "no route",
+                    "could not resolve",
+                    "network is unreachable",
+                    "host key verification failed",
+                )
+            )
+            else "unreachable"
+        )
+    elif "permission denied" in lowered or "operation not permitted" in lowered:
+        kind = "permission"
+    elif "no such file" in lowered:
+        kind = "missing"
+    else:
+        kind = f"failed (exit {result.returncode})"
+    return f"{kind}: {first}" if first else kind
 
 
 # A session's age is its newest known timestamp. updated_at is NULL for every
@@ -1348,6 +1449,18 @@ def fix_perms(
         bool,
         typer.Option("--dry-run", help="List the files that would change; chmod none"),
     ] = False,
+    remote: Annotated[
+        bool,
+        typer.Option(
+            "--remote",
+            help=(
+                "Also run `ssh <endpoint> chmod 600 <remote db>` for every configured "
+                "sync endpoint (BatchMode, 10s connect / 30s total per host); one result "
+                "row per endpoint, a failed host never stops the sweep. Off by default: "
+                "the commands are only printed."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Make existing snapshot, backup and sidecar files owner-only (0600).
 
@@ -1356,9 +1469,10 @@ def fix_perms(
     names: <stem>_backup_*.db in database.backup_dir, <stem>_snapshot_*.db in
     database.snapshot_dir (or backup_dir), and the <stem>.vec.db sidecar
     beside the hot and the full database. Reports counts; never creates,
-    moves or follows a symlink.
+    moves or follows a symlink. Remote copies seeded by session-sync are
+    printed as the ssh command to run; --remote runs it.
     """
-    raise typer.Exit(_fix_perms(_get_config(), dry_run=dry_run))
+    raise typer.Exit(_fix_perms(_get_config(), dry_run=dry_run, remote=remote))
 
 
 @app.command()
