@@ -1008,6 +1008,49 @@ def test_front_cut_body_run_length_boundary_matches_the_begin_rule(
     assert (run not in result.text) is is_body
 
 
+def test_flattened_front_cut_pem_with_a_short_last_line_leaves_no_body() -> None:
+    """A key's last base64 line is the remainder and is usually SHORT (council
+    pass 6, astra): flattened and cut off at the front it sits as a short run
+    between the body and the END armour, separated by a space. The walk-back
+    used to stop at that short run and leave every body run before it."""
+    body = _pem_body("front-cut-short-tail")[:3]
+    last = "AAAAQ8=="  # 8 characters: a real last line, not a CRC
+    text = "paste: " + " ".join(body) + " " + last + " " + _pem_marker("END", "RSA")
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert last not in result.text
+    assert result.text == "paste: [PRIVATE_KEY-001]"
+
+
+def test_flattened_front_cut_pgp_block_with_a_short_last_line_and_crc_leaves_no_body() -> (
+    None
+):
+    """PGP: short last body line, then the =XXXX CRC, then the END armour."""
+    body = _pem_body("front-cut-short-pgp")[:3]
+    text = (
+        "see: "
+        + " ".join(body)
+        + " Zm9vYg== =abcd "
+        + "-----END PGP PRIVATE KEY BLOCK-----"
+    )
+    result = Scrubber().scrub(text)
+    for line in body:
+        assert line not in result.text
+    assert "Zm9vYg==" not in result.text
+    assert result.text.startswith("see: [PRIVATE_KEY-")
+
+
+def test_front_cut_short_word_before_the_armour_is_prose_without_body_behind_it() -> (
+    None
+):
+    """The prose guard holds: a short word is admitted as a key's last line
+    only when a body-length run stands directly before it."""
+    text = "see page 12 of the notes " + _pem_marker("END", "RSA")
+    result = Scrubber().scrub(text)
+    assert result.text == "see page 12 of the notes [PRIVATE_KEY-001]"
+
+
 def test_two_front_cut_tails_on_one_line_are_two_redactions() -> None:
     """The walk-back from the second END must stop at the first END armour."""
     first = _pem_body("front-cut-two-a")[5:]

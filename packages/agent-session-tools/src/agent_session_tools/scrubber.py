@@ -215,9 +215,28 @@ def _flattened_tail_start(text: str, armour: int) -> int:
         if length < _INLINE_RUN_LENGTH and not (
             nearest and (gap == armour or (text[run] == "=" and 2 <= length <= 5))
         ):
-            return start
+            # A key's last base64 line is the remainder and is usually short;
+            # flattened, it sits as a short run between the body and the
+            # armour (or the CRC). Admit a short run only when a run of body
+            # length stands directly behind it: prose never does (council
+            # pass 6 -- the walk used to stop here and leave the whole body).
+            if not _body_run_directly_before(text, run):
+                return start
         start = run
         nearest = False
+
+
+def _body_run_directly_before(text: str, pos: int) -> bool:
+    """Whether a whitespace-separated run of body length ends just before ``pos``."""
+    gap = pos
+    while gap > 0 and text[gap - 1] in " \t":
+        gap -= 1
+    if gap == pos:
+        return False
+    run = gap
+    while run > 0 and text[run - 1] in _INLINE_RUN_CHARS:
+        run -= 1
+    return gap - run >= _INLINE_RUN_LENGTH
 
 
 def _private_key_spans(text: str) -> list[tuple[int, int]]:
