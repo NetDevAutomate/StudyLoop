@@ -938,8 +938,14 @@ def _missing_sql(
     )
 
 
-def _upsert_sql(table: str, cols: list[str], key: tuple[str, ...]) -> str:
-    """Insert new rows and update rows whose columns differ; never a delete."""
+def _upsert_sql(
+    table: str, cols: list[str], key: tuple[str, ...], *, exclude: str | None = None
+) -> str:
+    """Insert new rows and update rows whose columns differ; never a delete.
+
+    ``exclude`` names a temp table of ``id`` values to leave alone (the messages
+    whose prose is kept under a revision id instead, pass 8 F2).
+    """
     non_key = [c for c in cols if c not in key]
     target = ", ".join(_q(c) for c in key)
     if non_key:
@@ -950,9 +956,11 @@ def _upsert_sql(table: str, cols: list[str], key: tuple[str, ...]) -> str:
         conflict = f"ON CONFLICT({target}) DO UPDATE SET {assignments} WHERE {differs}"
     else:
         conflict = f"ON CONFLICT({target}) DO NOTHING"
+    excluded = f" AND h.id NOT IN (SELECT id FROM {exclude})" if exclude else ""
     return (
         f"INSERT INTO main.{_q(table)} ({', '.join(_q(c) for c in cols)}) "
         + _missing_sql(table, cols, key, keys_only=False)
+        + excluded
         + f" {conflict}"
     )
 
@@ -1132,8 +1140,6 @@ def _copy_payload(conn: sqlite3.Connection, stats: SyncStats) -> bool:
     from .tiering_registry import PAYLOAD, Role, columns
 
     cols = {entry.name: columns(conn, entry.name, "main") for entry in PAYLOAD}
-    message_cols = ", ".join(_q(c) for c in cols["messages"])
-    reference_cols = ", ".join(_q(c) for c in cols["file_references"])
 
     # Sessions whose children must be replaced, decided BEFORE the session
     # upsert. ``content_hash`` alone is not enough: the exporters never write it
@@ -1177,36 +1183,40 @@ def _copy_payload(conn: sqlite3.Connection, stats: SyncStats) -> bool:
     for entry in PAYLOAD:
         table, key = entry.name, entry.key
         if table == "messages":
-            # message_concepts references messages with NO ACTION: clear it for
-            # the replaced messages first (the mutable phase restores hot's rows).
-            # The DELETE then cascades file_references, scrub_log, native message
-            # sources and embeddings; each is restored below from hot.
-            conn.execute(
-                "DELETE FROM main.message_concepts WHERE message_id IN (SELECT id FROM "
-                "main.messages WHERE session_id IN (SELECT id FROM temp.tier_changed))"
+            # Full is the archive (pass 8, F2): native histories compact and
+            # expire, and a session re-imported after eviction may be shorter or
+            # re-indexed. So: never delete a full row; where hot's positional id
+            # now carries different prose, keep full's prose under the exporter's
+            # own revision id (exporters/base.py, _preserve_message_identity)
+            # and let the id follow hot, so prune can still verify the session.
+            displaced = _preserve_displaced_prose(conn, cols["messages"])
+            written = (
+                displaced
+                + conn.execute(
+                    _upsert_sql(
+                        "messages",
+                        cols["messages"],
+                        ("id",),
+                        exclude="temp.tier_displaced",
+                    )
+                ).rowcount
             )
-            conn.execute(
-                "DELETE FROM main.messages WHERE session_id IN (SELECT id FROM temp.tier_changed)"
-            )
-            written = conn.execute(
-                f"INSERT INTO main.messages ({message_cols}) SELECT {message_cols} "
-                "FROM hot.messages WHERE session_id IN (SELECT id FROM temp.tier_changed)"
-            ).rowcount
             stats.messages_synced = written
             record(table, written)
         elif table == "file_references":
-            conn.execute(
-                "DELETE FROM main.file_references WHERE session_id IN "
-                "(SELECT id FROM temp.tier_changed)"
-            )
             written = conn.execute(
-                f"INSERT INTO main.file_references ({reference_cols}) SELECT {reference_cols} "
-                "FROM hot.file_references WHERE session_id IN (SELECT id FROM temp.tier_changed)"
+                _upsert_sql("file_references", cols["file_references"], ("id",))
             ).rowcount
             stats.file_references_synced = written
             record(table, written)
+        elif table == "context_native_message_sources":
+            # A displaced message's links (pass 8, F2) point at its revision id
+            # in full; everything else is the ordinary immutable insert.
+            _copy_native_links(conn, cols[table], record)
         elif entry.role is Role.PAYLOAD_IMMUTABLE:
-            _refuse_immutable_collision(conn, table, cols[table], key)
+            _refuse_immutable_collision(
+                conn, table, cols[table], key, entry.compare_ignore
+            )
             missing = _missing_sql(table, cols[table], key, keys_only=True)
             col_list = ", ".join(_q(c) for c in cols[table])
             record(
@@ -1218,6 +1228,7 @@ def _copy_payload(conn: sqlite3.Connection, stats: SyncStats) -> bool:
         else:
             record(table, conn.execute(_upsert_sql(table, cols[table], key)).rowcount)
     conn.execute("DROP TABLE temp.tier_changed")
+    conn.execute("DROP TABLE IF EXISTS temp.tier_displaced")
 
     # A row-maintenance trigger in full (``trg_*_updated_at_*``, ``*_sync_key``)
     # can rewrite a just-copied mutable row. One more upsert pass converges it;
@@ -1238,12 +1249,90 @@ def _copy_payload(conn: sqlite3.Connection, stats: SyncStats) -> bool:
     return clean
 
 
+def _preserve_displaced_prose(conn: sqlite3.Connection, cols: list[str]) -> int:
+    """Keep every captured message in full (pass 8, F2).
+
+    A session re-imported after eviction can be re-indexed: hot's positional id
+    now carries prose that full's row with that id never had, and hot has no
+    old row the exporter could re-key against (``exporters/base.py``,
+    ``_preserve_message_identity``). Full's row keeps its prose and its native
+    links; hot's prose is archived under the exporter's own revision id
+    (``<id>-rev-<sha256(json([role, content]))[:24]>`` with
+    ``metadata.source_record_id``). Those ids are left out of the upsert, and
+    their native links are redirected (``_copy_native_links``). Such a session
+    is not verifiable by prune (hot's row is not literally in full) and stays in
+    hot; nothing captured is lost. Returns the revision rows written.
+    """
+    import hashlib
+    import json
+
+    conn.execute(
+        "CREATE TEMP TABLE IF NOT EXISTS tier_displaced (id TEXT PRIMARY KEY, rev TEXT)"
+    )
+    conn.execute("DELETE FROM temp.tier_displaced")
+    conflicts = conn.execute(
+        "SELECT h.id FROM hot.messages h JOIN main.messages f ON f.id = h.id "
+        "WHERE f.content IS NOT NULL AND trim(f.content) != '' "
+        "AND (f.role IS NOT h.role OR f.content IS NOT h.content)"
+    ).fetchall()
+    written = 0
+    col_list = ", ".join(_q(c) for c in cols)
+    for (message_id,) in conflicts:
+        row = conn.execute(
+            f"SELECT {col_list} FROM hot.messages WHERE id=?", (message_id,)
+        ).fetchone()
+        values = dict(zip(cols, row, strict=True))
+        digest = hashlib.sha256(
+            json.dumps([values["role"], values["content"]]).encode()
+        ).hexdigest()[:24]
+        rev = f"{message_id}-rev-{digest}"
+        conn.execute("INSERT INTO temp.tier_displaced VALUES (?, ?)", (message_id, rev))
+        if conn.execute("SELECT 1 FROM main.messages WHERE id=?", (rev,)).fetchone():
+            continue
+        metadata = json.loads(values.get("metadata") or "{}")
+        metadata["source_record_id"] = message_id
+        values["id"], values["metadata"] = rev, json.dumps(metadata)
+        conn.execute(
+            f"INSERT INTO main.messages ({col_list}) VALUES "
+            f"({', '.join('?' for _ in cols)})",
+            [values[c] for c in cols],
+        )
+        written += 1
+    return written
+
+
+def _copy_native_links(conn: sqlite3.Connection, cols: list[str], record) -> None:
+    """Immutable insert of hot's native message links, displaced ids redirected."""
+    col_list = ", ".join(_q(c) for c in cols)
+    selected = ", ".join(
+        "COALESCE(d.rev, h.message_id)" if c == "message_id" else f"h.{_q(c)}"
+        for c in cols
+    )
+    written = conn.execute(
+        f"INSERT OR IGNORE INTO main.context_native_message_sources ({col_list}) "
+        f"SELECT {selected} FROM hot.context_native_message_sources h "
+        "LEFT JOIN temp.tier_displaced d ON d.id = h.message_id "
+        "WHERE NOT EXISTS (SELECT 1 FROM main.context_native_message_sources x "
+        "WHERE x.message_id = COALESCE(d.rev, h.message_id) "
+        "AND x.evidence_id = h.evidence_id)"
+    ).rowcount
+    record("context_native_message_sources", written)
+
+
 def _refuse_immutable_collision(
-    conn: sqlite3.Connection, table: str, cols: list[str], key: tuple[str, ...]
+    conn: sqlite3.Connection,
+    table: str,
+    cols: list[str],
+    key: tuple[str, ...],
+    ignore: tuple[str, ...] = (),
 ) -> None:
-    """An overlapping immutable key must be column-equal (council pass 7, C1)."""
+    """An overlapping immutable key must be column-equal (council pass 7, C1).
+
+    ``ignore`` names capture metadata (``first_captured_at``) that a re-capture
+    after eviction legitimately changes; full's first value wins (pass 8, F1).
+    """
     on = " AND ".join(f"x.{_q(c)} = h.{_q(c)}" for c in key)
-    same = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in cols)
+    same = " AND ".join(f"x.{_q(c)} IS h.{_q(c)}" for c in cols if c not in ignore)
     row = conn.execute(
         f"SELECT {', '.join(f'h.{_q(c)}' for c in key)} FROM hot.{_q(table)} h "
         f"JOIN main.{_q(table)} x ON {on} WHERE NOT ({same}) LIMIT 1"
@@ -1627,8 +1716,16 @@ def _archive_context_complete(conn):
         cols = columns(conn, entry.name, "main")
         if cols != columns(conn, entry.name, "full"):
             return False
+        # Capture metadata the copier does not compare (first_captured_at) is
+        # not required to match either: full keeps its first capture (pass 8).
+        compared = [c for c in cols if c not in entry.compare_ignore]
         probe = _missing_sql(
-            entry.name, cols, entry.key, keys_only=False, source="main", archive="full"
+            entry.name,
+            compared,
+            entry.key,
+            keys_only=False,
+            source="main",
+            archive="full",
         )
         if conn.execute(probe + " LIMIT 1").fetchone():
             return False

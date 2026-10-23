@@ -73,6 +73,11 @@ class TableRole:
     #: Position in the copy order; parents come before children so every insert
     #: satisfies its foreign keys with ``PRAGMA foreign_keys=ON``. 0 = not copied.
     order: int = 0
+    #: Columns that are capture metadata, not identity: an immutable row whose id
+    #: is a hash of its payload may be re-captured (after eviction and a
+    #: re-export) with a fresh value here. Full's first value wins; these
+    #: columns are left out of the immutable-collision comparison (pass 8, F1).
+    compare_ignore: tuple[str, ...] = ()
 
 
 class UnclassifiedTable(ValueError):
@@ -131,7 +136,9 @@ PAYLOAD: tuple[TableRole, ...] = (
     _payload(22, "context_board_columns", _M, "scope", "key"),
     # schema.py: context_evidence_immutable / assertions_immutable /
     # citations_immutable; relations are insert-only (store.py:475).
-    _payload(23, "context_evidence", _I, "id"),
+    TableRole(
+        "context_evidence", _I, ("id",), 23, compare_ignore=("first_captured_at",)
+    ),
     # capture.py:78 INSERT OR IGNORE only; FK messages(id) ON DELETE CASCADE,
     # restored from hot after a message replacement.
     _payload(24, "context_native_message_sources", _I, "message_id", "evidence_id"),

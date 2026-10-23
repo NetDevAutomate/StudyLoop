@@ -436,7 +436,12 @@ def test_changed_session_replaces_native_without_touching_evidence(mirror):  # R
 
     sync_to_full()
 
-    assert rows(mirror["full"], "messages") == rows(mirror["hot"], "messages")
+    # Pass 8 (opus F2): full is the archive. Hot's rows for the session are all
+    # there (prune can verify it); the compacted-away message stays in full.
+    assert rows(mirror["hot"], "messages") <= rows(mirror["full"], "messages")
+    assert (
+        count(mirror["full"], "SELECT COUNT(*) FROM messages WHERE id=?", victim) == 1
+    )
     assert old_evidence <= rows(mirror["full"], "context_evidence"), "old evidence kept"
     assert rows(mirror["hot"], "context_evidence") <= rows(
         mirror["full"], "context_evidence"
@@ -446,7 +451,7 @@ def test_changed_session_replaces_native_without_touching_evidence(mirror):  # R
         closing(sqlite3.connect(mirror["hot"])) as h,
         closing(sqlite3.connect(mirror["full"])) as f,
     ):
-        assert set(f.execute(native)) == set(h.execute(native)), "native links restored"
+        assert set(h.execute(native)) <= set(f.execute(native)), "native links kept"
         assert fts_integrity(f).healthy
         assert f.execute("PRAGMA foreign_key_check").fetchall() == []
 
@@ -923,3 +928,174 @@ def test_a_corrupt_full_file_is_a_refusal_not_a_traceback(mirror):
         "not a database" in str(info.value).lower()
         or "file is not" in str(info.value).lower()
     )
+
+
+def _reexport(state) -> None:
+    from agent_session_tools.exporters.codex import CodexExporter
+
+    result = CodexExporter(state["archives"]).export_all(
+        _connect(state), incremental=True
+    )
+    assert not result.errors, result.errors
+
+
+def _rewrite_rollout(state, keep_texts: list[str]) -> None:
+    for path in state["archives"].rglob("*.jsonl"):
+        lines = path.read_text().splitlines()
+        kept = [lines[0]] + [ln for ln in lines[1:] if any(t in ln for t in keep_texts)]
+        path.write_text("\n".join(kept) + "\n")
+
+
+def test_reexport_after_prune_keeps_the_mirror_running(mirror):
+    """Pass 8 (opus F1): the cycle export -> sync -> prune -> export -> sync. The
+    re-import re-captures the same evidence id (a hash of the payload) with a
+    fresh first_captured_at; the mirror must treat that as the same evidence
+    (full's first capture wins), not as an immutable collision that refuses
+    every later sync and leaves prune verifying nothing."""
+    from agent_session_tools.tiering import prune_hot
+
+    sid = export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    sync_to_full()
+    first = count(
+        mirror["full"],
+        "SELECT first_captured_at FROM context_evidence WHERE session_id=?",
+        sid,
+    )
+    assert prune_hot(days=30, dry_run=False).sessions_deleted == 1
+    _reexport(mirror)
+    assert count(mirror["hot"], "SELECT COUNT(*) FROM sessions WHERE id=?", sid) == 1
+
+    sync_to_full()  # must not refuse
+
+    assert (
+        count(
+            mirror["full"],
+            "SELECT first_captured_at FROM context_evidence WHERE session_id=?",
+            sid,
+        )
+        == first
+    ), "full keeps its first capture"
+    stats = prune_hot(days=30, dry_run=True)
+    assert stats.skipped_unverified == 0 and stats.candidates == 1, stats
+
+
+def test_reimport_of_an_evicted_session_never_deletes_archived_messages(mirror):
+    """Pass 8 (opus F2): native histories compact and expire. A session that
+    comes back into hot after eviction with a shorter source must not shrink
+    the archive: full keeps the prose hot no longer has, and it stays searchable."""
+    from agent_session_tools.tiering import prune_hot
+
+    export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    sync_to_full()
+    before = rows(mirror["full"], "messages")
+    assert prune_hot(days=30, dry_run=False).sessions_deleted == 1
+    _rewrite_rollout(mirror, ["alpha answer"])
+    _reexport(mirror)
+
+    sync_to_full()
+
+    assert before <= rows(mirror["full"], "messages"), "the archive never shrinks"
+    assert (
+        count(
+            mirror["full"],
+            "SELECT COUNT(*) FROM messages_fts WHERE messages_fts MATCH 'decorators'",
+        )
+        == 1
+    )
+    # Hot's only turn now sits under the positional id full uses for the
+    # question: that prose is archived under a revision id (next test), and the
+    # session is not verifiable by prune -- it stays in hot rather than be lost.
+    stats = prune_hot(days=30, dry_run=True)
+    assert stats.sessions_deleted == 0 and stats.skipped_unverified == 1, stats
+
+
+def test_reindexed_source_keeps_displaced_prose_under_a_revision_id(mirror):
+    """Pass 8 (opus F2, the overwrite case): after eviction the exporter cannot
+    re-key a shifted positional id (hot has no old rows), so hot's `-1` may
+    carry what full's `-1` never was. The mirror keeps full's displaced prose
+    under the exporter's own revision id and lets `-1` follow hot, so prune can
+    still verify the session and nothing captured is lost."""
+    from agent_session_tools.tiering import prune_hot
+
+    sid = export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    sync_to_full()
+    assert prune_hot(days=30, dry_run=False).sessions_deleted == 1
+    # The second turn is now the first: the positional id -1 carries the answer.
+    _rewrite_rollout(mirror, ["alpha answer"])
+    _reexport(mirror)
+    hot_first = count(
+        mirror["hot"],
+        "SELECT content FROM messages WHERE session_id=? ORDER BY rowid LIMIT 1",
+        sid,
+    )
+    assert hot_first == "alpha answer"
+
+    sync_to_full()
+
+    with closing(sqlite3.connect(mirror["full"])) as f:
+        contents = {
+            r[0]
+            for r in f.execute(
+                "SELECT content FROM messages WHERE session_id=?", (sid,)
+            )
+        }
+        assert {"alpha decorators question", "alpha answer"} <= contents, "nothing lost"
+        rev = f.execute(
+            "SELECT id, json_extract(metadata, '$.source_record_id') FROM messages "
+            "WHERE session_id=? AND id LIKE '%-rev-%'",
+            (sid,),
+        ).fetchall()
+        assert len(rev) == 1 and rev[0][1] is not None, rev
+        assert f.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert fts_integrity(f).healthy
+        # Full's positional row keeps its prose and its native link; hot's prose
+        # under that id lives at the revision id, with hot's link redirected.
+        assert (
+            f.execute(
+                "SELECT content FROM messages WHERE id=?", (f"{sid}-1",)
+            ).fetchone()[0]
+            == "alpha decorators question"
+        )
+        linked = {
+            r[0]
+            for r in f.execute(
+                "SELECT message_id FROM context_native_message_sources WHERE message_id LIKE ?",
+                (f"{sid}-%",),
+            )
+        }
+        assert rev[0][0] in linked, linked
+    # Not verifiable (hot's -1 is not literally in full): prune keeps the session.
+    stats = prune_hot(days=30, dry_run=True)
+    assert stats.sessions_deleted == 0 and stats.skipped_unverified == 1, stats
+    # Idempotent: a second sync writes nothing more.
+    assert sync_to_full().rows_copied == {}
+
+
+def test_merged_duplicates_still_mirror(mirror):
+    """Pass 8 (opus F3): find-duplicates --merge re-parents messages in hot
+    (UPDATE messages SET session_id); the mirror must follow the move instead
+    of colliding on the message id under the deleted duplicate."""
+    from agent_session_tools.deduplication import merge_duplicates
+
+    # Evidence-free sessions (opencode and pi capture none): the only kind the
+    # physical merge still accepts.
+    conn = _connect(mirror)
+    for sid, mid in (("oc_a", "oc_a-1"), ("oc_b", "oc_b-1")):
+        conn.execute(
+            "INSERT INTO sessions(id,source,updated_at) VALUES (?,'opencode','2020-01-01')",
+            (sid,),
+        )
+        conn.execute(
+            "INSERT INTO messages(id,session_id,role,content) VALUES (?,?,'user','same prose')",
+            (mid, sid),
+        )
+    conn.commit()
+    sync_to_full()
+    merge_duplicates(conn, "oc_a", ["oc_b"])
+    conn.commit()
+
+    sync_to_full()  # must not refuse
+
+    assert rows(mirror["hot"], "messages") <= rows(mirror["full"], "messages")
+    with closing(sqlite3.connect(mirror["full"])) as f:
+        assert f.execute("PRAGMA foreign_key_check").fetchall() == []
