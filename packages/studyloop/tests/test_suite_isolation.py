@@ -17,12 +17,19 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from types import ModuleType
 
 import pytest
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _WORKSPACE_ROOT = _TESTS_DIR.parents[2]
+
+if str(_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TESTS_DIR))
+
+from _conftest_access import (  # noqa: E402
+    loaded_package_conftest,
+    modules_loaded_from_package_conftest,
+)
 
 
 def _conftest_files() -> list[Path]:
@@ -71,17 +78,61 @@ def test_no_test_functions_are_defined_in_conftest() -> None:
 # separate module, so its mkdtemp'd ``_TMUX_TMPDIR_ROOT`` is a different
 # directory from the one ``pytest_sessionstart`` exported -- the tmux guard,
 # copied verbatim, failed for that reason alone the first time it was collected.
+# The lookup lives in ``_conftest_access.py`` so the tests of the conftest's own
+# hooks (test_readiness_scaling.py) reach the same module; the two tests below
+# prove no test module re-imports the file by name and that the run holds one
+# copy of it.
 # ---------------------------------------------------------------------------
 
 
-def _loaded_package_conftest(config: pytest.Config) -> ModuleType:
-    """Return the ``packages/studyloop/tests/conftest.py`` module whose hooks run."""
-    target = _TESTS_DIR / "conftest.py"
-    for plugin in config.pluginmanager.get_plugins():
-        location = getattr(plugin, "__file__", None)
-        if isinstance(plugin, ModuleType) and location and Path(location).resolve() == target:
-            return plugin
-    raise AssertionError(f"pytest did not load {target} as a plugin")
+def _test_modules() -> list[Path]:
+    """Every test module and test helper under this package's tests directory."""
+    return sorted(
+        path
+        for pattern in ("test_*.py", "_*.py")
+        for path in _TESTS_DIR.rglob(pattern)
+        if path.is_file() and ".venv" not in path.parts and "__pycache__" not in path.parts
+    )
+
+
+def test_no_test_module_imports_the_conftest_by_name() -> None:
+    """``import conftest`` / ``from conftest import`` executes the conftest again.
+
+    Under ``--import-mode=importlib`` the plugin pytest registered is
+    ``packages.studyloop.tests.conftest``; a bare-name import is a second,
+    separate execution of the same file (a second ``_SESSION_SCALE``, hooks
+    nothing calls). ``_conftest_access.loaded_package_conftest`` is the way to
+    reach the real one.
+    """
+    offenders: list[str] = []
+    for path in _test_modules():
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import) and any(a.name == "conftest" for a in node.names):
+                offenders.append(f"{path.relative_to(_TESTS_DIR)}:{node.lineno}")
+            if isinstance(node, ast.ImportFrom) and node.module == "conftest" and node.level == 0:
+                offenders.append(f"{path.relative_to(_TESTS_DIR)}:{node.lineno}")
+    assert not offenders, (
+        "these sites import the package conftest by name, which executes it a second time "
+        "under --import-mode=importlib; use _conftest_access.loaded_package_conftest(config): "
+        + ", ".join(offenders)
+    )
+
+
+def test_the_package_conftest_is_loaded_exactly_once(pytestconfig: pytest.Config) -> None:
+    """One module object executed from ``conftest.py``: the plugin pytest registered.
+
+    Under the package rootdir (``pytest packages/studyloop``, prepend mode) that
+    module is ``sys.modules["conftest"]`` and a bare import would return it; under
+    the workspace rootdir (``just test``, importlib mode) it is
+    ``packages.studyloop.tests.conftest`` and a bare import adds a second copy
+    named ``conftest``. This file sorts after ``test_readiness_scaling.py``, the
+    last module that used to import by name, so a regression there shows up here
+    in the same run.
+    """
+    loaded = modules_loaded_from_package_conftest()
+    assert len(loaded) == 1, f"the package conftest was executed more than once: {loaded}"
+    assert sys.modules[loaded[0]] is loaded_package_conftest(pytestconfig)
 
 
 def test_session_dir_is_isolated_from_the_real_config_dir(pytestconfig: pytest.Config) -> None:
@@ -96,7 +147,7 @@ def test_session_dir_is_isolated_from_the_real_config_dir(pytestconfig: pytest.C
     """
     import importlib
 
-    conftest = _loaded_package_conftest(pytestconfig)
+    conftest = loaded_package_conftest(pytestconfig)
     real = str(Path.home() / ".config" / "studyloop")
     for module_name in conftest._SESSION_DIR_CONSTANT_MODULES:
         module = importlib.import_module(module_name)
@@ -117,7 +168,7 @@ def test_tmux_socket_is_isolated_from_the_real_tmux_server(pytestconfig: pytest.
     Assertion-only: never itself starts a tmux session, so it cannot trip
     the private-socket guard in pytest_sessionfinish.
     """
-    conftest = _loaded_package_conftest(pytestconfig)
+    conftest = loaded_package_conftest(pytestconfig)
     assert os.environ.get("TMUX_TMPDIR") == str(conftest._TMUX_TMPDIR_ROOT)
     assert "TMUX" not in os.environ
 

@@ -11,6 +11,7 @@ import inspect
 from typing import Any, ClassVar
 
 import pytest
+from _conftest_access import loaded_package_conftest
 
 
 class TestScalingContract:
@@ -127,7 +128,7 @@ class TestTheCollectionHook:
     """One hook — and pytest calls only one function by that name."""
 
     def test_e2e_items_still_get_their_per_test_timeout(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
     ) -> None:
         """The readiness scale must not have displaced the e2e timeout marker.
 
@@ -137,13 +138,9 @@ class TestTheCollectionHook:
         marker, which would have turned a hanging e2e test from a 300s failure into
         a run that never ends. Nothing covered it, so nothing failed.
         """
-
-        # from-import so the one suppression covers it; `conftest.X` would need
-        # one at every use site.
-        from conftest import (
-            E2E_TIMEOUT_SECONDS,  # pyright: ignore[reportAttributeAccessIssue]
-            pytest_collection_modifyitems,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        # The plugin pytest registered, not a bare-name import that would execute
+        # the conftest a second time under --import-mode=importlib.
+        conftest = loaded_package_conftest(pytestconfig)
 
         applied: list[Any] = []
 
@@ -162,17 +159,17 @@ class TestTheCollectionHook:
         already_timed = FakeItem({"e2e", "timeout"})
 
         monkeypatch.delenv("STUDYLOOP_E2E_TIMEOUT_SCALE", raising=False)
-        pytest_collection_modifyitems([e2e_item, plain_item, already_timed])
+        conftest.pytest_collection_modifyitems([e2e_item, plain_item, already_timed])
 
         assert len(applied) == 1, (
             f"expected exactly one timeout marker (the bare e2e item), got {len(applied)}"
         )
-        assert applied[0].args == (E2E_TIMEOUT_SECONDS,), (
-            f"expected a {E2E_TIMEOUT_SECONDS}s budget, got {applied[0].args}"
+        assert applied[0].args == (conftest.E2E_TIMEOUT_SECONDS,), (
+            f"expected a {conftest.E2E_TIMEOUT_SECONDS}s budget, got {applied[0].args}"
         )
 
     def test_the_hook_does_not_touch_the_readiness_scale(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
     ) -> None:
         """Collection must not set the multiplier, however large the run.
 
@@ -181,9 +178,7 @@ class TestTheCollectionHook:
         """
         import _readiness
 
-        from conftest import (
-            pytest_collection_modifyitems,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        conftest = loaded_package_conftest(pytestconfig)
 
         monkeypatch.delenv("STUDYLOOP_E2E_TIMEOUT_SCALE", raising=False)
         monkeypatch.setattr(_readiness, "_scale", 1.0, raising=False)
@@ -195,11 +190,13 @@ class TestTheCollectionHook:
             def add_marker(self, marker) -> None:  # pragma: no cover
                 raise AssertionError("a non-e2e item should not be marked")
 
-        pytest_collection_modifyitems([FakeItem() for _ in range(3599)])
+        conftest.pytest_collection_modifyitems([FakeItem() for _ in range(3599)])
 
         assert _readiness.readiness_scale() == 1.0
 
-    def test_the_header_states_the_multiplier(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_the_header_states_the_multiplier(
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+    ) -> None:
         """Every run must say what sensitivity produced its pass count.
 
         The report that started this work said "500 passed" without recording
@@ -207,26 +204,24 @@ class TestTheCollectionHook:
         """
         import _readiness
 
-        from conftest import (
-            pytest_report_header,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        conftest = loaded_package_conftest(pytestconfig)
 
         # setattr, so monkeypatch restores the module global too. Only setenv-ing
         # left _scale at 3.0 after teardown, and the terminal-summary hook then
         # warned that an unscaled run was scaled.
         monkeypatch.setattr(_readiness, "_scale", 1.0, raising=False)
         monkeypatch.delenv("STUDYLOOP_E2E_TIMEOUT_SCALE", raising=False)
-        unscaled = pytest_report_header()
+        unscaled = conftest.pytest_report_header()
         assert "1.0x" in unscaled
         assert "release configuration" in unscaled
 
         monkeypatch.setenv("STUDYLOOP_E2E_TIMEOUT_SCALE", "3")
-        scaled = pytest_report_header()
+        scaled = conftest.pytest_report_header()
         assert "3.0x" in scaled
         assert "NOT a release-pass configuration" in scaled
 
     def test_the_summary_warning_tracks_the_session_not_the_global(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
     ) -> None:
         """A test mutating the scale must not make an unscaled run look scaled.
 
@@ -238,7 +233,7 @@ class TestTheCollectionHook:
         """
         import _readiness
 
-        import conftest
+        conftest = loaded_package_conftest(pytestconfig)
 
         monkeypatch.setattr(conftest, "_SESSION_SCALE", 1.0, raising=False)
         monkeypatch.setattr(_readiness, "_scale", 3.0, raising=False)
@@ -249,20 +244,15 @@ class TestTheCollectionHook:
             def write_sep(self, sep: str, text: str, **kwargs: object) -> None:
                 written.append(text)
 
-        # Two conftest.py files exist in this repo, so the type checker cannot
-        # tell which module this name resolves to -- the same reason sibling
-        # imports here carry per-symbol ignores.
-        conftest.pytest_terminal_summary(  # pyright: ignore[reportAttributeAccessIssue]
-            FakeReporter()  # pyright: ignore[reportArgumentType]
-        )
+        conftest.pytest_terminal_summary(FakeReporter())
 
         assert written == [], f"warned about scaling on an unscaled session: {written}"
 
     def test_the_summary_warns_when_the_session_really_was_scaled(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
     ) -> None:
         """And it must still fire when it matters, under -q as well."""
-        import conftest
+        conftest = loaded_package_conftest(pytestconfig)
 
         monkeypatch.setattr(conftest, "_SESSION_SCALE", 3.0, raising=False)
 
@@ -272,12 +262,7 @@ class TestTheCollectionHook:
             def write_sep(self, sep: str, text: str, **kwargs: object) -> None:
                 written.append(text)
 
-        # Two conftest.py files exist in this repo, so the type checker cannot
-        # tell which module this name resolves to -- the same reason sibling
-        # imports here carry per-symbol ignores.
-        conftest.pytest_terminal_summary(  # pyright: ignore[reportAttributeAccessIssue]
-            FakeReporter()  # pyright: ignore[reportArgumentType]
-        )
+        conftest.pytest_terminal_summary(FakeReporter())
 
         assert len(written) == 1
         assert "NOT a release result" in written[0]
@@ -342,8 +327,15 @@ class TestHollowRunGuard:
     """
 
     @staticmethod
-    def _run(monkeypatch: pytest.MonkeyPatch, *, required: str | None, passed: int, skipped: int):
-        import conftest
+    def _run(
+        monkeypatch: pytest.MonkeyPatch,
+        config: pytest.Config,
+        *,
+        required: str | None,
+        passed: int,
+        skipped: int,
+    ):
+        conftest = loaded_package_conftest(config)
 
         if required is None:
             monkeypatch.delenv("STUDYLOOP_MIN_PASSED", raising=False)
@@ -373,40 +365,54 @@ class TestHollowRunGuard:
             exitstatus = 0
 
         session = FakeSession()
-        conftest.pytest_sessionfinish(session, 0)  # pyright: ignore[reportAttributeAccessIssue]
+        conftest.pytest_sessionfinish(session, 0)
         return session, written
 
-    def test_a_hollow_run_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_a_hollow_run_fails(
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+    ) -> None:
         """400 of 500 tests skipping because ttyd vanished must not read green."""
-        session, written = self._run(monkeypatch, required="450", passed=100, skipped=400)
+        session, written = self._run(
+            monkeypatch, pytestconfig, required="450", passed=100, skipped=400
+        )
 
         assert session.exitstatus == 1
         assert "HOLLOW RUN" in written[0]
         assert "400 skipped" in written[0]
 
-    def test_a_full_run_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        session, written = self._run(monkeypatch, required="450", passed=500, skipped=20)
+    def test_a_full_run_passes(
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+    ) -> None:
+        session, written = self._run(
+            monkeypatch, pytestconfig, required="450", passed=500, skipped=20
+        )
 
         assert session.exitstatus == 0
         assert written == []
 
-    def test_exactly_the_minimum_is_enough(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        session, _ = self._run(monkeypatch, required="500", passed=500, skipped=0)
+    def test_exactly_the_minimum_is_enough(
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+    ) -> None:
+        session, _ = self._run(monkeypatch, pytestconfig, required="500", passed=500, skipped=0)
 
         assert session.exitstatus == 0
 
-    def test_unset_leaves_local_runs_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_unset_leaves_local_runs_alone(
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+    ) -> None:
         """Running one file must not trip a suite-sized threshold."""
-        session, written = self._run(monkeypatch, required=None, passed=3, skipped=0)
+        session, written = self._run(monkeypatch, pytestconfig, required=None, passed=3, skipped=0)
 
         assert session.exitstatus == 0
         assert written == []
 
     def test_a_garbage_threshold_is_ignored_rather_than_fatal(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
     ) -> None:
         """A typo in CI config must not fail every run for the wrong reason."""
-        session, written = self._run(monkeypatch, required="lots", passed=1, skipped=0)
+        session, written = self._run(
+            monkeypatch, pytestconfig, required="lots", passed=1, skipped=0
+        )
 
         assert session.exitstatus == 0
         assert written == []
