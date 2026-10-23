@@ -241,6 +241,59 @@ class TestBuildCanonicalPersona:
         assert isinstance(content, str)
         assert content.strip()
 
+    def test_focus_mode_is_served_the_study_persona_under_its_own_label(self) -> None:
+        """``focus`` has no persona file; the builder's mode->file table maps it
+        to ``study.md`` while the header keeps the dashboard's label (council
+        pass 5, Q1 option b)."""
+        from studyloop.agent_launcher import PERSONA_DIR, build_canonical_persona
+
+        study_body = (PERSONA_DIR / "study.md").read_text(encoding="utf-8")
+        focus = build_canonical_persona("focus", "Python", 5)
+
+        assert "**Mode:** focus" in focus
+        # The body is the study persona (after its path substitutions), not the
+        # four-line fallback.
+        assert "# Study Mode — Socratic Mentor (Agent Drives)" in focus
+        assert study_body.splitlines()[0] in focus
+        assert "You are a Socratic study mentor. Drive the session" not in focus
+
+    def test_missing_template_logs_one_warning_naming_mode_and_path_not_topic(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """When no persona file exists the builder still returns a document, and
+        says so ONCE in the log with the mode and the missing path -- never the
+        topic, which is learner content (council pass 5, Q1 fallback policy ii;
+        silence is how the web focus fallback survived five weeks)."""
+        import logging
+
+        import studyloop.agent_launcher as launcher
+
+        monkeypatch.setattr(launcher, "PERSONA_DIR", tmp_path / "no-personas")
+        topic = "A topic that must not be logged"
+
+        with caplog.at_level(logging.WARNING, logger="studyloop.agent_launcher"):
+            content = launcher.build_canonical_persona("study", topic, 5)
+
+        assert content.strip()
+        assert "**Topic:** A topic that must not be logged" in content
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1, [r.getMessage() for r in caplog.records]
+        message = warnings[0].getMessage()
+        assert "study" in message
+        assert str(tmp_path / "no-personas" / "study.md") in message
+        assert topic not in message
+
+    def test_present_template_logs_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        from studyloop.agent_launcher import build_canonical_persona
+
+        with caplog.at_level(logging.WARNING, logger="studyloop.agent_launcher"):
+            build_canonical_persona("study", "Python", 5)
+            build_canonical_persona("focus", "Python", 5)
+
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []
+
 
 # ---------------------------------------------------------------------------
 # Claude adapter functions directly
