@@ -837,3 +837,89 @@ def test_a_trigger_that_rolls_back_is_reported_as_a_refusal(mirror):
     assert (
         count(mirror["hot"], "SELECT count(*) FROM messages WHERE session_id=?", a) == 2
     )
+
+
+# --- council pass 8 (coordinator units) -------------------------------------
+
+
+def _unbind(full: Path) -> None:
+    with closing(sqlite3.connect(full)) as conn:
+        conn.execute("DELETE FROM tiering_mirror_state")
+        conn.commit()
+
+
+def _rebind_to(full: Path, instance: str) -> None:
+    with closing(sqlite3.connect(full)) as conn:
+        conn.execute(
+            "UPDATE tiering_mirror_state SET canonical_instance=?", (instance,)
+        )
+        conn.commit()
+
+
+def test_prune_refuses_a_full_that_is_not_bound_to_this_hot(mirror):
+    """Pass 8 (luna B1): ``prune_hot`` deletes from hot on the strength of rows it
+    finds in ``full``; it must first prove that full is THIS hot's mirror. A
+    full written by someone else, or bound to another instance, can hold the
+    same rows (the same learner on two machines exports the same transcripts)
+    and is still not this database's archive."""
+    from agent_session_tools.tiering import prune_hot
+
+    export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    sync_to_full()
+    _rebind_to(mirror["full"], "someone-else")
+    with pytest.raises(TieringRefused) as info:
+        prune_hot(days=0, dry_run=False)
+    assert info.value.reason == "instance_mismatch"
+    assert count(mirror["hot"], "SELECT COUNT(*) FROM sessions") == 1
+
+    _unbind(mirror["full"])
+    with pytest.raises(TieringRefused) as info:
+        prune_hot(days=0, dry_run=True)
+    assert info.value.reason == "unbound_full"
+    assert count(mirror["hot"], "SELECT COUNT(*) FROM sessions") == 1
+
+
+def test_prune_refuses_an_unclassified_table_by_name(mirror):
+    """Pass 8 (sol S6): the docs promise prune refuses like sync-full does; it
+    used to log a warning, verify nothing and report every candidate skipped."""
+    from agent_session_tools.tiering import prune_hot
+
+    export(mirror, "alpha", ["alpha decorators question", "alpha answer"], day=1)
+    sync_to_full()
+    for path in (mirror["hot"], mirror["full"]):
+        with closing(sqlite3.connect(path)) as conn:
+            conn.execute("CREATE TABLE context_future (id TEXT PRIMARY KEY)")
+            conn.commit()
+    with pytest.raises(TieringRefused) as info:
+        prune_hot(days=0, dry_run=True)
+    assert info.value.reason == "unclassified_table"
+    assert info.value.table == "context_future"
+
+
+def test_sync_refuses_an_unclassified_table_that_only_full_has(mirror):
+    """Pass 8 (sol S3): fail-closed classification covered hot only; a table in
+    the bound full that the registry cannot name (FK-linked to payload or not)
+    must refuse before the changed-session deletion can cascade through it."""
+    two_sessions(mirror)
+    sync_to_full()
+    with closing(sqlite3.connect(mirror["full"])) as conn:
+        conn.execute("CREATE TABLE context_future (id TEXT PRIMARY KEY)")
+        conn.commit()
+    with pytest.raises(TieringRefused) as info:
+        sync_to_full()
+    assert info.value.reason == "unclassified_table"
+    assert info.value.table == "context_future"
+
+
+def test_a_corrupt_full_file_is_a_refusal_not_a_traceback(mirror):
+    """Pass 8 (sol S2 / luna M1): an existing full path that is not a SQLite
+    database failed at ``PRAGMA user_version`` with a bare ``DatabaseError``."""
+    export(mirror, "alpha", ["alpha decorators question"], day=1)
+    mirror["full"].write_text("this is not a database\n")
+    with pytest.raises(TieringRefused) as info:
+        sync_to_full()
+    assert info.value.reason == "full_store_unavailable"
+    assert (
+        "not a database" in str(info.value).lower()
+        or "file is not" in str(info.value).lower()
+    )

@@ -246,3 +246,21 @@ class TestRefocusRefusal:
         assert "Traceback" not in flat
         assert "Legacy SQL sync cannot transfer" in flat
         assert "focus saved" in flat
+
+    def test_focus_apply_does_not_swallow_an_unrelated_runtime_error(
+        self, isolated_config, monkeypatch
+    ):
+        """Pass 8 (sol S7): only the legacy refusal is an expected refusal; any
+        other RuntimeError is a defect and must stay observable."""
+        from agent_session_tools import tiering
+
+        def explode(*_args, **_kwargs):
+            raise RuntimeError("lifecycle invariant broken")
+
+        monkeypatch.setattr(tiering, "refocus", explode)
+        runner = CliRunner()
+        runner.invoke(cli, ["focus", "set", "python", "--no-refocus"])
+
+        result = runner.invoke(cli, ["focus", "apply"])
+
+        assert isinstance(result.exception, RuntimeError), result.output

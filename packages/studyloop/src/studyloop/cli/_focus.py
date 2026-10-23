@@ -115,6 +115,7 @@ def _apply_refocus(days: int, dry_run: bool = False) -> None:
     from studyloop.focus import get_focus
 
     try:
+        from agent_session_tools.replication.legacy import LegacySyncRefused
         from agent_session_tools.tiering import refocus
     except ImportError:
         console.print(
@@ -136,11 +137,11 @@ def _apply_refocus(days: int, dry_run: bool = False) -> None:
     except FileNotFoundError as exc:
         console.print(f"[yellow]Deferred: {exc}[/yellow]")
         return
-    except RuntimeError as exc:
-        # agent_session_tools.replication.legacy.LegacySyncRefused: refocus still
-        # runs the legacy guard against the full database, which refuses as soon
-        # as that database carries any context row -- after the first mirror
-        # sync (plan 6). The focus is saved; only the data movement is refused.
+    except LegacySyncRefused as exc:
+        # refocus still runs the legacy guard against the full database, which
+        # refuses as soon as that database carries any context row -- after the
+        # first mirror sync (plan 6). The focus is saved; only the data movement
+        # is refused. Any other RuntimeError is a defect and stays observable.
         console.print(
             f"[yellow]Refocus refused -- focus saved, data movement skipped: {exc}[/yellow]"
         )

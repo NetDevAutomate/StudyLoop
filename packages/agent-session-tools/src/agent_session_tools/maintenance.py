@@ -1718,9 +1718,12 @@ def prune(
     """Prune old sessions from the hot DB — only those verified in the full DB.
 
     Runs in dry-run mode by default; pass --no-dry-run to actually delete.
-    A session is only deleted when the full DB holds the same session with a
-    matching content hash and at least as many messages. Learning tables are
-    never touched.
+    The full DB must be the mirror bound to this database (run sync-full
+    first). A session is deleted only when the full DB holds the same session
+    row and exactly its messages, every mirrored memory and learner row of this
+    database is present there, the permanent controls agree, and the full DB
+    passes its foreign-key check; a session that owns learner records is never
+    a candidate.
     """
     from agent_session_tools.tiering import TieringRefused, prune_hot
 

@@ -663,14 +663,35 @@ def _mirror_preflight(
     if not full.exists() or full.stat().st_size == 0:
         return plan
     plan.full_exists = True
-    with closing(_open_ro(full)) as conn:
-        version = conn.execute("PRAGMA user_version").fetchone()[0]
+    try:
+        full_conn = _open_ro(full)
+    except sqlite3.Error as exc:  # a directory, an unreadable volume, ...
+        raise TieringRefused("full_store_unavailable", f"{full}: {exc}") from exc
+    with closing(full_conn) as conn:
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.DatabaseError as exc:  # exists but is not a SQLite database
+            raise TieringRefused("full_store_unavailable", f"{full}: {exc}") from exc
         if version > CURRENT_VERSION:
             raise TieringRefused(
                 "schema_mismatch",
                 f"the full database is at schema {version}, newer than this build "
                 f"({CURRENT_VERSION})",
             )
+        # Pass 8 (sol S3): fail-closed classification covers the full tier too. A
+        # table the registry cannot name in full -- FK-linked to payload or not --
+        # must refuse before the changed-session deletion can cascade through it.
+        # A full behind the current schema is classified after init_db migrates
+        # it, in _mirror_copy's own check; here it is the file as found.
+        if version == CURRENT_VERSION:
+            try:
+                classify_database(conn)
+            except UnclassifiedTable as exc:
+                raise TieringRefused(
+                    "unclassified_table",
+                    f"in the full database: {exc}",
+                    table=exc.table,
+                ) from exc
         _refuse_peer_ledger(conn, "main", "full")
         if _table_exists(conn, MIRROR_TABLE):
             row = conn.execute(
@@ -745,6 +766,46 @@ def _bind_full(full: Path, plan: _MirrorPlan) -> bool:
             raise
     finally:
         conn.close()
+
+
+def _require_prune_binding(conn: sqlite3.Connection) -> None:
+    """Refuse to prune against a full that is not bound to the attached hot (``main``)."""
+    from .tiering_registry import MIRROR_TABLE
+
+    instance = conn.execute(
+        "SELECT instance FROM main.context_access_state WHERE id=1"
+    ).fetchone()[0]
+    row = None
+    if _table_exists(conn, MIRROR_TABLE, "full"):
+        row = conn.execute(
+            f"SELECT canonical_instance FROM full.{MIRROR_TABLE} WHERE id=1"
+        ).fetchone()
+    if row is None:
+        # No binding: the one other provable case is a copy of this very
+        # database (a backup made from hot carries hot's own access-state
+        # instance), which is this learner's data by construction. A full that
+        # init_db seeded on its own -- the old copier's output, or anyone
+        # else's -- has a different instance and is refused.
+        own = None
+        if _table_exists(conn, "context_access_state", "full"):
+            got = conn.execute(
+                "SELECT instance FROM full.context_access_state WHERE id=1"
+            ).fetchone()
+            own = got[0] if got else None
+        if own is not None and own == instance:
+            return
+        raise TieringRefused(
+            "unbound_full",
+            "the full database carries no mirror binding and is not a copy of this "
+            "database; run sync-full first (a full written by the old copier is "
+            "not this database's archive)",
+        )
+    if row[0] != instance:
+        raise TieringRefused(
+            "instance_mismatch",
+            f"the full database is bound to instance {row[0]}; the hot database is "
+            f"instance {instance}",
+        )
 
 
 def _require_bound_to(canonical_instance: str | None, plan: _MirrorPlan) -> None:
@@ -1381,6 +1442,23 @@ def prune_hot(
         if modern:
             # Hold verification and eviction in the same attached-DB transaction.
             conn.execute("BEGIN IMMEDIATE")
+            # Pass 8 (luna B1): prune deletes from hot on the strength of rows it
+            # finds in full, so full must first be proven to be THIS database's
+            # mirror. Matching rows are not proof: the same learner on two
+            # machines exports the same transcripts, and a full written by the
+            # old copier is nobody's bound archive.
+            _require_prune_binding(conn)
+            # Pass 8 (sol S6): an unclassified table in hot is a named refusal
+            # here, as it is for sync-full and as the docs say -- not a silent
+            # "every candidate skipped".
+            from .tiering_registry import UnclassifiedTable, classify_database
+
+            try:
+                classify_database(conn, "main")
+            except UnclassifiedTable as exc:
+                raise TieringRefused(
+                    "unclassified_table", str(exc), table=exc.table
+                ) from exc
 
         # A session's age is its newest known timestamp -- the rule delete and
         # archive apply (F-AST-06, maintenance._SESSION_AGE_SQL). updated_at
@@ -1532,6 +1610,8 @@ def _archive_context_complete(conn):
     try:
         classify_database(conn, "main")
     except UnclassifiedTable as exc:
+        # The predicate stays a predicate (false); prune_hot refuses by name
+        # before it gets here (pass 8, sol S6), so this is the probe-only path.
         logger.warning("prune: %s -- nothing is evicted until this build knows it", exc)
         return False
     remote = set(_user_tables(conn, "full"))
