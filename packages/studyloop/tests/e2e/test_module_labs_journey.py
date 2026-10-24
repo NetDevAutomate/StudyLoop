@@ -3,7 +3,8 @@ keyboard -> reload re-attaches -> cancel -> the check reaches the mentor -> `mod
 Labs gone. Real server, real Alpine, the real CLI in subprocesses, the deterministic harness
 agent -- no stubbed selectors, no mocked fetches.
 
-  Phase 1  With no module installed there is NO Labs entry (web-ui spec scenario 1) and no
+  Phase 1  With no module installed there is NO Labs entry (web-ui spec "Labs is hidden with an
+           empty lockfile") and no
            prerequisite text anywhere on the page (Persona A step 1, design.md §6)
   Phase 2  `studyloop module add` twice (the two fixture modules); reload; exactly one Labs
            entry; the view lists decks and tasks BY ID AND PROMPT, grouped by module, and the

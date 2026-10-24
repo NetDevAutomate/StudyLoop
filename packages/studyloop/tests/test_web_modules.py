@@ -6,7 +6,8 @@ Three surfaces, all driven through ``TestClient`` against the real app
 * ``GET /api/session/options`` carries a ``labs`` entry only when ``modules.lock.json``
   lists a module (web-ui spec, scenarios 1-2); ``GET /api/modules/labs`` lists the same
   decks and tasks by id and prompt (plus ``successCriteria``), and **never** ``hint``,
-  ``solution`` or ``mentorNotes`` (spec scenario 3, proposal §5.6, C7).
+  ``solution`` or ``mentorNotes`` (web-ui spec "the learner never sees the solution in the UI",
+  proposal §5.6, C7).
 * ``POST /api/modules/labs/start`` reuses the one session-start path: with no session it
   starts the claimed session for the drill (201, the start payload plus ``drill``); with
   the session live it binds the drill to it (200, ``attached``); no phase runs
@@ -288,7 +289,8 @@ def _assert_no_mentor_material(payload: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# the Labs entry (web-ui spec scenarios 1-3)
+# the Labs entry (web-ui spec "Labs is hidden with an empty lockfile", "Labs lists drills
+# after `module add`", "the learner never sees the solution in the UI")
 # ---------------------------------------------------------------------------
 
 

@@ -26,7 +26,8 @@ _AGENT_FALLBACK_BINARIES = {name: HARNESSES[name].binary for name in RELEASE_HAR
 def get_session_options(request: Request, refresh: bool = False) -> dict[str, Any]:
     """Return local study choices for the web session picker.
 
-    ``labs`` (module-contract v1, web-ui spec scenarios 1-2) is present only when
+    ``labs`` (module-contract v1, web-ui spec "Labs is hidden with an empty
+    lockfile" / "Labs lists drills after `module add`") is present only when
     ``modules.lock.json`` lists at least one module -- absent, not empty, otherwise -- and
     is read fresh on every call rather than through the filesystem index above: the
     lockfile is not part of that index's fingerprint, and a ``module add`` while the server

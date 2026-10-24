@@ -8,8 +8,10 @@ Three surfaces, all under ``/api/modules``:
     lane C's lockfile and snapshots on every call -- ``module add`` / ``module remove`` while
     the server runs are visible on the next request. Nothing mentor-side ever leaves this
     process: ``hint``, ``solution`` and ``mentorNotes`` reach the learner through the mentor
-    alone (proposal §5.6, web-ui spec scenario 3, C7). ``GET /session/options`` carries the
-    same list under ``labs`` only when it is non-empty (web-ui spec scenarios 1-2).
+    alone (proposal §5.6, web-ui spec "the learner never sees the solution in the UI", C7).
+    ``GET /session/options`` carries the same list under ``labs`` only when it is non-empty
+    (web-ui spec "Labs is hidden with an empty lockfile" and "Labs lists drills after
+    `module add`").
 
 ``POST /modules/labs/start`` / ``POST /modules/labs/cancel``
     "Starting a drill uses the existing session start + terminal inside the one claimed

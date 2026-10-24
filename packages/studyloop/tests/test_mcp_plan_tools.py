@@ -764,7 +764,8 @@ def test_browse_and_prepare_refusals_are_mapped_too(monkeypatch, forbid_store) -
 
 
 def test_discover_inspect_create_revise_activate_journey() -> None:
-    """mcp-server delta, "Study-plan discovery and authoring tools", scenario 1."""
+    """mcp-server, "Study-plan discovery and authoring tools": "Discover, inspect, create,
+    revise, activate"."""
     interview = _tool("get_planning_interview")()
     assert {q["key"] for q in interview["questions"]} >= {"why", "success", "milestones"}
     assert interview["existing_plans"] == []
@@ -808,7 +809,8 @@ def test_discover_inspect_create_revise_activate_journey() -> None:
 
 
 def test_refused_activation_of_a_real_document_carries_blockers_and_writes_nothing() -> None:
-    """Scenario 2: the refusal names the blockers; the document is byte-identical after."""
+    """ "Refused activation carries the blockers and writes nothing": the refusal names the
+    blockers; the document is byte-identical after."""
     created = _tool("create_study_plan")("Husk", {}, plan_id="husk")
     assert created["readiness"]["ready"] is False
     before = store.load_plan_text("husk")
@@ -831,7 +833,7 @@ def test_create_with_active_status_is_gated_the_same_way() -> None:
 
 
 def test_duplicate_create_through_the_real_seam_preserves_the_existing_plan() -> None:
-    """Scenario 3: no overwrite — a second create on the same id is a conflict
+    """ "No overwrite through the MCP door": a second create on the same id is a conflict
     and the learner's document is untouched."""
     _tool("create_study_plan")("Python Decorators", {"why": "Original."}, plan_id="decorators")
     before = store.load_plan_text("decorators")
@@ -1287,7 +1289,8 @@ def test_record_plan_learning_on_a_real_active_husk_is_refused_and_writes_nothin
 
 
 def test_set_milestone_journey_second_identical_call_is_a_no_op() -> None:
-    """mcp-server delta, "Study-plan progression and deletion tools", scenario 1:
+    """mcp-server, "Study-plan progression and deletion tools": "A retried milestone set is a
+    no-op":
     set, not toggle — the retry returns the same view and rewrites nothing."""
     plan_id = _ready_plan_on_disk()
 
@@ -1325,7 +1328,8 @@ def test_set_milestone_outside_the_plan_is_invalid_milestone_and_writes_nothing(
 
 
 def test_set_milestone_on_a_real_active_husk_is_refused_and_writes_nothing() -> None:
-    """Scenario 2: the seam's gate, not the adapter's — an active document
+    """ "Milestone set on an active-but-unready document is refused": the seam's gate, not
+    the adapter's — an active document
     that is unready is refused with the blockers and "pause it or repair",
     and its bytes are untouched."""
     _legacy_active_husk()
@@ -1343,7 +1347,8 @@ def test_set_milestone_on_a_real_active_husk_is_refused_and_writes_nothing() -> 
 
 
 def test_evaluate_preview_writes_neither_sink() -> None:
-    """Scenario 3: ``record=False`` (the default) computes the evaluation and
+    """ "Evaluate preview writes nothing": ``record=False`` (the default) computes the
+    evaluation and
     touches nothing — the document is byte-identical and the checkpoint log
     is empty; the response says so with ``not_requested`` on both sinks."""
     plan_id = _ready_plan_on_disk()
@@ -1368,7 +1373,8 @@ def test_evaluate_preview_writes_neither_sink() -> None:
 
 
 def test_evaluate_record_true_reports_both_sinks_and_the_log_grows() -> None:
-    """Scenario 4: ``record=True`` writes the durable log and the document's
+    """ "Evaluate record reports both sinks": ``record=True`` writes the durable log and the
+    document's
     Checkpoints table, and reports each as ``saved``."""
     plan_id = _ready_plan_on_disk()
     _tool("set_study_plan_status")(plan_id, "active")
@@ -1387,7 +1393,8 @@ def test_evaluate_record_true_reports_both_sinks_and_the_log_grows() -> None:
 
 
 def test_evaluate_partial_failure_surfaces_as_warnings_on_the_real_seam(monkeypatch) -> None:
-    """Scenario 5: the database sink fails, the document sink lands; the tool
+    """ "A failed sink is a warning, not a success and not an error": the database sink fails,
+    the document sink lands; the tool
     returns (no error) with ``db_write: failed``, ``recording_complete: false``
     and the seam's warning — never a bare success."""
     plan_id = _ready_plan_on_disk()
@@ -1435,7 +1442,8 @@ def test_evaluate_unknown_phase_is_the_seams_invalid_refusal() -> None:
 
 
 def test_delete_without_confirmation_is_refused_and_the_plan_still_exists() -> None:
-    """Scenario 6: ``confirmed`` defaults to ``False``; the seam refuses with
+    """ "Delete requires confirmation": ``confirmed`` defaults to ``False``; the seam refuses
+    with
     ``invalid:`` naming the flag, and the document is untouched."""
     plan_id = _ready_plan_on_disk()
     before = store.load_plan_text(plan_id)
@@ -1452,7 +1460,8 @@ def test_delete_without_confirmation_is_refused_and_the_plan_still_exists() -> N
 
 
 def test_delete_confirmed_returns_delete_result_and_keeps_the_checkpoint_history() -> None:
-    """Scenario 7: a confirmed delete removes the document and its index row;
+    """ "Confirmed delete keeps the checkpoint history": a confirmed delete removes the document
+    and its index row;
     the durable checkpoint log is evidence about the learner and survives."""
     plan_id = _ready_plan_on_disk()
     _tool("set_study_plan_status")(plan_id, "active")
@@ -1492,7 +1501,8 @@ def test_delete_missing_plan_is_not_found_before_confirmation_is_judged() -> Non
 
 
 def test_milestone_retry_does_not_call_save_plan(monkeypatch) -> None:
-    """Scenario 1's "rewrites nothing", proven at the writer: after the first
+    """ "A retried milestone set is a no-op" — its "rewrites nothing", proven at the writer:
+    after the first
     set, ``store.save_plan`` is replaced by a tripwire, and the identical retry
     returns the same view without ever reaching it."""
     plan_id = _ready_plan_on_disk()
@@ -1509,7 +1519,8 @@ def test_milestone_retry_does_not_call_save_plan(monkeypatch) -> None:
 
 
 def test_evaluate_preview_preserves_existing_checkpoint_rows() -> None:
-    """Scenario 3, strengthened: a preview after a recorded checkpoint leaves
+    """ "Evaluate preview writes nothing", strengthened: a preview after a recorded checkpoint
+    leaves
     the recorded row — and the document's Checkpoints table — exactly as
     they were, not merely "still empty"."""
     plan_id = _ready_plan_on_disk()
@@ -1529,7 +1540,8 @@ def test_evaluate_preview_preserves_existing_checkpoint_rows() -> None:
 def test_evaluate_document_failure_reports_saved_database_and_failed_document(
     monkeypatch,
 ) -> None:
-    """The mirror of scenario 5: the log takes the checkpoint, the document
+    """The mirror of "A failed sink is a warning, not a success and not an error": the log
+    takes the checkpoint, the document
     write raises; the tool returns ``db_write: saved``, ``document_write:
     failed``, ``recording_complete: false`` and the seam's document warning
     — the checkpoint row exists, the document is byte-identical."""
