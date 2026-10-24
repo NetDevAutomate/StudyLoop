@@ -84,6 +84,9 @@ async def test_full_handshake_list_tools_and_call(isolated_config):
         assert names >= CORE_TOOLS, f"missing core tools: {CORE_TOOLS - names}"
         assert names >= PLAN_TOOLS, f"missing plan tools: {PLAN_TOOLS - names}"
         assert "record_plan_learning" in names
+        # The 33rd tool (learning tier item 1): by name, so an unrelated
+        # addition can never mask its loss behind an unchanged count.
+        assert "record_teachback" in names
 
         call_result = await session.call_tool("list_courses", {})
         assert not call_result.isError

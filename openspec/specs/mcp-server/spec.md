@@ -11,10 +11,10 @@ separate and out of scope for this capability.
 ## Requirements
 
 ### Requirement: studyloop-mcp registers a fixed set of study tools
-The system SHALL register exactly 32 tools via `register_tools(mcp)`
-(`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle
-and course-explorer tools plus the nine study-plan lifecycle tools of the
-study-plan tool requirements, exactly
+The system SHALL register exactly 33 tools via `register_tools(mcp)`
+(`mcp/tools.py`), each under its own name: the 24 study, review, lifecycle,
+course-explorer and learning-record tools plus the nine study-plan lifecycle
+tools of the study-plan tool requirements, exactly
 `studyloop.mcp.inventory.PLAN_TOOL_NAMES`. The published inventory is the
 table in `agents/mcp/README.md` (see "The studyloop-mcp inventory is
 published where the harness registration is").
@@ -22,13 +22,13 @@ published where the harness registration is").
 #### Scenario: Client lists available tools
 - **WHEN** an MCP client connects to the `studyloop-mcp` stdio server and
   requests its tool list
-- **THEN** exactly these 32 tools are returned, each once, matching the table
+- **THEN** exactly these 33 tools are returned, each once, matching the table
   in `agents/mcp/README.md`; the full stdio handshake + tools/list +
   tools/call round-trip is locked by `tests/test_mcp_stdio_smoke.py`
   (integration-marked), which pins the count, the nine plan tools and the
   core names
 
-### Requirement: Fixed tool set — the course, generation, backlog and session tools (1–12 of 23)
+### Requirement: Fixed tool set — the course, generation, backlog and session tools (1–12 of 24)
 The system SHALL register `list_courses`, `get_study_context`,
 `record_study_progress`, `generate_flashcards`, `generate_quiz`,
 `get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`,
@@ -41,7 +41,7 @@ The system SHALL register `list_courses`, `get_study_context`,
 - **THEN** every one of these twelve names is present exactly once in the
   returned inventory
 
-### Requirement: Fixed tool set — the review-loop, explorer and plan-learning tools (13–23 of 23)
+### Requirement: Fixed tool set — the review-loop, explorer and plan-learning tools (13–23 of 24)
 The system SHALL register `log_topic`, `get_due_cards`, `log_review_outcome`,
 `get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`,
 `read_lesson`, `search_lessons`, `get_concept_context`,
@@ -52,6 +52,21 @@ The system SHALL register `log_topic`, `get_due_cards`, `log_review_outcome`,
   `register_tools`
 - **THEN** every one of these eleven names appears in both, each once, and the
   test fails on any name present on one side only
+
+### Requirement: Fixed tool set — the learning-record tool (24 of 24)
+The system SHALL register `record_teachback` (`mcp/tools.py`, added 2026-09-23
+as the learning tier's first recording writer) in the production inventory
+beside the other three recording writers of
+`agents/shared/recording-protocol.md` — `log_topic`, `log_struggle` and
+`record_plan_learning`. It is a core tool, not one of the nine plan tools, so
+the core count is 24 and the production inventory 33.
+
+#### Scenario: The teach-back writer is registered beside the other writers
+- **WHEN** `tests/test_mcp_teachback.py::TestTheToolExists` reads the
+  registry
+- **THEN** `record_teachback` is present with `log_topic`, `log_struggle` and
+  `record_plan_learning`, and the stdio smoke test asserts the name over the
+  real transport, so dropping it fails both the count and the name check
 
 ### Requirement: Review-loop tools enable a complete quiz cycle without the browser
 `get_due_cards(course=None, limit=20)` SHALL return real serialized
@@ -224,7 +239,7 @@ success shape is unchanged by the fold.
   authoring tools"; the three progression tools (`set_study_plan_milestone`,
   `evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and
   deletion tools"
-- **AND** the stdio smoke test pins the exact production inventory (32
+- **AND** the stdio smoke test pins the exact production inventory (33
   unique names), the nine plan tools and the core names
 
 ### Requirement: Study-plan discovery and authoring tools
@@ -620,21 +635,21 @@ checkpoint history in the sessions database readable. A missing plan is
   recorded row; `delete_study_plan("ghost")` is `not_found:` whether or not
   confirmed, and a traversal id is `invalid_id:`
 
-### Requirement: Study-plan tools — the production inventory is exactly 32 unique names
-The production inventory SHALL be exactly 32 unique tool names — 23 at
+### Requirement: Study-plan tools — the production inventory is exactly 33 unique names
+The production inventory SHALL be exactly 33 unique tool names — 23 at
 `0a20a796` plus the nine design-§4 plan tools, `record_plan_learning` being
-one of the 23 — and the stdio smoke test SHALL assert that exact count, the
-nine plan names, `record_plan_learning` and the core names over the real
-transport.
+one of the 23, plus `record_teachback` (2026-09-23) — and the stdio smoke test
+SHALL assert that exact count, the nine plan names, `record_plan_learning`,
+`record_teachback` and the core names over the real transport.
 
-#### Scenario: The production inventory is exactly 32 with the nine plan tools
+#### Scenario: The production inventory is exactly 33 with the nine plan tools
 - **WHEN** a stdio client performs the handshake and `tools/list` against
   `python -m studyloop.mcp.server` (no `--dev`)
-- **THEN** exactly 32 unique names are advertised, including
+- **THEN** exactly 33 unique names are advertised, including
   `list_study_plans`, `get_study_plan`, `get_planning_interview`,
   `create_study_plan`, `update_study_plan`, `set_study_plan_status`,
   `set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan`,
-  `record_plan_learning` and the core tools
+  `record_plan_learning`, `record_teachback` and the core tools
 
 ### Requirement: The studyloop-mcp inventory is published where the harness registration is
 The full `studyloop-mcp` tool list SHALL be published in `agents/mcp/README.md`
@@ -646,7 +661,7 @@ one table equal to the production registry, with the count stated in prose.
 #### Scenario: A new contributor reads the inventory
 - **WHEN** someone reads `agents/mcp/README.md` to decide what an agent can do
   through `studyloop-mcp`
-- **THEN** they find every registered tool in one table (32 rows), the stated
+- **THEN** they find every registered tool in one table (33 rows), the stated
   count, and the registration snippet for their harness — and the contract
   test fails if the table or the count ever disagrees with `register_tools`
 
