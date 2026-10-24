@@ -86,15 +86,23 @@ heading = "doctor --fix applies safe automatic repairs and re-runs checks"
 ordinal = 3
 text = "Current auto-fixable repairs include: creating a default config (`ensure_default_config`), creating missing review directories (`ensure_review_directories`), migrating the review database (`ensure_review_database`), reinstalling workspace tools (`install_workspace_tools`), refreshing agent definitions (`install_agent_definitions`), wiring session-export steering mandates (`install_session_db_mandate`), and upgrading packages."
 scenario = "The current auto-fixable repair inventory"
-reason = "Non-normative illustration ('Current ... include'); no SHALL, not a list item, not governed. The two SHALL sentences stay together (237) under the original heading."
+reason = "Class: inventory of examples ('Current ... include:') — an open, dated snapshot of what --fix happens to repair today, not a rule about what it must repair; stays moved-body-text under ruling L5 (rework reclassification, coordinator and lane agree). No SHALL, not a list item, not governed. The two SHALL sentences stay together (237) under the original heading."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "health-and-diagnostics"
 heading = "install.sh guarantees a working CLI with self-test and doctor validation"
 ordinal = 3
-text = "The script accepts `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
-scenario = "install.sh accepts scoping and non-interactive flags"
-reason = "Keyword-less flag inventory; the body has one SHALL (ordinal 1) and two descriptive sentences. Moving the flag sentence (the smaller, 96 chars) brings 539 to 442 and keeps the self-test/doctor smoke sentence beside the heading's conjuncts."
+old = "The script accepts `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
+new = "The script SHALL accept `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
+verb = ["accepts", "accept"]
+reason = "Rework (ruling L5), lane judgement against the coordinator's provisional 'inventory' reading: a closed enumeration with no 'include', naming the script's flag surface, and pinned by a contract test (test_install_script_help_documents_supported_flags) — it tells the implementer what the script does, so it is behaviour and may not sit in a scenario. It cannot rejoin its SHALL sibling (442 + 96 > 500); it heads a fragment of its own with exactly one modal added ('accepts' -> 'SHALL accept')."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "install.sh accepts the --tools-only, --agents-only, --no-smoke and --non-interactive flags"
+scenario = "install.sh --help names every supported flag"
+test = "packages/studyloop/tests/test_install_script_contract.py::test_install_script_help_documents_supported_flags"
+reason = "Runs bash scripts/install.sh --help and asserts each of the four flags appears in stdout; the closest proof the suite offers that the script knows these flags."
 
 [[split-sentence]]
 spec = "health-and-diagnostics"
@@ -106,7 +114,7 @@ new = [
   "The shared provenance sentence SHALL never `hand edit`, never `never judged` — a stamp establishes when the document was created, not what judged it or when it became incomplete; council review 6 F4.",
 ]
 added_tokens = ["It", "SHALL", "emit", ".", "The", "shared", "provenance", "sentence", "SHALL", "."]
-reason = "790-char single-SHALL sentence. Sentence 2 repeats the subject+modal+predicate head 'It SHALL emit' (the source has one main verb; a grammatical second sentence needs it — the one addition outside the closed list, declared). Sentence 3 adds only the repeated subject noun phrase 'The shared provenance sentence' and SHALL; the two 'never' clauses keep their object (`hand edit`, `never judged`) and 'not' stays in its stamp clause — polarity counts unchanged. The never-clause now follows the fix_hint clause; otherwise clause order is the source's. Dropped: one ',' and one ';'."
+reason = "790-char single-SHALL sentence. Sentence 2 repeats the subject+modal+predicate head 'It SHALL emit': the source has one main verb and a grammatical second sentence needs it — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens). Sentence 3 adds only the repeated subject noun phrase 'The shared provenance sentence' and SHALL; the two 'never' clauses keep their object (`hand edit`, `never judged`) and 'not' stays in its stamp clause — polarity counts unchanged. The never-clause now follows the fix_hint clause; otherwise clause order is the source's. Dropped: one ',' and one ';'."
 
 [[test-sourced]]
 spec = "health-and-diagnostics"

@@ -206,10 +206,14 @@ acceptable), and `studyloop doctor --json` emits valid JSON with exit
 - **THEN** `install.sh` prints an error and exits non-zero, halting
   the installation
 
-#### Scenario: install.sh accepts scoping and non-interactive flags
-- **WHEN** `./scripts/install.sh` is invoked with command-line flags
-- **THEN** the script accepts `--tools-only`, `--agents-only`,
-  `--no-smoke`, and `--non-interactive` flags
+### Requirement: install.sh accepts the --tools-only, --agents-only, --no-smoke and --non-interactive flags
+The script SHALL accept `--tools-only`, `--agents-only`, `--no-smoke`, and
+`--non-interactive` flags.
+
+#### Scenario: install.sh --help names every supported flag
+- **WHEN** `bash scripts/install.sh --help` runs
+- **THEN** its stdout names `--tools-only`, `--agents-only`,
+  `--non-interactive` and `--no-smoke`
 
 ### Requirement: doctor names each active-but-unready study plan
 `check_study_plans()` (`cli/_doctor.py`, beside `check_unknown_config_keys`)
