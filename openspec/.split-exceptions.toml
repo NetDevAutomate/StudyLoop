@@ -1596,3 +1596,469 @@ spec = "agent-adapters"
 scenario = "Manifest hashes regenerate for the architect projections"
 test = "packages/studyloop/tests/test_plan_architect_persona.py::test_manifest_hashes_regenerate_byte_identically_for_the_architect_projections"
 reason = "Recomputes the generator's hash for every architect projection the manifest tracks and compares to agents/manifest.json."
+
+# ---- lane B (mcp-server, second-brain, second-brain-launcher, voice-tts, web-ui) ----
+
+# Plan 7 split exceptions — lane B (web-ui, voice-tts, second-brain, second-brain-launcher,
+# mcp-server). Read by scripts/check-openspec-split.py; every entry must be consumed exactly once.
+# Ordinals are 1-based positions among the original requirement's prose units (fences skipped),
+# as the checker's `unit-lost` message prints them.
+
+# ---------------------------------------------------------------------------------------------
+# voice-tts
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "voice-tts"
+heading = "load_raw_config expands dotted top-level keys before any consumer reads tts.backend"
+ordinal = 3
+text = '''This closes a defect (fixed in `a7eabb6`) where two of `doctor/voice.py`'s own repair messages were worded as a flat dotted key (`"Set tts.backend: openvox to enable this check"`) — a user following them literally would write a top-level `tts.backend: openvox` scalar key, which `raw.get("tts", {})` could not see (there was no `"tts"` key, only a literal key named `"tts.backend"`), silently keeping `backend` at its `"kokoro"` default and skipping the `openvox_api` check the hint promised to enable.'''
+scenario = "The defect behind the loader-level expansion"
+reason = "Class: description of a known defect (no SHALL; history of a7eabb6, not what the system does): a 502-char non-normative sentence that no fragment can hold under 500 and that split-sentence cannot touch (its pieces would carry no modal). Moved verbatim into a history scenario under the fragment whose SHALL it motivates."
+
+[[moved-body-text]]
+spec = "voice-tts"
+heading = "load_raw_config expands dotted top-level keys before any consumer reads tts.backend"
+ordinal = 4
+text = '''`a7eabb6` fixes this at the loader level (`_expand_dotted_keys()` in `settings.py`, benefiting all 6 `raw.get("tts", ...)`-style consumers at once) and rephrases both `doctor/voice.py` repair hints to describe the nested form (`"Set backend: openvox under the tts: section of config.yaml..."`, `doctor/voice.py:105-106`) so new users are no longer taught the broken flat form, while the loader still accepts it from existing configs.'''
+scenario = "The defect behind the loader-level expansion"
+reason = "Class: description of a known defect, second sentence (no SHALL, 433 chars; what the fix touched, not an obligation): with the 396-char SHALL it would exceed 500, and it belongs with the sentence before it. Same history scenario."
+
+# ---------------------------------------------------------------------------------------------
+# web-ui
+# ---------------------------------------------------------------------------------------------
+
+# -- Starting a 4th topic requires parking one first (682) -> 2 fragments
+
+[[modalise]]
+spec = "web-ui"
+heading = "Starting a 4th topic requires parking one first"
+ordinal = 2
+old = '''Escape or "Keep all" cancels without starting.'''
+new = '''Escape or "Keep all" SHALL cancel without starting.'''
+verb = ["cancels", "cancel"]
+reason = "Rework (ruling L5): states system behaviour (the overlay's cancel path) — a requirement without the keyword, so `modalise`, not a scenario. One modal added, `cancels` -> `cancel`. It cannot share the 470-char park-first SHALL's fragment (517) and does not belong to the Body Double exemption, so it is its own fragment under the `Park-first —` stem."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "Escape dismisses the overlay and starts nothing"
+test = "packages/studyloop/tests/test_web_smoke_browser.py::test_park_first_modal_blocks_fourth_topic"
+reason = "The modalised cancel fragment needs a scenario; this browser test opens the park-first overlay for a fourth topic, presses Escape and waits for the overlay to hide without a session starting. It proves the Escape path only; the 'Keep all' button has no test (searched collected-nodeids for keep.?all: none), which the scenario body reflects."
+
+# -- Live agent consoles are addressed by origin, never broadcast (537) -> 1 fragment + rationale scenario
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Live agent consoles are addressed by origin, never broadcast"
+ordinal = 3
+text = '''Alpine initialises `x-data` on elements hidden by `x-show`, so multiple console instances are live simultaneously — visibility is not liveness, and an unaddressed broadcast would mount a second xterm and open a second WebSocket to the same PTY session.'''
+scenario = "Why a console answers only its own origin"
+reason = "Class: rationale (no SHALL; explains why addressing is needed, tells the implementer nothing to do); the two SHALLs plus this sentence exceed 500 and the rationale cannot stand alone. The (ADR-0002) citation stays in the body after the second SHALL."
+
+# -- Activation is readiness-gated on every entry path (1244) -> 4 fragments, stem 'Readiness gate —'
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Activation is readiness-gated on every entry path"
+ordinal = 1
+new = [
+  '''Every Web API write that can leave a study plan in the `active` state — create-with-status, raw-Markdown import, whole-document replacement, status transition, and in-place revision of fields or milestones (including a body that combines a status change with field edits) — SHALL delegate to `PlanApplication.apply` as a single intent.''',
+  '''Every Web API write that can leave a study plan in the `active` state SHALL be refused by the seam's single readiness gate when the *resulting* document — the document as it would be saved, after every supplied field is applied — has no mission `why`, no success criteria, or no milestones.''',
+]
+added_tokens = ["Every", "Web", "API", "write", "that", "can", "leave", "a", "study", "plan", "in", "the", "`active`", "state", "."]
+reason = "559-char sentence with two SHALL clauses ('SHALL delegate ... and SHALL be refused ...'). Split at the 'and'; the second sentence repeats the subject noun phrase verbatim (without the parenthetical list of doors, which stays with the first). Only subject, modal (already present) and a full stop were added; 'and' dropped."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The plan routes import plans only through the seam"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_adapters_import_plans_only_through_the_seam"
+reason = "The fragment 'the routes hold no readiness check and perform no store write of their own' is pinned by the architecture guard, which scans studyloop/web/routes/plans.py and fails on any import of the store, index, authoring (readiness) or evaluation modules."
+
+# -- Plan routes map seam errors to HTTP status codes in one place (686) -> 2 fragments (no entries needed)
+
+# -- The milestone checkbox is one SetMilestone; the toggle request is not replay-safe (1151) -> 3 fragments
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "Each toggle request applies exactly one SetMilestone"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_legacy_toggle_repeated_requests_flip_twice"
+reason = "The test spies PlanApplication.apply and asserts exactly one SetMilestone per request with done = the opposite of the read state and no route-side write. The existing scenario 'Toggle flips and flips back' (same test) is re-homed under the not-replay-safe fragment, whose heading it names."
+
+# -- Checkpoint recording reports each sink (722) -> 3 fragments
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "An unknown phase is the seam's 400 after the 404"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_record_unknown_phase_is_the_seams_400_after_the_404"
+reason = "The 'route holds no phase check of its own' fragment had no scenario of its own; this test asserts the seam's InvalidField -> 400 for an unknown phase and the 404 first for a missing plan."
+
+# -- Plan with architect journey (4304) -> 14 fragments, stem 'Plan with architect —'
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 1
+new = [
+  '''The Study Plans view SHALL offer a **Plan with architect** control beside **New plan** (button name `Plan with architect`, `data-testid="plan-architect"`) with an optional subject field (`data-testid="plan-architect-subject"`, labelled for assistive technology).''',
+  '''The **Plan with architect** control SHALL offer an optional brain-dump textarea (`data-testid="plan-architect-braindump"`, labelled, `maxlength` equal to the server's `BRAIN_DUMP_MAX_CHARS`) and a live status region (`data-testid="plan-architect-status"`, `role="status"`, `aria-live="polite"`).''',
+]
+added_tokens = ["The", "Plan", "with", "architect", "control", "SHALL", "offer", "."]
+reason = "RULING CORRECTION (logged): a 510-char single-predicate sentence ('SHALL offer a control ... with A, B and C'). The closed additions of the fission rule (subject noun phrase, modal, punctuation) cannot give the second sentence a verb, so the verb 'offer' is repeated once beside the repeated noun phrase 'The **Plan with architect** control' (the object of the first sentence). No other token added; nothing dropped but one ','."
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 4
+new = [
+  '''The Plans view SHALL NOT post, open a WebSocket, mount a terminal or listen for the console's `study-session-start` event: it dispatches one `plan-architect-request` window event (detail `{purpose, topic, brainDump}`).''',
+  '''The Plans view SHALL NOT post, open a WebSocket, mount a terminal or listen for the console's `study-session-start` event: the Study Session view's session timer — the one owner of the start POST, the 409 handling and the `study-session-start` event the live console mounts on — starts the session and navigates the learner to the existing console (`#study-session`), then reports the outcome back with exactly one `plan-architect-result` event.''',
+]
+added_tokens = ["The", "Plans", "view", "SHALL", "NOT", "post", ",", "open", "a", "WebSocket", ",", "mount", "a", "terminal", "or", "listen", "for", "the", "console's", "`study-session-start`", "event", ":", "."]
+reason = "RULING CORRECTION (logged): a 544-char SHALL NOT sentence whose colon clause holds two indicative sub-clauses joined by 'and'. The sub-clauses carry no modal of their own and their verbs cannot be changed (token drift), so the governing clause 'The Plans view SHALL NOT ... event:' is repeated verbatim before the second sub-clause — the fission analogue of duplicating a lead-in. The repeated 'NOT' is the same obligation restated, not a polarity change; pass 10 to read."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The control is offered beside New plan and takes a subject"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console[chromium]"
+reason = "The fission left the control-and-subject-field sentence alone in the heading fragment; this browser test clicks the control with a subject typed and lands on the console."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The textarea's text travels as the brain dump"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_brain_dump_reaches_the_architect_persona[chromium]"
+reason = "The textarea/status-region fragment; the test fills [data-testid=plan-architect-braindump] and proves the dump reaches the persona. The existing scenario 'The brain dump reaches the architect' (same test) is homed under the 'never folded into topic' fragment it proves."
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 16
+text = '''The architect's one-question-at-a-time protocol is asserted as persona text (owner decision D-B): the browser and unit tests prove the brief — including the brain dump — is delivered to the agent process; no test asserts how a live model behaves with it, and the docs say so.'''
+scenario = "What the tests prove about the architect's brief"
+reason = "Class: test-coverage note (no SHALL; what the tests prove, not what the system does): the last unit of the requirement, preceded only by keyword-less units (#14, #15) and by #13 which with it exceeds 500. Homed as a scenario beside 'The brief's structure, never its wording', which is the behaviour it describes."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The Plans view mounts no terminal of its own"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_one_console_one_websocket[chromium]"
+reason = "First half of the fissioned SHALL NOT sentence (the Plans view posts nothing and mounts nothing); the test asserts zero .xterm-mount/.agent-console under .plans-panel, one start event and one WebSocket."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The start lands the learner on the existing console"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console[chromium]"
+reason = "Second half of the fissioned sentence (the Study Session view's timer owns the POST and navigates to #study-session); the same browser test asserts the one POST, the 201 and the navigation. Cited twice on purpose: one test proves both halves."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "One launch, one listener, one socket"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_one_console_one_websocket[chromium]"
+reason = "The 'listeners register once' fragment: a doubly registered listener would fire two study-session-start events and open two sockets; the test asserts exactly one of each. The 'second activation is a no-op' SHALL in the same fragment has no direct test (searched test_web_plan_architect_journey.py for twice/double/in-flight: none)."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "A click that beats the options fetch still starts exactly once"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_click_that_beats_the_options_fetch_still_starts_exactly_once[chromium]"
+reason = "The bounded-wait fragment (council review 6); the test holds /api/session/options and asserts exactly one start POST after it resolves."
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 14
+text = '''Navigating away is **not** the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
+scenario = "Navigating away is not the abandon path"
+reason = "Class: rationale / owner-decision note (no SHALL, 401 chars; explains why navigating away is not the abandon path — the behaviour itself is the abandon SHALL and the grace-period requirement elsewhere) between the abandon SHALL (#13, 294) and 'There is no cancel for a pending launch' (#15); with #13 it exceeds 500 and no other SHALL is adjacent. Homed as a scenario under the abandon fragment beside 'Leaving before the launch lands leaves a session like any other', which proves it."
+
+# -- Plan list rows carry readiness and the sidebar marks a husk (812) -> 3 fragments
+
+[[restates-shall]]
+spec = "web-ui"
+scenario = "The mark is decided from the row's own ready"
+restates = "The mark is computed from the row's own `ready`; the sidebar SHALL make no further request to decide it."
+searched_tests = "grep -i 'husk|sidebar' over evidence/collected-nodeids-1a511029.txt: only CLI husk tests (test_cli_plan_seam.py::test_plan_list_marks_husks, ::test_husk_refusal_names_both_pause_and_repair) and unrelated sidebar tests; grep -rl 'sidebar-plan-husk' packages/studyloop/tests: no file. No web test exercises the sidebar mark's data source or colour."
+reason = "The 'decided from the row's own ready / colour not the only carrier' fragment (#3+#4, 204 chars) cannot join the 308-char render SHALL (#2) under 500 and has no test; scaffolding scenario restating #3 with no literal the body lacks."
+
+# -- PATCH carries the mission to the one RevisePlan (813) -> 1 fragment + sourced scenario
+
+[[modalise]]
+spec = "web-ui"
+heading = "PATCH carries the mission to the one RevisePlan"
+ordinal = 3
+old = '''The seam's refusals map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
+new = '''The seam's refusals SHALL map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
+verb = []
+reason = "Rework (ruling L5): states system behaviour (which refusal maps to 400 and which to 422, and that nothing is written) — a requirement without the keyword, so `modalise`. One modal added; the plural subject's verb `map` is already the base form, so no verb is de-inflected (`verb` is empty on purpose — the checker would otherwise expect a second `map`). #1+#2+#3 exceeds 500, so it is its own fragment under the `PATCH mission —` stem; the existing 'A string where a list belongs is the seam's 400' is re-homed under it."
+
+[[modalise]]
+spec = "web-ui"
+heading = "PATCH carries the mission to the one RevisePlan"
+ordinal = 4
+old = '''The `PATCH` response is the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
+new = '''The `PATCH` response SHALL be the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
+verb = ["is", "be"]
+reason = "Rework (ruling L5): states system behaviour (the response shape and where the mission is read back) — `modalise`. One modal added, `is` -> `be` (the second `is`, 'is read back', is unchanged). Its own fragment: with the refusal sentence it would be one fragment of two behaviours; with #1+#2+#5 it exceeds 500."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The receipt carries plan and readiness; the mission is read back"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_patch_mission_fields_travel_to_the_seam_and_repair_a_husk_in_one_call"
+reason = "The receipt fragment; the test asserts the 200 body's plan.status/plan.ready and readiness.blockers, then reads the four mission values back from GET /api/plans/husk. Cited twice on purpose: the same test is the husk scenario on the accepting fragment."
+
+# ---------------------------------------------------------------------------------------------
+# mcp-server
+# ---------------------------------------------------------------------------------------------
+
+# -- studyloop-mcp registers a fixed set of study tools (929) -> 3 fragments
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "studyloop-mcp registers a fixed set of study tools"
+ordinal = 1
+# RULING CORRECTION (logged): this one sentence needs BOTH a reference-expansion (mcp-server:22-24,
+# "the two study-plan requirements in this specification" -> "the study-plan tool requirements",
+# the nominal form the cross-lane note gives) AND a fission (782 chars). The checker consumes one
+# entry per lost unit, so the expansion is pre-applied in `old` and recorded here; the drift
+# report prints the real base sentence beside the new ones.
+old = '''The system SHALL register exactly 32 tools via `register_tools(mcp)` (`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle and course-explorer tools — `list_courses`, `get_study_context`, `record_study_progress`, `generate_flashcards`, `generate_quiz`, `get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`, `get_study_history`, `list_session_options`, `end_session`, `record_topic_progress`, `log_topic`, `get_due_cards`, `log_review_outcome`, `get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`, `read_lesson`, `search_lessons`, `get_concept_context`, `record_plan_learning` — plus the nine study-plan lifecycle tools of the study-plan tool requirements, exactly `studyloop.mcp.inventory.PLAN_TOOL_NAMES`.'''
+reference_expansion_phrase = "the two study-plan requirements in this specification"
+reference_expansion_new = "the study-plan tool requirements"
+new = [
+  '''The system SHALL register exactly 32 tools via `register_tools(mcp)` (`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle and course-explorer tools plus the nine study-plan lifecycle tools of the study-plan tool requirements, exactly `studyloop.mcp.inventory.PLAN_TOOL_NAMES`.''',
+  '''The system SHALL register `list_courses`, `get_study_context`, `record_study_progress`, `generate_flashcards`, `generate_quiz`, `get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`, `get_study_history`, `list_session_options`, `end_session`, `record_topic_progress`.''',
+  '''The system SHALL register `log_topic`, `get_due_cards`, `log_review_outcome`, `get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`, `read_lesson`, `search_lessons`, `get_concept_context`, `record_plan_learning`.''',
+]
+added_tokens = ["The", "system", "SHALL", "register", "The", "system", "SHALL", "register", ".", "."]
+reason = "RULING CORRECTION (logged): the 23-name list is 524 chars on its own, so no two-way fission fits; three sentences, the subject 'The system' and modal repeated twice, plus the verb 'register' (the sentence's own verb; the closed additions give the name lists no verb). The em-dashes around the list are not tokens. Pieces 2 and 3 keep the original name order."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The first twelve names are in the real stdio inventory"
+test = "packages/studyloop/tests/test_mcp_stdio_smoke.py::test_full_handshake_list_tools_and_call"
+reason = "The first name-list fragment; the stdio smoke test lists the real inventory over the transport and pins the count, the nine plan tools and the core names."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The remaining eleven names match the published table"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_mcp_readme_lists_the_whole_production_inventory"
+reason = "The second name-list fragment; the contract test compares the README table with register_tools name by name."
+
+# -- Review-loop tools enable a complete quiz cycle without the browser (620) -> 2 fragments
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "Review-loop tools enable a complete quiz cycle without the browser"
+ordinal = 1
+new = [
+  '''`get_due_cards(course=None, limit=20)` SHALL return real serialized `CardProgress` entries (per-course via `get_due(course)`, or aggregated across `list_course_summaries()` when no course is given).''',
+  '''`log_review_outcome(course, card_type, card_hash, correct, ...)` SHALL delegate to `record_review()` and reject `card_type` outside `{"flashcard","quiz"}` with `ToolError`.''',
+  '''`get_next_action(...)` SHALL delegate to `learning.decision.build_now_plan()` (the same engine as `/api/now`).''',
+  '''`get_active_topics()` SHALL split pending backlog items at `MAX_ACTIVE_TOPICS`.''',
+  '''`log_struggle(...)` SHALL park with `source="struggled"`.''',
+]
+added_tokens = [".", ".", ".", "."]
+reason = "Five independent 'X SHALL Y' clauses joined by semicolons; each becomes its own sentence (four ';' dropped, four full stops added). Nothing else changes."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "Active topics are capped at MAX_ACTIVE_TOPICS"
+test = "packages/studyloop/tests/test_mcp_session_parity.py::TestGetActiveTopics::test_caps_active_at_max_active_topics"
+reason = "The two trailing clauses (active-topic cap, log_struggle) did not fit under 500 with the three the review-loop scenario exercises; this test pins the cap."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "A struggle that cannot be parked is not reported as parked"
+test = "packages/studyloop/tests/test_mcp_tools.py::TestLogStruggleTruthfulness::test_log_struggle_raises_when_park_fails"
+reason = "Pins the log_struggle SHALL of the same fragment (it parks with source=struggled, and raises rather than lie when the park fails)."
+
+# -- record_plan_learning writes through the plan seam (1941) -> 4 fragments + pointer scenario
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 3
+new = [
+  '''Every seam refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the nine plan lifecycle tools use (before this fold the tool mapped inline, without a kind prefix): `PlanNotReady` SHALL render as `not_ready: plan is not ready to activate: <blocker>; <blocker>…` (with the already-active "pause it or repair" suffix when the plan was active) so the agent can tell the learner what to repair (the plan-application-seam design, §2: "ToolError containing blockers").''',
+  '''`PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's title/heading rule) SHALL render as `not_found: …`, `invalid_id: …` and `invalid: …` followed by their message, with the domain error chained as `__cause__`.''',
+]
+added_tokens = ["."]
+reason = "706-char sentence with three SHALL clauses; split at the ';' before `PlanNotFound` (the first piece keeps its two clauses and the colon so no token is lost). One ';' dropped, one full stop added."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 5
+text = '''The six read/write plan tools are the requirement "Study-plan discovery and authoring tools"; the three progression tools (`set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and deletion tools".'''
+scenario = "Where the nine plan tools and the inventory pin are specified"
+reason = "Class: pointer (cross-reference to two other requirement headings; no SHALL, states no behaviour). Together with #6 it has no modal to stand on, and #4 (the success-shape sentence) plus this one plus the second refusal sentence exceed 500. Both headings it names survive verbatim on their keeper fragments. Conserved verbatim in a pointer scenario."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 6
+text = '''The stdio smoke test pins the exact production inventory (32 unique names), the nine plan tools and the core names.'''
+scenario = "Where the nine plan tools and the inventory pin are specified"
+reason = "Class: test-coverage note (no SHALL) restating the inventory pin that 'Study-plan progression and deletion tools' states normatively; same pointer scenario."
+
+# -- Study-plan discovery and authoring tools (3031) -> 13 fragments (rework; rulings L6-L8)
+
+[[context-restated]]
+spec = "mcp-server"
+heading = "Study-plan discovery and authoring tools"
+ordinal = 1
+old = '''`register_tools(mcp)` SHALL register six study-plan tools in the production inventory, each a thin adapter that makes exactly one `studyloop.planning.PlanApplication` call and imports no storage, index, authoring or evaluation module (D-6):'''
+new = '''`register_tools(mcp)` SHALL register this tool in the production inventory as a thin adapter that makes exactly one `PlanApplication` call and imports no storage, index, authoring or evaluation module (D-6):'''
+reason = "Ruling L8: the verbatim 240-char lead-in does not fit beside `update_study_plan`'s 256-char row (528 > 500), so one restated lead-in (207 chars) is carried by every one of the six per-tool fragments (the checker consumes this entry only when the verbatim lead-in is absent from the head, so no fragment keeps the verbatim form). Kept: the SHALL, 'production inventory', 'thin adapter', 'exactly one PlanApplication call', the four forbidden module kinds and (D-6). Changed: 'six study-plan tools … each' -> 'this tool … as' (one row per fragment); the module path `studyloop.planning.` dropped from the class name (the seam is named `PlanApplication` throughout this file)."
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "Study-plan discovery and authoring tools"
+ordinal = 16
+new = [
+  '''Every seam refusal SHALL be one `ToolError` whose message is `<kind>: <the seam's message>`, where `kind` is machine-readable: `PlanNotFound` → `not_found`, `InvalidPlanId` → `invalid_id`, `PlanConflict` → `conflict`, `InvalidField` → `invalid`, `PlanNotReady` → `not_ready`, `InvalidMilestone` → `invalid_milestone`, and `plan_error` for any `PlanError` subclass this mapping has not met.''',
+  '''`PlanNotReady` → `not_ready` SHALL be rendered `not_ready: plan is not ready to activate: <blocker>; <blocker>…` (with the suffix `— the plan is already active; pause it or repair the blockers before writing` when the plan was already active).''',
+]
+added_tokens = ["`PlanNotReady`", "`not_ready`", "SHALL", "be", "."]
+reason = "595-char sentence: the kind table plus a 190-char parenthetical on the `not_ready` rendering. Fission at the parenthetical: the first sentence keeps the whole kind list (so its fragment names every kind), the second repeats the list entry `PlanNotReady` → `not_ready` as its subject (a noun phrase of the old sentence, as RULING CORRECTION 1 / ruling L9 allow) with the modal and the old sentence's own verb `be` ('SHALL be one ToolError'); the parentheses move to wrap the suffix clause so no bracket token is lost. One ',' dropped, one full stop added."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "get_study_plan is one inspect call carrying its options"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_get_study_plan_delegates_to_inspect_with_its_options"
+reason = "Per-tool row fragment (`get_study_plan`); the delegation test asserts one inspect call with the given options and the PlanDetail payload."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "get_planning_interview is one prepare_planning call"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_get_planning_interview_delegates_to_prepare_planning"
+reason = "Per-tool row fragment (`get_planning_interview`); the test asserts one argument-less prepare_planning call and the PlanningBrief keys."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "create_study_plan is one CreatePlan with overwrite False"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_create_study_plan_applies_one_create_plan_without_overwrite"
+reason = "Per-tool row fragment (`create_study_plan`); the test asserts one apply with a CreatePlan whose overwrite is False (D-4). The existing scenario 'No overwrite through the MCP door' is homed under the schema fragment it proves."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "update_study_plan is one RevisePlan carrying the explicit fields"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_update_study_plan_applies_one_revise_plan_with_explicit_fields"
+reason = "Per-tool row fragment (`update_study_plan`); the test asserts one apply with a RevisePlan carrying exactly the explicit fields."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "set_study_plan_status is one TransitionLifecycle"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_set_study_plan_status_applies_one_transition"
+reason = "Per-tool row fragment (`set_study_plan_status`); the test asserts one apply with TransitionLifecycle(plan_id, status) and the PlanDetail payload. The existing 'A retried status transition is not refused' is homed under the no-plan-policy fragment (the adapter adds no already-paused check)."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The update schema has no learning_record property"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_no_learning_record_on_update_study_plan"
+reason = "The `update_study_plan` SHALL NOT expose `learning_record` sentence stands alone (its neighbours are about create_study_plan's schema); the test reads the registered schema's properties."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "An already-active plan's not_ready refusal says pause or repair"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_not_ready_on_an_already_active_plan_says_pause_or_repair"
+reason = "The second fission piece (the `not_ready` rendering with the already-active suffix) plus the chained-cause SHALL; the test raises PlanNotReady(already_active=True) through update_study_plan and matches `^not_ready: .*already active.*pause`. 'Every refusal is one prefixed ToolError' stays with the kind table."
+
+# -- Study-plan progression and deletion tools (3680) -> 11 fragments (rework; rulings L6-L8)
+
+[[context-restated]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+ordinal = 1
+old = '''`register_tools(mcp)` SHALL register three further study-plan tools in the production inventory — completing the nine plan lifecycle tools — each a thin adapter that makes exactly one `studyloop.planning.PlanApplication` call, imports no storage, index, authoring or evaluation module (D-6), and maps every seam refusal through the same `<kind>: <message>` `ToolError` mapping as the six above (the domain error chained as `__cause__` — an in-process requirement on the adapter, checked by the delegation tests; the stdio transport carries the prefixed refusal text only, since JSON-RPC does not serialise an exception chain):'''
+new = '''`register_tools(mcp)` SHALL register this tool in the production inventory as a thin adapter that makes exactly one `PlanApplication` call, imports no storage, index, authoring or evaluation module (D-6), and maps every seam refusal through the `<kind>: <message>` `ToolError` mapping of the six above:'''
+reason = "Ruling L8: the verbatim lead-in is 626 chars on its own, so no fragment can carry it; the restated one (301 chars) is carried by every one of the three per-tool fragments (the longest row, `delete_study_plan` at 164, gives 497). Kept: the SHALL, 'production inventory', 'thin adapter', 'exactly one PlanApplication call', the four forbidden module kinds, (D-6) and the 'same mapping as the six above' obligation. Changed: 'three further study-plan tools … each' -> 'this tool … as'; the module path dropped as in the discovery entry; 'the same … mapping as the six above' -> 'the … mapping of the six above' (6 chars, needed for the delete row). Dropped from the lead-in: the aside '— completing the nine plan lifecycle tools —' (the count is pinned normatively by the inventory sentence of this requirement and its scenario) and the explanatory parenthetical on `__cause__` (the chaining SHALL is 'The `ToolError` SHALL chain the domain error as its cause' in the discovery requirement, which 'the mapping of the six above' imports; the explanation itself is conserved verbatim in the scenario 'Why the exception chain is checked in-process' — see the moved-body-text entry)."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+text = '''the domain error chained as `__cause__` — an in-process requirement on the adapter, checked by the delegation tests; the stdio transport carries the prefixed refusal text only, since JSON-RPC does not serialise an exception chain'''
+scenario = "Why the exception chain is checked in-process"
+reason = "Class: rationale / test-coverage note. This is the parenthetical of unit #1 (the lead-in restated above, so it has no ordinal of its own and the checker consumes this entry through the scenario, not the lost-unit path): it explains WHERE the `__cause__` chain is asserted and WHY the stdio transport cannot show it; the chaining obligation itself lives in the discovery requirement's 'The `ToolError` SHALL chain the domain error as its cause' and in the two 'Every refusal …' scenarios. Conserved verbatim as a scenario on the fragment that keeps the original heading."
+
+[[modalise]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+ordinal = 8
+old = '''An index the plan does not have (past the end or negative) is the seam's `InvalidMilestone`, rendered `invalid_milestone: …`; a set on an active-but-unready document is the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already active; pause it or repair the blockers before writing`, and nothing is written in either case.'''
+new = '''An index the plan does not have (past the end or negative) SHALL be the seam's `InvalidMilestone`, rendered `invalid_milestone: …`; a set on an active-but-unready document is the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already active; pause it or repair the blockers before writing`, and nothing is written in either case.'''
+verb = ["is", "be"]
+reason = "Ruling L5: states system behaviour (which refusal each bad set yields and that nothing is written) and cannot share a fragment with its SHALL sibling (#7 + #8 = 614). One modal added on the first clause, `is` -> `be`; the semicolon-joined second clause and the 'nothing is written' close are unchanged. Proven by the existing scenario 'Milestone set on an active-but-unready document is refused', re-homed under it."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "evaluate_study_plan is one assess call and never an apply"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_evaluate_study_plan_calls_assess_never_apply"
+reason = "Per-tool row fragment (`evaluate_study_plan` -> assess(AssessPlan(...)) -> AssessmentResult); the test asserts one assess call, zero apply calls and the AssessmentResult payload with its sink fields."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "delete_study_plan is one DeletePlan with confirmed forwarded"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_delete_study_plan_applies_one_delete_plan_with_confirmed_forwarded"
+reason = "Per-tool row fragment (`delete_study_plan`); the test asserts one apply with DeletePlan(plan_id, confirmed=True) and the DeleteResult payload."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "done=false is forwarded as a set, not computed as a toggle"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_set_study_plan_milestone_forwards_done_false_as_a_set_not_a_toggle"
+reason = "The set-not-toggle SHALL (#7) lost its scenario to the row fragment that keeps the original heading ('A retried milestone set is a no-op', cited by test_mcp_plan_tools.py:1292 with that heading); this test asserts SetMilestone(done=False) forwarded as given with no preliminary inspect."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The default call is a preview"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_evaluate_study_plan_default_is_a_preview"
+reason = "The `evaluate_study_plan` SHALL call assess / SHALL default record to False / SHALL NOT expose append_to_plan sentence (#9) cannot join the response sentence (#9 + #10 = 513); the test asserts record=False, study_id='' and the seam's own append_to_plan=True on the AssessPlan."
+
+
+# -- The studyloop-mcp inventory is published where the harness registration is (856) -> 3 fragments
+[[reference-expansion]]
+spec = "mcp-server"
+heading = "The studyloop-mcp inventory is published where the harness registration is"
+ordinal = 2
+phrase = "Both"
+new = '''The table and the count SHALL be pinned to the registry by `tests/test_docs_plan_integration_contract.py`, so a tool added to or removed from `mcp/tools.py` fails a test rather than leaving a stale page.'''
+reason = "'Both' referred to the table and the count in the preceding sentence; once that sentence is the previous fragment the anaphor no longer resolves inside its own body. Rewritten to the nominal 'The table and the count'; nothing else changed."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The README table is the whole production inventory"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_mcp_readme_lists_the_whole_production_inventory"
+reason = "The 'pinned to the registry by a test' fragment is proven by the very test it names."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The agent-install table is the nine plan tools then record_plan_learning"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_agent_install_doc_table_is_the_nine_then_record_plan_learning"
+reason = "The per-harness reach fragment ('Study-plan tools over MCP' in docs/agent-install.md); the test pins that table's rows and order."
+
+# -- update_study_plan revises the mission through the one gate (1184) -> 2 fragments + scenario
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 1
+new = [
+  '''`update_study_plan` SHALL expose `why: str | None`, `success: list[str] | None`, `constraints: list[str] | None` and `out_of_scope: list[str] | None` beside its existing fields (item 3b, design §3b), forwarded unchanged onto the same one `RevisePlan` — so the schema's property set is exactly `plan_id, title, topics, target_date, energy_floor, review_cadence_days, notes, milestones, status, why, success, constraints, out_of_scope`.''',
+  '''`update_study_plan`: an omitted mission field SHALL reach the seam as `None` ("leave as is"), never as `""` or `[]`.''',
+]
+added_tokens = ["`update_study_plan`", ":", "."]
+reason = "534-char sentence with two SHALL clauses joined by ', and'. Split there; the second sentence is prefixed with the repeated subject `update_study_plan` and a colon (a capitalised 'An' would change a token), one ',' and one 'and' dropped, one full stop added."
+
+[[modalise]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 3
+old = '''The resulting document is judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
+new = '''The resulting document SHALL be judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
+verb = ["is", "be"]
+reason = "Rework (ruling L5): states system behaviour (the gate judges the resulting document; nothing is saved while a blocker stands) — a requirement without the keyword, so `modalise`, not a scenario. One modal added, `is` → `be`. It cannot share a fragment with either fission piece (U2 + #2 + this = 561), so it is its own fragment; the existing scenario 'Partial mission repair on a husk is refused; the whole repair lands once' is its proof and is re-homed under it."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 4
+text = '''With this, every blocker `readiness()` can name — mission `why`, success criteria, milestones — is repairable with the tool the architect already holds, so `plan repair` is a repair rather than dictation.'''
+scenario = "Why plan repair is a repair rather than dictation"
+reason = "Class: rationale (why exposing the mission fields matters; no SHALL, tells the implementer nothing to do). Follows the gate sentence in the base and is homed as a scenario on the gate fragment, verbatim."

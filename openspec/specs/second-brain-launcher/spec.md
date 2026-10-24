@@ -133,13 +133,7 @@ configured state, and config path but not the complete URL.
 `GET /api/second-brain/launch-target` SHALL return exactly the launch-target
 fields with `Cache-Control: no-store`. The route SHALL derive Obsidian locality
 from the direct request peer, treating loopback as local and all other or missing
-peers as remote or unknown, without trusting forwarding headers. Invalid Second
-Brain configuration SHALL return a generic disabled target with no `href` and
-reason `Second Brain configuration is invalid.` When the raw provider is a
-recognized value, the fallback SHALL retain that provider and its label; an
-unrecognized provider SHALL return provider `none`, label `Second Brain`, and
-locality `unknown`. Neither response nor logs SHALL include an invalid value. No
-mutation method SHALL exist at this route.
+peers as remote or unknown, without trusting forwarding headers.
 
 #### Scenario: Loopback browser requests Obsidian state
 - **GIVEN** a valid Obsidian configuration
@@ -155,6 +149,13 @@ mutation method SHALL exist at this route.
 - **THEN** the forwarding header is ignored
 - **AND** the Obsidian target is disabled
 
+### Requirement: Launch-target API — invalid configuration yields a generic disabled target that leaks no invalid value
+Invalid Second Brain configuration SHALL return a generic disabled target with
+no `href` and reason `Second Brain configuration is invalid.` When the raw provider is a
+recognized value, the fallback SHALL retain that provider and its label; an
+unrecognized provider SHALL return provider `none`, label `Second Brain`, and
+locality `unknown`. Neither response nor logs SHALL include an invalid value.
+
 #### Scenario: Configuration contains an invalid destination
 - **GIVEN** the retained Second Brain destination is invalid
 - **AND** the raw provider is the recognized value `xtiles`
@@ -168,6 +169,9 @@ mutation method SHALL exist at this route.
 - **THEN** the response is disabled with provider `none`, label `Second Brain`, and locality `unknown`
 - **AND** the disabled reason is `Second Brain configuration is invalid.`
 - **AND** neither response nor logs contain the invalid value
+
+### Requirement: Launch-target API — no mutation method exists at the route
+No mutation method SHALL exist at this route.
 
 #### Scenario: Client attempts configuration mutation
 - **GIVEN** the launch-target route exists

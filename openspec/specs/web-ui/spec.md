@@ -165,17 +165,26 @@ be intercepted by an in-page `.park-first-overlay` (never a native dialog)
 listing the active topics; choosing one calls `POST /api/backlog/demote`
 (which makes the row the oldest pending entry — re-parking the same
 question is an INSERT OR IGNORE no-op and would not free the slot) and then
-proceeds with the start. Escape or "Keep all" cancels without starting.
-
-Body Double starts are exempt: they SHALL NOT query `GET /api/backlog` and
-SHALL NOT render the overlay, because body doubling is not a new study thread
-(ADR-0003).
+proceeds with the start.
 
 #### Scenario: Fourth topic blocked until one is parked
 - **WHEN** three topics are active and the learner starts a new, fourth
   topic from the study-session picker
 - **THEN** the park-first overlay appears in-page, and the session only
   starts after one active topic is demoted to the parking lot
+
+### Requirement: Park-first — Escape or Keep all cancels without starting
+Escape or "Keep all" SHALL cancel without starting.
+
+#### Scenario: Escape dismisses the overlay and starts nothing
+- **WHEN** the park-first overlay is showing for a fourth topic and the
+  learner presses Escape
+- **THEN** the overlay is hidden and no session starts
+
+### Requirement: Park-first — Body Double starts are exempt
+Body Double starts are exempt: they SHALL NOT query `GET /api/backlog` and
+SHALL NOT render the overlay, because body doubling is not a new study thread
+(ADR-0003).
 
 #### Scenario: Body Double start with three topics already active
 - **WHEN** three topics are active and the learner starts a Body Double
@@ -211,11 +220,15 @@ in `reviewApp()`).
 `liveAgentConsole(origin)` SHALL accept an origin identifier and SHALL ignore
 `study-session-start` / `study-session-stop` window events whose
 `detail.origin` (defaulting to `'study'` when absent) does not match its own.
-Every dispatcher of those events SHALL set `origin`. Alpine initialises
-`x-data` on elements hidden by `x-show`, so multiple console instances are
-live simultaneously — visibility is not liveness, and an unaddressed broadcast
-would mount a second xterm and open a second WebSocket to the same PTY
-session. (ADR-0002)
+Every dispatcher of those events SHALL set `origin`. (ADR-0002)
+
+#### Scenario: Why a console answers only its own origin
+- **WHEN** more than one console component is initialised on the page
+- **THEN** Alpine initialises
+  `x-data` on elements hidden by `x-show`, so multiple console instances are
+  live simultaneously — visibility is not liveness, and an unaddressed broadcast
+  would mount a second xterm and open a second WebSocket to the same PTY
+  session
 
 #### Scenario: Body Double session starts while the study console exists
 - **WHEN** a `study-session-start` event with `origin: 'body-double'` is
@@ -233,14 +246,23 @@ session. (ADR-0002)
   dispatched while a Body Double session is live
 - **THEN** the Body Double console does not tear down its terminal or socket
 
-### Requirement: A view whose session ended server-side returns to its picker
+### Requirement: Session ended server-side — the console dispatches `study-session-ended` with its origin
 The live console SHALL dispatch a `study-session-ended` window event, carrying
 its `origin`, when the session it shows ends without the learner pressing End:
 on the server's `stopped` frame (with the frame's reason and return code), and
 on a socket close the server did not explain once `GET /api/session/state` no
 longer names that session as live (a restarted `studyloop web`; the probe
 retries while the server is unreachable and stays silent while the session is
-still live in its grace window). On the `stopped` frame the console SHALL also
+still live in its grace window).
+
+#### Scenario: `studyloop web` is restarted under a live Body Double tab
+- **WHEN** the server process is stopped and started again while the tab shows
+  a live session
+- **THEN** within the probe's retry window the picker is visible again and
+  `#bd-session-ended` names the lost connection ("was studyloop web restarted?")
+
+### Requirement: A view whose session ended server-side returns to its picker
+On the `stopped` frame the console SHALL also
 close its socket, so the server releases the slot at once. The view owning
 that origin SHALL leave its live layout, keep the typed activity or topic so
 the next Start is one click, and show the reason in its picker; the other view
@@ -252,12 +274,6 @@ own End.
 - **THEN** the Body Double picker is visible again with the activity and agent
   still selected, `#bd-session-ended` reads "Your session ended (exit, rc=0)…",
   the live strip and End dialog are gone, and the next Start is not refused
-
-#### Scenario: `studyloop web` is restarted under a live Body Double tab
-- **WHEN** the server process is stopped and started again while the tab shows
-  a live session
-- **THEN** within the probe's retry window the picker is visible again and
-  `#bd-session-ended` names the lost connection ("was studyloop web restarted?")
 
 #### Scenario: The learner's own End shows no notice
 - **WHEN** the learner ends the session with the view's End button
@@ -273,14 +289,7 @@ own End.
 The study-session picker SHALL NOT render a session-type control, and the
 frontend SHALL NOT carry a `sessionType` state field or a `sessionType` key in
 the `study-session-start` event detail. Session mode is determined by which
-view the learner is in, not by a dropdown value. `GET /api/session/options`
-and the `list_session_options` MCP tool SHALL continue to publish a
-`session_types` key (contract shape asserted by
-`test_mcp_session_parity.py`) containing the single `study` entry.
-
-Rationale: the former `body_double` option was written in three places and
-read in none — `StartSessionRequest` has no such field, so selecting it
-changed nothing and left the learner on the Study Session view. Body Double is
+view the learner is in, not by a dropdown value. Body Double is
 now a first-class view with its own picker (capability `body-double-session`).
 
 #### Scenario: Rendering the study-session picker
@@ -288,30 +297,51 @@ now a first-class view with its own picker (capability `body-double-session`).
 - **THEN** no session-type `<select>` is present, and `sessionType` appears
   nowhere in `index.html` or `components.js`
 
+### Requirement: Session options — `session_types` keeps publishing the single `study` entry
+`GET /api/session/options`
+and the `list_session_options` MCP tool SHALL continue to publish a
+`session_types` key (contract shape asserted by
+`test_mcp_session_parity.py`) containing the single `study` entry.
+
+Rationale: the former `body_double` option was written in three places and
+read in none — `StartSessionRequest` has no such field, so selecting it
+changed nothing and left the learner on the Study Session view.
+
 #### Scenario: MCP and web option payload shape
 - **WHEN** `GET /api/session/options` or the `list_session_options` MCP tool
   is called
 - **THEN** the response still contains a `session_types` key, and its only
   entry is `{"label": "Study Session", "value": "study", ...}`
 
-### Requirement: Activation is readiness-gated on every entry path
+### Requirement: Readiness gate — every activating Web write is one PlanApplication.apply intent
 Every Web API write that can leave a study plan in the `active` state —
 create-with-status, raw-Markdown import, whole-document replacement, status
 transition, and in-place revision of fields or milestones (including a body
 that combines a status change with field edits) — SHALL delegate to
-`PlanApplication.apply` as a single intent and SHALL be refused by the seam's
-single readiness gate when the *resulting* document — the document as it
-would be saved, after every supplied field is applied — has no mission `why`,
-no success criteria, or no milestones. The gate judges the resulting document
-whether the request makes the plan active or the plan already is. The routes
-in `web/routes/plans.py` SHALL hold no readiness check and perform no store
-write of their own (`rg 'readiness\(|save_plan' web/routes/plans.py` → 0
-hits). A refusal SHALL be `422` whose response body is
-`{"detail": {"message": "plan is not ready to activate", "plan_id": "<id>",
-"ready": false, "blockers": [...], "nudges": [...]}}` — `detail` is the same
-object the `PATCH` status path has always returned, `plan_id` included — and
-SHALL persist nothing: no document is created, replaced or re-saved before the
-gate runs, and a compound request is one write or none.
+`PlanApplication.apply` as a single intent.
+
+#### Scenario: Compound PATCH that supplies what was missing activates
+- **WHEN** `PATCH /api/plans/{id}` is called on a draft whose only blocker is
+  "no milestones" with `{"status": "active", "milestones": [{"title": "First",
+  "concepts": ["a"]}]}`
+- **THEN** the response is `200`, the plan's `status` is `active`,
+  `readiness.ready` is `true`, and the document was written exactly once
+
+#### Scenario: A ready plan still activates on every door
+- **WHEN** a plan with a mission `why`, at least one success criterion and at
+  least one milestone is created with `status: active`, or transitioned to
+  `active`, or replaced by a document whose frontmatter says `active`, or
+  imported as raw Markdown whose frontmatter says `active`
+- **THEN** the response is `201` (create, import) or `200` (patch) and the
+  plan's `status` is `active`; several plans MAY be active at once
+
+### Requirement: Activation is readiness-gated on every entry path
+Every Web API write that can leave a study plan in the `active` state SHALL be
+refused by the seam's single readiness gate when the *resulting* document — the
+document as it would be saved, after every supplied field is applied — has no
+mission `why`, no success criteria, or no milestones. The gate judges the
+resulting document whether the request makes the plan active or the plan
+already is.
 
 #### Scenario: Create with status active on an unready plan
 - **WHEN** `POST /api/plans` is called with `{"title": "Vague", "status": "active", "answers": {}}`
@@ -347,18 +377,32 @@ gate runs, and a compound request is one write or none.
   `GET /api/plans/{id}` still reports `status == "draft"` with its original
   milestone count — the status change is not saved before the edit is judged
 
-#### Scenario: Compound PATCH that supplies what was missing activates
-- **WHEN** `PATCH /api/plans/{id}` is called on a draft whose only blocker is
-  "no milestones" with `{"status": "active", "milestones": [{"title": "First",
-  "concepts": ["a"]}]}`
-- **THEN** the response is `200`, the plan's `status` is `active`,
-  `readiness.ready` is `true`, and the document was written exactly once
-
 #### Scenario: Field-only edit cannot make an active plan unready
 - **WHEN** `PATCH /api/plans/{id}` is called on an already-active plan with
   `{"milestones": []}` (no `status` in the body)
 - **THEN** the response is `422` with `detail.ready == false`, and the stored
   document is byte-identical to what it was before the request
+
+### Requirement: Readiness gate — the routes hold no readiness check and write nothing themselves
+The routes
+in `web/routes/plans.py` SHALL hold no readiness check and perform no store
+write of their own (`rg 'readiness\(|save_plan' web/routes/plans.py` → 0
+hits).
+
+#### Scenario: The plan routes import plans only through the seam
+- **WHEN** the architecture guard scans `web/routes/plans.py` with every other
+  plan adapter
+- **THEN** the module imports nothing from the store, index, authoring or
+  evaluation modules, so it can hold no readiness check and perform no store
+  write of its own
+
+### Requirement: Readiness gate — the refusal is a 422 with the readiness body and persists nothing
+A refusal SHALL be `422` whose response body is
+`{"detail": {"message": "plan is not ready to activate", "plan_id": "<id>",
+"ready": false, "blockers": [...], "nudges": [...]}}` — `detail` is the same
+object the `PATCH` status path has always returned, `plan_id` included — and
+SHALL persist nothing: no document is created, replaced or re-saved before the
+gate runs, and a compound request is one write or none.
 
 #### Scenario: Every door returns the same refusal
 - **WHEN** the same unready document is refused via create-with-status, status
@@ -366,25 +410,11 @@ gate runs, and a compound request is one write or none.
 - **THEN** the four `422` bodies are equal apart from `detail.plan_id`, with
   the same blockers and nudges in the same order
 
-#### Scenario: A ready plan still activates on every door
-- **WHEN** a plan with a mission `why`, at least one success criterion and at
-  least one milestone is created with `status: active`, or transitioned to
-  `active`, or replaced by a document whose frontmatter says `active`, or
-  imported as raw Markdown whose frontmatter says `active`
-- **THEN** the response is `201` (create, import) or `200` (patch) and the
-  plan's `status` is `active`; several plans MAY be active at once
-
 ### Requirement: Plan routes map seam errors to HTTP status codes in one place
 `web/routes/plans.py` SHALL translate `PlanError` subclasses exactly once:
 `PlanNotFound` → `404`, `InvalidPlanId` and `InvalidField` → `400`,
 `PlanConflict` → `409`, `PlanNotReady` → `422` (body above),
-`InvalidMilestone` → `404`. Field validation for the in-place PATCH (empty
-title, non-list milestones, non-integer `energy_floor` /
-`review_cadence_days`, unknown `status`) SHALL be the seam's `InvalidField`
-with the messages the route used before it delegated. Response bodies for
-list, detail, create, patch and interview SHALL be unchanged from the
-pre-seam routes: summaries carry the `StudyPlan.summary()` key set and
-readiness blocks carry the `authoring.readiness()` key set.
+`InvalidMilestone` → `404`.
 
 #### Scenario: Duplicate id without overwrite
 - **WHEN** `POST /api/plans` names a `plan_id` that already exists and does
@@ -403,6 +433,15 @@ readiness blocks carry the `authoring.readiness()` key set.
 - **WHEN** `PATCH /api/plans/{id}` is called for an id with no document
 - **THEN** the response is `404` before any field of the body is validated
 
+### Requirement: Plan routes — field validation and response bodies keep the pre-seam contract
+Field validation for the in-place PATCH (empty
+title, non-list milestones, non-integer `energy_floor` /
+`review_cadence_days`, unknown `status`) SHALL be the seam's `InvalidField`
+with the messages the route used before it delegated. Response bodies for
+list, detail, create, patch and interview SHALL be unchanged from the
+pre-seam routes: summaries carry the `StudyPlan.summary()` key set and
+readiness blocks carry the `authoring.readiness()` key set.
+
 #### Scenario: A bad field beside a status change writes nothing
 - **WHEN** `PATCH /api/plans/{id}` is called with `{"status": "active",
   "title": "   "}` on a ready draft
@@ -416,17 +455,22 @@ current state through the seam and apply one `SetMilestone(plan_id, index,
 done=<opposite>)` intent — never a route-side write and never the full-list
 `RevisePlan` substitute the review-1 corrections used in the interim. The
 seam's `SetMilestone` is a *set*, not a toggle: applying the same intent twice
-leaves the same document. The legacy no-body toggle *request* is
+leaves the same document.
+
+#### Scenario: Each toggle request applies exactly one SetMilestone
+- **WHEN** the toggle is posted twice for the same milestone with
+  `PlanApplication.apply` under observation
+- **THEN** each request applied exactly one `SetMilestone` whose `done` was
+  the opposite of the state it read, and no route-side write occurred
+
+### Requirement: Milestone toggle — the legacy request is read-invert-write and claims no replay safety
+The legacy no-body toggle *request* is
 read-invert-write and therefore **not** retry-idempotent: replaying it flips
 the box again, and two concurrent toggles can collapse into one update — the
 contract this checkbox has always had, acceptable for a checkbox, and no claim
 of replay safety SHALL be made for it (council review 2, F3). A caller that
 needs replay safety SHALL state the desired state (`PATCH` with `milestones`,
-or the CLI's `--done`/`--undone`). An
-index the plan does not have — past the end **or negative** — SHALL be the
-seam's `InvalidMilestone`, mapped to `404`, with the document byte-identical
-afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
-"index": <i>, "done": <bool>, "plan": <summary>}`.
+or the CLI's `--done`/`--undone`).
 
 #### Scenario: Toggle flips and flips back
 - **WHEN** the toggle is posted twice for milestone `0` of a two-milestone plan
@@ -434,6 +478,13 @@ afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
   1`; the second has `done == false` and `plan.milestone_done == 0`; each
   request applied exactly one `SetMilestone` whose `done` was the opposite of
   the state it read — a replayed request is not a no-op
+
+### Requirement: Milestone toggle — a missing index is the seam's 404 and the body keeps its pre-seam keys
+An
+index the plan does not have — past the end **or negative** — SHALL be the
+seam's `InvalidMilestone`, mapped to `404`, with the document byte-identical
+afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
+"index": <i>, "done": <bool>, "plan": <summary>}`.
 
 #### Scenario: Out-of-range and negative indices
 - **WHEN** the toggle is posted for index `42` or `-1`
@@ -461,10 +512,7 @@ malformed id `400`, both before anything is removed.
 `"not_requested"`, `"saved"` or `"failed"`; `recorded` SHALL be `true` only
 when no requested sink failed. A failed sink is a reported outcome, not an
 error response: the evaluation succeeded and the client is entitled to it, so
-the status stays `201`. `GET /api/plans/{id}/evaluate` SHALL be
-`assess(record=False)` and write to neither sink. The route SHALL hold no
-phase check of its own: an unknown phase on `POST` is the seam's
-`InvalidField` → `400`, judged after the plan is found (`404` first).
+the status stays `201`.
 
 #### Scenario: Both sinks saved
 - **WHEN** `POST /api/plans/{id}/evaluate` is called with `{"phase": "start"}`
@@ -492,10 +540,6 @@ phase check of its own: an unknown phase on `POST` is the seam's
   <phase> checkpoint — database: failed, document: failed`, never "Partially
   recorded" — "partially" is shown only when at least one sink saved
 
-#### Scenario: Preview writes nothing
-- **WHEN** `GET /api/plans/{id}/evaluate?phase=end` is called
-- **THEN** neither the checkpoint log nor the document gains a row
-
 #### Scenario: Recording onto an unready active document
 - **WHEN** `POST /api/plans/{id}/evaluate` is called for a hand-edited active
   plan with no mission
@@ -503,68 +547,55 @@ phase check of its own: an unknown phase on `POST` is the seam's
   byte-identical, the checkpoint log has no row, and `GET
   /api/plans/{id}/evaluate` (preview) is still `200`
 
+### Requirement: Checkpoint preview — GET is assess(record=False) and writes to neither sink
+`GET /api/plans/{id}/evaluate` SHALL be
+`assess(record=False)` and write to neither sink.
+
+#### Scenario: Preview writes nothing
+- **WHEN** `GET /api/plans/{id}/evaluate?phase=end` is called
+- **THEN** neither the checkpoint log nor the document gains a row
+
+### Requirement: Checkpoint recording — the route holds no phase check of its own
+The route SHALL hold no
+phase check of its own: an unknown phase on `POST` is the seam's
+`InvalidField` → `400`, judged after the plan is found (`404` first).
+
+#### Scenario: An unknown phase is the seam's 400 after the 404
+- **WHEN** `POST /api/plans/{id}/evaluate` is called with an unknown `phase`
+  for a plan that exists, and again for an id with no document
+- **THEN** the first is `400` from the seam's `InvalidField` and the second is
+  `404`, the route having judged neither phase itself
+
 ### Requirement: Plan with architect journey
 The Study Plans view SHALL offer a **Plan with architect** control beside
 **New plan** (button name `Plan with architect`, `data-testid="plan-architect"`)
 with an optional subject field (`data-testid="plan-architect-subject"`, labelled
-for assistive technology), an optional brain-dump textarea
+for assistive technology).
+
+#### Scenario: The control is offered beside New plan and takes a subject
+- **WHEN** the learner opens the Study Plans view, types a subject into the
+  **Plan with architect** control's field and activates it
+- **THEN** the control is present beside **New plan**, the subject is carried
+  as the start's `topic` and the learner lands on the existing console
+
+### Requirement: Plan with architect — the brain-dump textarea and the live status region
+The **Plan with architect** control SHALL offer an optional brain-dump textarea
 (`data-testid="plan-architect-braindump"`, labelled, `maxlength` equal to the
 server's `BRAIN_DUMP_MAX_CHARS`) and a live status region
 (`data-testid="plan-architect-status"`, `role="status"`, `aria-live="polite"`).
+
+#### Scenario: The textarea's text travels as the brain dump
+- **WHEN** the learner fills the brain-dump textarea and activates the control
+- **THEN** the dump reaches the architect's persona as its own section while the
+  status region reports the launch
+
+### Requirement: Plan with architect — one activation is exactly one planning start POST
 One activation SHALL cause exactly one `POST /api/session/start` carrying
 `purpose: "planning"`, `topic: <the subject, trimmed, or "">` (never omitted;
 the server resolves `""` to the fixed label `Study plan`), `brain_dump: <the
 textarea's text, trimmed>` **only when it is non-blank** (a blank dump sends no
 key, so the server's "no dump" and "empty dump" are one case), `origin:
-"study"` and the start picker's own `energy`, `agent` and `transport`. The
-brain dump SHALL never be folded into `topic` and SHALL never ride a `focus`
-start. The Plans view SHALL NOT post, open a WebSocket, mount a terminal or
-listen for the console's `study-session-start` event: it dispatches one
-`plan-architect-request` window event (detail `{purpose, topic, brainDump}`)
-and the Study Session view's session timer — the one owner of the start POST,
-the 409 handling and the `study-session-start` event the live console mounts on
-— starts the session and navigates the learner to the existing console
-(`#study-session`), then reports the outcome back with exactly one
-`plan-architect-result` event. A second activation while a launch is in flight
-SHALL be a no-op. The Study Session view's `init()` SHALL register its window
-listeners once even when called twice (Alpine auto-init plus `x-init`). A
-planning launch that arrives before `init()`'s `/api/session/options` fetch has
-settled SHALL wait for it before judging whether an agent exists (a cold server
-is not a missing agent), and that wait SHALL be bounded (`optionsWaitMs`, 8 s):
-past the bound the launch judges the agent as it stands and refuses with the
-picker's own `Select an agent to continue.`; a settlement that arrives later
-SHALL launch nothing on its own (council review 6).
-
-The live console SHALL carry a purpose label (`data-testid="console-purpose-label"`,
-`role="status"`, `aria-live="polite"`) that is rendered only for a planning
-session, read from `purpose` on the `201` body on a fresh start and from `GET
-/api/session/state` on load-time adoption; a focus console SHALL render as
-before. `GET /api/session/state` SHALL report `purpose` for every session it
-describes — on the live-slot overlay and on the file-only path a CLI session
-takes — with an explicit persisted `purpose` winning, a file whose persisted
-`mode` is the planning persona's (`persona_mode_for("planning")`) reporting
-`planning`, and anything else `focus`; the topic string SHALL never be
-consulted. The launch SHALL create no plan and store no plan id (D-11). A
-launch refused with the existing `409` conflict shape (`error`,
-`study_session_id`, `topic`, `agent`, `detached`, `reattach_url`) SHALL land
-the learner on the picker's recovery block with the reattach lever, not on a
-second console. The manual **New plan** path SHALL be unchanged.
-
-Abandoning a launch is the console's existing End control (the ■ button, then
-the in-page confirmation — never a native dialog): fired as soon as the launch
-has been accepted, it SHALL leave no live slot, no plan document, no
-`plan_id`, no planning label, and at most one WebSocket ever opened.
-Navigating away is **not** the abandon path: a closed socket detaches with a
-grace period by design, so an accidental reload cannot kill a live session —
-and a launch that lands *after* the learner has left the console is a session
-like any other (owner decision 2026-09-18, council review 6 F3b): it exists,
-it created no plan, the console reattaches to it on return, and the End
-control abandons it. There is no cancel for a pending launch.
-
-The architect's one-question-at-a-time protocol is asserted as persona text
-(owner decision D-B): the browser and unit tests prove the brief — including
-the brain dump — is delivered to the agent process; no test asserts how a live
-model behaves with it, and the docs say so.
+"study"` and the start picker's own `energy`, `agent` and `transport`.
 
 #### Scenario: One click, one POST, the existing console
 - **WHEN** the learner types `SQL window functions` into the subject field and activates **Plan with architect**
@@ -572,34 +603,150 @@ model behaves with it, and the docs say so.
 - **AND** the response is `201` with `purpose == "planning"` and a `ws_url`
 - **AND** the page navigates to `#study-session`, exactly one `study-session-start` event fires with `purpose == "planning"`, exactly one WebSocket is opened, one console is visible and nothing is mounted in the Plans view
 
-#### Scenario: The brain dump reaches the architect
-- **WHEN** the learner types a multi-line brain dump into the textarea, leaves the subject blank and activates the control
-- **THEN** the one POST carries `brain_dump` equal to the trimmed text and `topic == ""`, the `201` names the topic `Study plan`
-- **AND** the persona the fake agent received contains `### Learner's brain dump` with every dump line quoted (`> …`), `**Topic:** Study plan`, and `GET /api/session/state` carries neither the key nor the text
-
 #### Scenario: No subject
 - **WHEN** the learner activates the control with an empty subject
 - **THEN** the request carries `topic == ""` and the `201` body's `topic` is `Study plan`
-
-#### Scenario: Label survives a reload
-- **WHEN** a planning session is running and the learner reloads the page
-- **THEN** the console shows exactly one visible purpose label reading "planning" both before and after the reload
-
-#### Scenario: CLI-started architect is labelled from its persisted mode
-- **WHEN** the session state file carries `mode == "plan-architect"` and no `purpose` key
-- **THEN** `GET /api/session/state` reports `purpose == "planning"`; a file with `mode == "focus"` and topic `Study plan` reports `focus`
 
 #### Scenario: The brief's structure, never its wording
 - **WHEN** a planning launch reaches the fake PTY agent
 - **THEN** the persona it received contains, in order, `## Planning brief`, `### Interview`, `### Evidence from the learner's history`, `### Existing plans`, `## Tooling`, with `**Mode:** plan-architect` and no `Resuming Previous Session`
 
+#### Scenario: What the tests prove about the architect's brief
+- **WHEN** a planning launch hands the brief to the agent process
+- **THEN** the architect's one-question-at-a-time protocol is asserted as persona text
+  (owner decision D-B): the browser and unit tests prove the brief — including
+  the brain dump — is delivered to the agent process; no test asserts how a live
+  model behaves with it, and the docs say so
+
+### Requirement: Plan with architect — the brain dump never rides `topic` or a focus start
+The
+brain dump SHALL never be folded into `topic` and SHALL never ride a `focus`
+start.
+
+#### Scenario: The brain dump reaches the architect
+- **WHEN** the learner types a multi-line brain dump into the textarea, leaves the subject blank and activates the control
+- **THEN** the one POST carries `brain_dump` equal to the trimmed text and `topic == ""`, the `201` names the topic `Study plan`
+- **AND** the persona the fake agent received contains `### Learner's brain dump` with every dump line quoted (`> …`), `**Topic:** Study plan`, and `GET /api/session/state` carries neither the key nor the text
+
+### Requirement: Plan with architect — the Plans view dispatches one request and mounts nothing
+The Plans view SHALL NOT post, open a WebSocket, mount a terminal or
+listen for the console's `study-session-start` event: it dispatches one
+`plan-architect-request` window event (detail `{purpose, topic, brainDump}`).
+
+#### Scenario: The Plans view mounts no terminal of its own
+- **WHEN** the learner activates the control and the console mounts
+- **THEN** exactly one `study-session-start` event fired, exactly one WebSocket
+  was opened, one console is visible and the Plans view holds no terminal
+  mount or console of its own
+
+### Requirement: Plan with architect — the Study Session view owns the start and navigates to the existing console
+The Plans view SHALL NOT post, open a WebSocket, mount a terminal or
+listen for the console's `study-session-start` event: the Study Session view's
+session timer — the one owner of the start POST, the 409 handling and the
+`study-session-start` event the live console mounts on — starts the session and
+navigates the learner to the existing console (`#study-session`), then reports
+the outcome back with exactly one `plan-architect-result` event.
+
+#### Scenario: The start lands the learner on the existing console
+- **WHEN** the learner activates the control with a subject
+- **THEN** the Study Session view's timer makes the one `POST
+  /api/session/start`, the response is `201`, and the page navigates to the
+  existing `#study-session` console
+
+### Requirement: Plan with architect — an in-flight re-activation is a no-op and listeners register once
+A second activation while a launch is in flight
+SHALL be a no-op. The Study Session view's `init()` SHALL register its window
+listeners once even when called twice (Alpine auto-init plus `x-init`).
+
+#### Scenario: One launch, one listener, one socket
+- **WHEN** the learner activates the control on a page whose Study Session view
+  was initialised by Alpine and by `x-init`
+- **THEN** exactly one `study-session-start` event fires and exactly one
+  WebSocket is opened to the session's `ws_url`
+
+### Requirement: Plan with architect — a launch that beats the options fetch waits, bounded
+A
+planning launch that arrives before `init()`'s `/api/session/options` fetch has
+settled SHALL wait for it before judging whether an agent exists (a cold server
+is not a missing agent), and that wait SHALL be bounded (`optionsWaitMs`, 8 s):
+past the bound the launch judges the agent as it stands and refuses with the
+picker's own `Select an agent to continue.`; a settlement that arrives later
+SHALL launch nothing on its own (council review 6).
+
+#### Scenario: A click that beats the options fetch still starts exactly once
+- **WHEN** the learner activates the control before the picker's
+  `/api/session/options` request has resolved on a cold server
+- **THEN** the launch waits for the options, then makes exactly one start POST
+  and lands on the console instead of refusing for a missing agent
+
+### Requirement: Plan with architect — the console carries a purpose label for a planning session
+The live console SHALL carry a purpose label (`data-testid="console-purpose-label"`,
+`role="status"`, `aria-live="polite"`) that is rendered only for a planning
+session, read from `purpose` on the `201` body on a fresh start and from `GET
+/api/session/state` on load-time adoption; a focus console SHALL render as
+before.
+
+#### Scenario: Label survives a reload
+- **WHEN** a planning session is running and the learner reloads the page
+- **THEN** the console shows exactly one visible purpose label reading "planning" both before and after the reload
+
+### Requirement: Plan with architect — session state reports `purpose` for every session
+`GET /api/session/state` SHALL report `purpose` for every session it
+describes — on the live-slot overlay and on the file-only path a CLI session
+takes — with an explicit persisted `purpose` winning, a file whose persisted
+`mode` is the planning persona's (`persona_mode_for("planning")`) reporting
+`planning`, and anything else `focus`; the topic string SHALL never be
+consulted.
+
+#### Scenario: CLI-started architect is labelled from its persisted mode
+- **WHEN** the session state file carries `mode == "plan-architect"` and no `purpose` key
+- **THEN** `GET /api/session/state` reports `purpose == "planning"`; a file with `mode == "focus"` and topic `Study plan` reports `focus`
+
+### Requirement: Plan with architect — the launch creates no plan
+The launch SHALL create no plan and store no plan id (D-11).
+
 #### Scenario: Nothing is created by the launch
 - **WHEN** the control is activated and the console mounts
 - **THEN** `GET /api/plans` is unchanged, the plans directory holds no new document, and the session state carries no `plan_id`
 
+### Requirement: Plan with architect — a 409 lands on the picker's recovery block
+A
+launch refused with the existing `409` conflict shape (`error`,
+`study_session_id`, `topic`, `agent`, `detached`, `reattach_url`) SHALL land
+the learner on the picker's recovery block with the reattach lever, not on a
+second console.
+
+#### Scenario: Conflict is the existing shape with a reattach lever
+- **WHEN** a session is already running and the learner activates the control
+- **THEN** the POST returns the existing `409` body and the picker's recovery block appears with the reattach lever; no second console mounts
+
+### Requirement: Plan with architect — the manual New plan path is unchanged
+The manual **New plan** path SHALL be unchanged.
+
+#### Scenario: Manual New plan is unchanged
+- **WHEN** the learner uses **New plan**, fills the form and submits
+- **THEN** the plan is created and listed and no session is started
+
+### Requirement: Plan with architect — abandoning a launch is the console's End control
+Abandoning a launch is the console's existing End control (the ■ button, then
+the in-page confirmation — never a native dialog): fired as soon as the launch
+has been accepted, it SHALL leave no live slot, no plan document, no
+`plan_id`, no planning label, and at most one WebSocket ever opened.
+There is no cancel for a pending launch.
+
 #### Scenario: Abandoning a launch mid-flight leaves no session and no plan
 - **WHEN** the learner activates the control and, as soon as the `201` arrives, uses the console's End control and confirms
 - **THEN** `GET /api/session/state` has no `study_session_id` and no planning purpose, `GET /api/plans` and the plans directory are unchanged, exactly one `study-session-start` fired, at most one WebSocket was opened, and no purpose label is visible
+
+#### Scenario: Navigating away is not the abandon path
+- **WHEN** the learner leaves the console while a planning session is live or
+  its launch is still in flight
+- **THEN** navigating away is **not** the abandon path: a closed socket detaches with a
+  grace period by design, so an accidental reload cannot kill a live session —
+  and a launch that lands *after* the learner has left the console is a session
+  like any other (owner decision 2026-09-18, council review 6 F3b): it exists,
+  it created no plan, the console reattaches to it on return, and the End
+  control abandons it
 
 #### Scenario: Leaving before the launch lands leaves a session like any other
 - **WHEN** the learner clicks "Plan with architect", the start POST is held,
@@ -612,26 +759,11 @@ model behaves with it, and the docs say so.
   planning label and one `study-session-start` event in total, and the End
   control releases the slot
 
-#### Scenario: Conflict is the existing shape with a reattach lever
-- **WHEN** a session is already running and the learner activates the control
-- **THEN** the POST returns the existing `409` body and the picker's recovery block appears with the reattach lever; no second console mounts
-
-#### Scenario: Manual New plan is unchanged
-- **WHEN** the learner uses **New plan**, fills the form and submits
-- **THEN** the plan is created and listed and no session is started
-
 ### Requirement: Plan list rows carry readiness and the sidebar marks a husk
 Every row of `GET /api/plans` SHALL be `PlanSummary.to_json_dict()` and SHALL
 carry `ready` — the same verdict the readiness gate judges every write by —
 as its eighteenth key, so a client can tell an active-but-unready plan (a
-"husk", item 3 / D-C) from the list alone, with no per-row round-trip. The
-Plans sidebar SHALL render one mark (`data-testid="sidebar-plan-husk"`, the
-glyph `!`, `role="img"` with an `aria-label` and a `title` naming the
-condition and both exits) inside `.sidebar-plan-meta` for a row whose
-`status` is `active` and whose `ready` is `false`, and SHALL render it for no
-other row. The mark is computed from the row's own `ready`; the sidebar
-SHALL make no further request to decide it. Colour SHALL come from the theme's
-own tokens and SHALL not be the only carrier of the information.
+"husk", item 3 / D-C) from the list alone, with no per-row round-trip.
 
 #### Scenario: List payload carries ready
 - **WHEN** `GET /api/plans` is served for one ready active plan and one active
@@ -639,22 +771,35 @@ own tokens and SHALL not be the only carrier of the information.
 - **THEN** every row has 18 keys, the ready plan's row has `ready: true`, the
   husk's row has `ready: false`, and `?status=active` returns both
 
+### Requirement: Plans sidebar — one husk mark for an active-but-unready row and no other
+The
+Plans sidebar SHALL render one mark (`data-testid="sidebar-plan-husk"`, the
+glyph `!`, `role="img"` with an `aria-label` and a `title` naming the
+condition and both exits) inside `.sidebar-plan-meta` for a row whose
+`status` is `active` and whose `ready` is `false`, and SHALL render it for no
+other row.
+
 #### Scenario: Sidebar marks the husk and only the husk
 - **WHEN** the Plans sidebar renders those rows
 - **THEN** exactly one `sidebar-plan-husk` mark is present, on the husk's row,
   and the ready plan's row has none
+
+### Requirement: Plans sidebar — the husk mark is decided from the row's own ready and not by colour alone
+The mark is computed from the row's own `ready`; the sidebar
+SHALL make no further request to decide it. Colour SHALL come from the theme's
+own tokens and SHALL not be the only carrier of the information.
+
+#### Scenario: The mark is decided from the row's own ready
+- **WHEN** the Plans sidebar decides whether a row carries the mark
+- **THEN** the mark is computed from the row's own `ready` and the sidebar
+  makes no further request to decide it
 
 ### Requirement: PATCH carries the mission to the one RevisePlan
 `PATCH /api/plans/{id}` SHALL accept `why`, `success`, `constraints` and
 `out_of_scope` beside the fields it already carries (item 3b, design §3b), and
 SHALL translate them onto the same single `RevisePlan` — the route validates
 and writes nothing itself. An absent key is `None` ("leave as is"); a
-supplied list replaces the whole list. The seam's refusals map as they always
-have: a bare string where a list belongs is the seam's `InvalidField` → `400`
-naming the field; a write whose resulting document would be active but not
-ready is `422` with the `readiness` body and nothing written. The `PATCH`
-response is the write receipt (`updated`, `plan`, `readiness`); the mission is
-read back from `GET /api/plans/{id}`. With this the Web UI's whole-document
+supplied list replaces the whole list. With this the Web UI's whole-document
 `PATCH markdown` is no longer the only mission writer.
 
 #### Scenario: Partial mission on a husk is 422; the whole mission lands and the row flips to ready
@@ -668,7 +813,23 @@ read back from `GET /api/plans/{id}`. With this the Web UI's whole-document
   returns the four mission values, and the `GET /api/plans` row for `husk`
   has `ready: true`
 
+### Requirement: PATCH mission — the seam's refusals map as they always have
+The seam's refusals SHALL map as they always have: a bare string where a list
+belongs is the seam's `InvalidField` → `400` naming the field; a write whose
+resulting document would be active but not ready is `422` with the `readiness`
+body and nothing written.
+
 #### Scenario: A string where a list belongs is the seam's 400
 - **WHEN** `PATCH /api/plans/{id}` is sent `{"success": "one string"}`
 - **THEN** the response is `400` naming `success` and the document is
   unchanged
+
+### Requirement: PATCH mission — the response is the write receipt and the mission is read back from GET
+The `PATCH` response SHALL be the write receipt (`updated`, `plan`,
+`readiness`); the mission is read back from `GET /api/plans/{id}`.
+
+#### Scenario: The receipt carries plan and readiness; the mission is read back
+- **WHEN** `PATCH /api/plans/husk` lands the whole mission on an active plan
+- **THEN** the `200` body carries `plan` (status `active`, `ready: true`) and
+  `readiness` (`blockers: []`), and the four mission values are read back
+  from `GET /api/plans/husk`, not from the `PATCH` body
