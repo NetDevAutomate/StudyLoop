@@ -276,41 +276,6 @@ unit = "consulted."
 new = "heading: Body double — the why-clause when the milestone names no concept or the index could not be read"
 reason = "why-clause bullet 4, continuation"
 
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The body-double proposal carries one passive first move"
-unit = "When a lesson resolved, `metadata[\"first_move_lesson_id\"]` and `metadata[\"first_move_lesson_title\"]` SHALL carry its id and title so a renderer can open it in StudyLoop's own frame without parsing the sentence; both SHALL be absent otherwise."
-new = "own conditional (`When a lesson resolved`); not governed by the why-clause lead-in in prose"
-reason = "checker artefact: #6 persists as lead-in past the bullet list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The body-double proposal carries one passive first move"
-unit = "The move SHALL be passive — reading; never an exercise, a practice task or a question — because it must be consumable at the capability the day carries."
-new = "self-contained sentence; not governed by the why-clause lead-in in prose"
-reason = "checker artefact: #6 persists as lead-in past the bullet list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The body-double proposal carries one passive first move"
-unit = "It SHALL ride as `metadata[\"first_move\"]` on the body-double recommendation, and ONLY in `metadata`: the reason SHALL NOT carry the sentence (the reason explains the recommendation; the move is an action, rendered by each consumer once, beside the session door — rubric 3c (d)); it SHALL add no top-level key to the `now` payload, so the no-plan golden is byte-identical."
-new = "self-contained sentence (`It` = the move, named in the heading); not governed by the why-clause lead-in in prose"
-reason = "checker artefact: #6 persists as lead-in past the bullet list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The body-double proposal carries one passive first move"
-unit = "The content index is a refinement, never a dependency: a lookup that raises SHALL answer the plain milestone form with no warning."
-new = "self-contained sentence; not governed by the why-clause lead-in in prose"
-reason = "checker artefact: #6 persists as lead-in past the bullet list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The body-double proposal carries one passive first move"
-unit = "A body double always has a deferred milestone to draw on — an eligible next milestone would have been synthesised as a plan-related candidate and suppressed the body double."
-new = "self-contained sentence; not governed by the why-clause lead-in in prose"
-reason = "checker artefact: #6 persists as lead-in past the bullet list"
-
 [[test-sourced]]
 spec = "active-learning-decisions"
 scenario = "The resolver is asked once, with the deferred milestone's own concepts"
@@ -419,55 +384,6 @@ heading = "A plan-related active primary carries one warm-up first move on its o
 unit = "on “<concept>”`."
 new = "the real lead-in is carried verbatim in the same fragment (`Warm-up tests 2 and 3`)"
 reason = "checker artefact: bullet 1's continuation line is read as a lead-in"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "A candidate is plan-related by its concept, its topic OR its course, so an active item with a blank concept can be the plan-related primary: the repair and generic tails, which name and search the concept, SHALL then carry no warm-up and the resolver SHALL NOT be asked (council review 8, grok); the milestone tail is unaffected, since it names the milestone's own concepts."
-new = "self-contained sentence (own fragment); not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for one — reading the lesson before a retrieval test defeats the test (row 3b (b): familiar recall leads as it is); `visual` and `audio` are already passive and carry none."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "A primary off every plan SHALL carry none, so the no-plan golden is byte-identical; alternates SHALL carry none (one move)."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "CLI `now` keys on `metadata.first_move` and prints `First move:` beneath `Record evidence:` without change."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "The Today card SHALL read `metadata.first_move` and the lesson fields for ANY recommendation that carries them — its `firstMoveNote` and `firstMoveLesson` gated on `source == \"body_double\"` and hid the warm-up (rubric 3c (e2), correcting (e1)'s record) — and SHALL render the line and the **Open the lesson** control for the warm-up as for the sit-with move."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "A hand-off without a move (resume, a parked pick-up, a primary the engine gave none) SHALL clear any earlier one."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "A plan-related active primary carries one warm-up first move on its own material"
-unit = "Each view SHALL clear the three fields through one writer (`clearFirstMove()`) so no transition can clear two of them and leave the third."
-new = "self-contained sentence; not governed by the bullet list in prose"
-reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
 
 [[test-sourced]]
 spec = "active-learning-decisions"
@@ -678,20 +594,6 @@ spec = "active-learning-decisions"
 heading = "The now engine is plan-aware with tested ranking rules"
 unit = "An active-but-unready plan SHALL be listed and matched (bias and a `milestone_index = None` reference) but never synthesised and never named as a milestone, with a warning naming its blockers."
 new = "heading `Now-engine rule 8: …`"
-reason = "checker names rule 7's first line as this unit's lead-in"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The now engine is plan-aware with tested ranking rules"
-unit = "`NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`, `energy_deferred_repairs`, `completion_actions` and `warnings`; `LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`."
-new = "heading `Now-engine payload: …`; the tail paragraph after the list was never governed by rule 7 in prose"
-reason = "checker names rule 7's first line as this unit's lead-in"
-
-[[context-restated]]
-spec = "active-learning-decisions"
-heading = "The now engine is plan-aware with tested ranking rules"
-unit = "`to_json_dict()` SHALL omit each of these when empty, so a learner with no active plan, no struggle candidate and nothing deferred receives the pre-#10 payload **byte for byte** — the golden world, pinned by `tests/golden/now_plan_no_active.json`, captured before any of this shipped."
-new = "heading `Now-engine payload: …`"
 reason = "checker names rule 7's first line as this unit's lead-in"
 
 [[test-sourced]]
