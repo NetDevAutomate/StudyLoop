@@ -31,12 +31,24 @@ client.
 - **THEN** the new study session is created and the client switches to
   it via `tmux switch-client` rather than attempting a nested attach
 
-#### Scenario: The orchestrator splits, then attach_if_needed attaches or switches
-- **WHEN** the tmux session has been created by `studyloop study`
-- **THEN** `session/orchestrator.py::create_tmux_environment()` performs
-  the split and `attach_if_needed()` calls `os.execvp("tmux", ["tmux",
-  "attach-session", ...])` when not already in tmux, or
-  `tmux.switch_client()` when already inside tmux.
+### Requirement: studyloop study — the orchestrator performs the split, then attach_if_needed attaches or switches
+`session/orchestrator.py::create_tmux_environment()` SHALL perform the
+split and `attach_if_needed()` calls `os.execvp("tmux", ["tmux",
+"attach-session", ...])` when not already in tmux, or
+`tmux.switch_client()` when already inside tmux.
+
+#### Scenario: Attach outside tmux execs tmux attach-session
+- **WHEN** `studyloop.tmux.attach()` — the backend attach that
+  `attach_if_needed()` delegates to — is called with no `TMUX` variable in
+  the environment
+- **THEN** `os.execvp` is called exactly once with
+  `tmux attach-session -t <session>`
+
+#### Scenario: Attach inside tmux falls back to switch-client
+- **WHEN** `studyloop.tmux.attach()` is called with `TMUX` set in the
+  environment
+- **THEN** the backend runs `tmux switch-client -t <session>` instead of
+  attaching
 
 ### Requirement: Only one tmux-based session may be active at a time
 The system SHALL reject a new `studyloop study` invocation when
@@ -71,12 +83,39 @@ CLI commands.
 - **THEN** `fcntl.flock(LOCK_EX)` on a dedicated `.session-state.lock`
   file serialises the read-merge-write operations, preventing data loss
 
-#### Scenario: session_state.py owns the IPC read/write functions
-- **WHEN** any process reads or writes one of the three IPC files
-- **THEN** it goes through `session_state.py`: `session_state.py` owns all
-  read/write functions: `write_session_state()`, `append_topic()`,
-  `append_parking()`, `parse_topics_file()`, `parse_parking_file()`,
-  `read_session_state()`.
+### Requirement: IPC files — session_state.py owns the read/write functions
+`session_state.py` SHALL own all read/write functions:
+`write_session_state()`, `append_topic()`, `append_parking()`,
+`parse_topics_file()`, `parse_parking_file()`, `read_session_state()`.
+
+#### Scenario: write_session_state creates the state file and merges a second write
+- **WHEN** `session_state.write_session_state()` is called twice, first with
+  `energy` and `topic`, then with `energy` alone
+- **THEN** the file is created by the first call and the second call updates
+  `energy` while `topic` is preserved
+
+#### Scenario: read_session_state returns the parsed state
+- **WHEN** `session_state.read_session_state()` is called with a well-formed
+  `session-state.json` present
+- **THEN** the parsed `energy` and `topic` values are returned
+
+#### Scenario: append_topic appends one topic line
+- **WHEN** `session_state.append_topic()` is called with a time, topic, status
+  and note
+- **THEN** `session-topics.md` gains the line
+  `- [<time>] <topic> | status:<status> | <note>`
+
+#### Scenario: append_parking appends one parking line
+- **WHEN** `session_state.append_parking()` is called with a question
+- **THEN** `session-parking.md` gains the line `- <question>`
+
+#### Scenario: parse_topics_file parses well-formed topic entries
+- **WHEN** `session_state.parse_topics_file()` reads three well-formed lines
+- **THEN** three entries are returned with time, topic, status and note parsed
+
+#### Scenario: parse_parking_file parses parking entries
+- **WHEN** `session_state.parse_parking_file()` reads two parking lines
+- **THEN** two entries are returned, each carrying its question
 
 ### Requirement: studyloop park persists tangential questions to both DB and IPC
 `cli/_session.py::park()` SHALL call `parking.park_topic()` to write the
@@ -111,18 +150,17 @@ widget with break-type-specific colouring.
 - **THEN** `check_break_needed()` returns a `BreakSuggestion` with
   `break_type="micro"` and the sidebar displays the break banner
 
+### Requirement: Break suggestions — resuming from pause increments breaks_taken and resets the break clock
+Resuming from pause (`action_toggle_pause`) SHALL increment
+`breaks_taken` and resets the break clock by writing `last_break_at_min`
+to the state file.
+
 #### Scenario: Pausing and resuming resets the break clock
 - **WHEN** the user presses `p` in the sidebar to pause, then `p`
   again to resume
 - **THEN** `last_break_at_min` is written to the state file at the
   current elapsed minute and `breaks_taken` is incremented, so the
   next break suggestion is deferred by a full threshold interval
-
-#### Scenario: Resume bookkeeping in the state file
-- **WHEN** the sidebar's `action_toggle_pause` resumes a paused session
-- **THEN** Resuming from pause (`action_toggle_pause`) increments
-  `breaks_taken` and resets the break clock by writing
-  `last_break_at_min` to the state file.
 
 ### Requirement: Session end flushes summary to DB and clears IPC files
 `session/cleanup.py::end_session_common()` SHALL parse topic and parking
@@ -164,20 +202,24 @@ age exceeds 60 seconds (`tmux.is_zombie_session()`).
   process and is older than 60s, kills it, removes its directory, and
   proceeds with normal session startup
 
+### Requirement: Orphan sessions — auto_clean_zombies delegates to plan_clean and executes the plan
+It SHALL delegate the decision to `logic/clean_logic.py::plan_clean()`
+(pure function) and executes the plan: kill zombie sessions, remove
+orphan session directories under `SESSION_DIR/sessions/` that have no
+matching live tmux session, and clear stale `session-state.json` when
+`mode=ended` with no matching tmux session.
+
 #### Scenario: Explicit cleanup via CLI
 - **WHEN** `studyloop clean --dry-run` is run
 - **THEN** the same `plan_clean()` logic reports what would be cleaned
   (zombie sessions, orphan directories, stale state file) without
   performing any side effects
 
-#### Scenario: auto_clean_zombies executes the plan from plan_clean
-- **WHEN** `auto_clean_zombies()` has identified zombie sessions, orphan
-  directories or a stale state file
-- **THEN** It delegates the decision to `logic/clean_logic.py::plan_clean()`
-  (pure function) and executes the plan: kill zombie sessions, remove
-  orphan session directories under `SESSION_DIR/sessions/` that have no
-  matching live tmux session, and clear stale `session-state.json` when
-  `mode=ended` with no matching tmux session.
+#### Scenario: plan_clean plans all three kinds of cleanup in one pass
+- **WHEN** `plan_clean()` is given a zombie session, a session directory
+  with no live tmux session, and an ended state whose tmux session is gone
+- **THEN** the plan lists that session to kill, that directory to remove
+  and the state file to clean
 
 ### Requirement: The sidebar polls IPC files every 2 seconds
 `tui/sidebar.py::SidebarApp._poll_ipc_files()` SHALL run in a
@@ -194,10 +236,15 @@ timer/energy/mode), `session-topics.md` (for activity feed), and
 - **THEN** the sidebar picks up the new topic on the next poll at
   T+2 (worst-case latency ~2 seconds)
 
-#### Scenario: session-oneline.txt is written for the tmux status bar
-- **WHEN** a poll iteration completes
-- **THEN** A `session-oneline.txt` file is written as a side effect for
-  tmux status-bar integration.
+### Requirement: Sidebar poll — session-oneline.txt is written for the tmux status bar
+A `session-oneline.txt` file SHALL be written as a side effect for
+tmux status-bar integration.
+
+#### Scenario: The sidebar writes session-oneline.txt with the topic and energy
+- **WHEN** a study session is started with a mock agent and the sidebar
+  runs its poll loop
+- **THEN** `session-oneline.txt` appears in the session directory, non-empty,
+  naming the topic and the energy level (`E:5`)
 
 ### Requirement: Timer supports elapsed and pomodoro modes with sidebar key bindings
 The `TimerWidget` SHALL render in two modes selected by the
@@ -214,12 +261,24 @@ defaulting to 25/5/15 minutes with 4 cycles per set, overridable via
   and the timer re-renders as a countdown within the current focus
   block
 
-#### Scenario: Sidebar key bindings
-- **WHEN** the sidebar pane has focus
-- **THEN** The sidebar binds `p` (toggle pause/resume), `r` (reset
-  timer), `s` (toggle pomodoro/elapsed), `+` (increase pomodoro focus by
-  5 min, capped at 120), `-` (decrease focus by 5 min, floored at 5),
-  `Q` (end session), and `q` (quit sidebar only).
+### Requirement: Timer — the sidebar binds p, r, s, +, -, Q and q
+The sidebar SHALL bind `p` (toggle pause/resume), `r` (reset timer), `s`
+(toggle pomodoro/elapsed), `+` (increase pomodoro focus by 5 min, capped
+at 120), `-` (decrease focus by 5 min, floored at 5), `Q` (end session),
+and `q` (quit sidebar only).
+
+#### Scenario: p pauses the running session
+- **WHEN** `p` is pressed in the sidebar while the session is running
+- **THEN** `paused_at` is set in `session-state.json`
+
+#### Scenario: + lengthens the pomodoro focus by five minutes
+- **WHEN** `+` is pressed in the sidebar
+- **THEN** the `TimerWidget` focus period is 5 minutes longer than before
+
+#### Scenario: Q ends the session through cleanup, not a blanket kill
+- **WHEN** `Q` is pressed in the sidebar
+- **THEN** `cleanup_on_exit()` runs once and `kill_all_study_sessions()` is
+  never called
 
 ### Requirement: Session purpose
 A web session start (`POST /api/session/start`) SHALL carry a *purpose* —

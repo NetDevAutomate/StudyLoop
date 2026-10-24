@@ -43,61 +43,143 @@ reason = "Scaffolding scenario for the spinner fragment; no literal or number in
 # ---------------------------------------------------------------------------------------------
 # live-session-orchestration
 # ---------------------------------------------------------------------------------------------
-# Pattern note for pass 10: six keyword-less descriptive sentences (indicative mood, no SHALL/MUST,
-# not list items, not under a lead-in) could not stay in their SHALL sentence's fragment (the pair
-# measures > 500) and cannot become their own fragment (the tool requires SHALL/MUST; inserting a
-# modal before a finite verb — "performs" -> "SHALL perform" — is a verb change the inherit-shall
-# token rule forbids). The only rule-compliant home is a scenario via moved-body-text, which the
-# checker permits for exactly this class (never a SHALL, never a governed list item). Each is listed
-# below with its reason; the lane log flags the pattern.
+# Rework (ruling L5, conventions rule 4): the six keyword-less indicative sentences the first pass
+# moved into scenarios each STATE SYSTEM BEHAVIOUR (they tell the implementer what the system does),
+# so each is now a body of its own through [[modalise]] — exactly one modal added, exactly one
+# declared verb de-inflected, nothing else changed. Where the sentence has two finite verbs the
+# modal goes on the first (the conventions' own example: "It SHALL delegate … and executes …").
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "studyloop study composes a tmux session with agent and sidebar panes"
 ordinal = 2
-scenario = "The orchestrator splits, then attach_if_needed attaches or switches"
-text = '''`session/orchestrator.py::create_tmux_environment()` performs the split and `attach_if_needed()` calls `os.execvp("tmux", ["tmux", "attach-session", ...])` when not already in tmux, or `tmux.switch_client()` when already inside tmux.'''
-reason = "Keyword-less implementation note locating the split and the attach/switch in the orchestrator; the SHALL sentence alone measures 269, the pair 504. Both base scenarios already assert the attach-vs-switch behaviour; this scenario keeps the module/function names."
+old = '''`session/orchestrator.py::create_tmux_environment()` performs the split and `attach_if_needed()` calls `os.execvp("tmux", ["tmux", "attach-session", ...])` when not already in tmux, or `tmux.switch_client()` when already inside tmux.'''
+new = '''`session/orchestrator.py::create_tmux_environment()` SHALL perform the split and `attach_if_needed()` calls `os.execvp("tmux", ["tmux", "attach-session", ...])` when not already in tmux, or `tmux.switch_client()` when already inside tmux.'''
+verb = ["performs", "perform"]
+reason = "States behaviour (which function splits, which attaches or switches, and on what condition) — class: behaviour, not illustration. Two finite verbs; the modal goes on the first (performs -> perform), `calls` stays indicative. The pair with its SHALL sibling measures 504, so it is a fragment of its own."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "IPC files provide the inter-process communication surface"
 ordinal = 2
-scenario = "session_state.py owns the IPC read/write functions"
-text = '''`session_state.py` owns all read/write functions: `write_session_state()`, `append_topic()`, `append_parking()`, `parse_topics_file()`, `parse_parking_file()`, `read_session_state()`.'''
-reason = "Keyword-less inventory of where the read/write functions live (no behaviour of its own). Moving it leaves the SHALL sentence plus the data-flow sentence (399) in the body; keeping it instead would have left 496, one char-class from the limit, and moved the data-flow sentence out."
+old = '''`session_state.py` owns all read/write functions: `write_session_state()`, `append_topic()`, `append_parking()`, `parse_topics_file()`, `parse_parking_file()`, `read_session_state()`.'''
+new = '''`session_state.py` SHALL own all read/write functions: `write_session_state()`, `append_topic()`, `append_parking()`, `parse_topics_file()`, `parse_parking_file()`, `read_session_state()`.'''
+verb = ["owns", "own"]
+reason = "States behaviour (one module owns every IPC read/write function, named) — class: behaviour; the first pass called it an inventory, but it is an ownership rule an implementer must follow, not a list of examples. owns -> own."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "Energy-adaptive break suggestions use bounded thresholds"
 ordinal = 3
-scenario = "Resume bookkeeping in the state file"
-text = '''Resuming from pause (`action_toggle_pause`) increments `breaks_taken` and resets the break clock by writing `last_break_at_min` to the state file.'''
-reason = "Keyword-less indicative sentence; the three-sentence body measures 509. Moving the BreakBanner sentence instead would have left a dangling 'this'. The base scenario 'Pausing and resuming resets the break clock' already asserts the same writes; this scenario carries the sentence verbatim."
+old = '''Resuming from pause (`action_toggle_pause`) increments `breaks_taken` and resets the break clock by writing `last_break_at_min` to the state file.'''
+new = '''Resuming from pause (`action_toggle_pause`) SHALL increment `breaks_taken` and resets the break clock by writing `last_break_at_min` to the state file.'''
+verb = ["increments", "increment"]
+reason = "States behaviour (what resuming writes to the state file) — class: behaviour. Two finite verbs; the modal goes on the first (increments -> increment), `resets` stays indicative. The base scenario 'Pausing and resuming resets the break clock' exercises exactly this sentence and is re-homed under the new fragment (same original requirement: routine)."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "Orphan sessions are auto-cleaned before new session start"
 ordinal = 2
-scenario = "auto_clean_zombies executes the plan from plan_clean"
-text = '''It delegates the decision to `logic/clean_logic.py::plan_clean()` (pure function) and executes the plan: kill zombie sessions, remove orphan session directories under `SESSION_DIR/sessions/` that have no matching live tmux session, and clear stale `session-state.json` when `mode=ended` with no matching tmux session.'''
-reason = "Keyword-less indicative sentence (the pair measures 582; this sentence alone is 317 and carries no modal). It describes the executed plan, which both base scenarios already exercise ('kills it, removes its directory'; 'reports what would be cleaned (zombie sessions, orphan directories, stale state file)'). Flagged in the lane log as the most substantive of the six moves for pass 10."
+old = '''It delegates the decision to `logic/clean_logic.py::plan_clean()` (pure function) and executes the plan: kill zombie sessions, remove orphan session directories under `SESSION_DIR/sessions/` that have no matching live tmux session, and clear stale `session-state.json` when `mode=ended` with no matching tmux session.'''
+new = '''It SHALL delegate the decision to `logic/clean_logic.py::plan_clean()` (pure function) and executes the plan: kill zombie sessions, remove orphan session directories under `SESSION_DIR/sessions/` that have no matching live tmux session, and clear stale `session-state.json` when `mode=ended` with no matching tmux session.'''
+verb = ["delegates", "delegate"]
+reason = "States behaviour (the decision is delegated to a pure function and the plan is executed; the three executed actions are named) — class: behaviour; the ruling's own example sentence. delegates -> delegate, `executes` stays indicative. The sentence-initial `It` (= `auto_clean_zombies()`) cannot be expanded in the same entry (a modalise may change nothing else), so the fragment heading names the referent. The base scenario 'Explicit cleanup via CLI' exercises the plan_clean delegation and is re-homed under the new fragment (routine)."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "The sidebar polls IPC files every 2 seconds"
 ordinal = 3
-scenario = "session-oneline.txt is written for the tmux status bar"
-text = '''A `session-oneline.txt` file is written as a side effect for tmux status-bar integration.'''
-reason = "Keyword-less side-effect note; the three-sentence body measures 533, the first two sentences 442."
+old = '''A `session-oneline.txt` file is written as a side effect for tmux status-bar integration.'''
+new = '''A `session-oneline.txt` file SHALL be written as a side effect for tmux status-bar integration.'''
+verb = ["is", "be"]
+reason = "States behaviour (a file the poll writes) — class: behaviour, not a known-defect note or rationale. Passive: is -> be, `SHALL be written`."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "live-session-orchestration"
 heading = "Timer supports elapsed and pomodoro modes with sidebar key bindings"
 ordinal = 2
-scenario = "Sidebar key bindings"
-text = '''The sidebar binds `p` (toggle pause/resume), `r` (reset timer), `s` (toggle pomodoro/elapsed), `+` (increase pomodoro focus by 5 min, capped at 120), `-` (decrease focus by 5 min, floored at 5), `Q` (end session), and `q` (quit sidebar only).'''
-reason = "Keyword-less key-map sentence (242); with the SHALL sentence the body measures 610. The key map is a concrete, testable statement, so a scenario is a faithful home; the base scenario 'Switching to pomodoro mid-session' exercises the `s` binding."
+old = '''The sidebar binds `p` (toggle pause/resume), `r` (reset timer), `s` (toggle pomodoro/elapsed), `+` (increase pomodoro focus by 5 min, capped at 120), `-` (decrease focus by 5 min, floored at 5), `Q` (end session), and `q` (quit sidebar only).'''
+new = '''The sidebar SHALL bind `p` (toggle pause/resume), `r` (reset timer), `s` (toggle pomodoro/elapsed), `+` (increase pomodoro focus by 5 min, capped at 120), `-` (decrease focus by 5 min, floored at 5), `Q` (end session), and `q` (quit sidebar only).'''
+verb = ["binds", "bind"]
+reason = "States behaviour (the key map, with each key's action and bounds) — class: behaviour; the ruling's second example. binds -> bind. The original heading's second conjunct ('with sidebar key bindings') now lives in this fragment; the heading stays on the first-SHALL fragment (rule 6) and the checker's compound-heading-split WARN is expected and self-reported."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "Attach outside tmux execs tmux attach-session"
+test = "packages/studyloop/tests/test_tmux.py::TestAttachSafetyGuard::test_attach_uses_execvp_outside_tmux"
+reason = "With TMUX absent from the environment, asserts os.execvp is called once with ['tmux', 'attach-session', '-t', <session>]. The test drives studyloop.tmux.attach(), the backend attach that attach_if_needed() delegates to (session/orchestrator.py: mux.attach(session_name)); no test calls attach_if_needed() itself (grep 'attach_if_needed' packages/studyloop/tests: no hit)."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "Attach inside tmux falls back to switch-client"
+test = "packages/studyloop/tests/test_tmux.py::TestAttachSafetyGuard::test_attach_falls_back_to_switch_client_inside_tmux"
+reason = "With TMUX set, asserts subprocess.run is called once with ['tmux', 'switch-client', '-t', <session>] (os.execvp is not patched, so an attach would have replaced the test process). Same delegation note as the previous entry."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "write_session_state creates the state file and merges a second write"
+test = "packages/studyloop/tests/test_session_state.py::test_write_session_state_creates_and_merges"
+reason = "Imports write_session_state from studyloop.session_state; writes {energy, topic} then {energy}; asserts the file exists, energy is updated and topic is preserved."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "read_session_state returns the parsed state"
+test = "packages/studyloop/tests/test_session_state.py::test_read_session_state_valid"
+reason = "Imports read_session_state from studyloop.session_state; asserts the parsed energy and topic."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "append_topic appends one topic line"
+test = "packages/studyloop/tests/test_session_state.py::test_append_topic"
+reason = "Imports append_topic from studyloop.session_state; asserts the '- [10:00] Spark DAGs | status:learning | Getting the concept' line lands in the topics file."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "append_parking appends one parking line"
+test = "packages/studyloop/tests/test_session_state.py::test_append_parking"
+reason = "Imports append_parking from studyloop.session_state; asserts the '- <question>' line lands in the parking file."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "parse_topics_file parses well-formed topic entries"
+test = "packages/studyloop/tests/test_session_state.py::test_parse_topics_file_valid"
+reason = "Imports parse_topics_file from studyloop.session_state; three lines -> three entries with time, topic, status and note asserted on the first."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "parse_parking_file parses parking entries"
+test = "packages/studyloop/tests/test_session_state.py::test_parse_parking_file"
+reason = "Imports parse_parking_file from studyloop.session_state; two lines -> two entries, the first question asserted."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "plan_clean plans all three kinds of cleanup in one pass"
+test = "packages/studyloop/tests/test_clean.py::TestPlanCleanCombined::test_full_cleanup_scenario"
+reason = "Calls plan_clean() with a zombie session, a session dir with no live tmux session and an ended state whose tmux session is gone; asserts sessions_to_kill, dirs_to_remove and state_to_clean — the three actions the body names. The execution half is exercised by the re-homed 'Explicit cleanup via CLI' and, live, by test_herdr_integration.py::TestZombieHandling::test_auto_clean_kills_stale_herdr_workspace[herdr] (skipped unless herdr is the backend, so not cited)."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "The sidebar writes session-oneline.txt with the topic and energy"
+test = "packages/studyloop/tests/test_study_integration.py::TestSidebarUpdates::test_oneline_file_written"
+reason = "Starts a session with a mock agent, waits for session-oneline.txt to exist and be non-empty, asserts it names the topic ('Integration') and the energy ('E:5')."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "p pauses the running session"
+test = "packages/studyloop/tests/test_sidebar_pilot.py::TestSidebarKeyBindings::test_p_toggles_pause"
+reason = "Drives the real Textual pilot: presses 'p' and asserts paused_at is set in session-state.json."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "+ lengthens the pomodoro focus by five minutes"
+test = "packages/studyloop/tests/test_sidebar_pilot.py::TestSidebarKeyBindings::test_plus_key_lengthens_pomodoro_focus"
+reason = "Presses '+' through the pilot and asserts TimerWidget.pomo_focus grew by 5 * 60 seconds (R-32: the key NAME, not just the action, is exercised)."
+
+[[test-sourced]]
+spec = "live-session-orchestration"
+scenario = "Q ends the session through cleanup, not a blanket kill"
+test = "packages/studyloop/tests/test_sidebar_pilot.py::TestSidebarKeyBindings::test_q_triggers_end_session_action"
+reason = "Presses 'Q' through the pilot; asserts cleanup_on_exit is called once and kill_all_study_sessions is never called (R-02b)."
 
 [[split-sentence]]
 spec = "live-session-orchestration"
