@@ -1,7 +1,9 @@
 # e2e-representative-journey Specification
 
 ## Purpose
-TBD - created by archiving change complete-e2e-harness-and-desktop-mcp. Update Purpose after archive.
+The representative journey is the end-to-end gate for the study loop: one continuous run — session
+start, generation, study, break, review, end — against a real subprocess-hosted StudyLoop web server,
+with the mentor's Socratic behaviour judged from its actual output rather than from persona text.
 ## Requirements
 ### Requirement: The journey test runs against a subprocess-hosted server
 The e2e harness SHALL launch the StudyLoop web server as a real subprocess
