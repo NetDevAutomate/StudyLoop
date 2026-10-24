@@ -236,21 +236,14 @@ def validate_new_archives(repo_root: Path) -> None:
     to ignore the gate. (The July archive that motivated the scoping was
     reconciled against the tree on 2026-09-23; ``--archived --all`` is green
     today, and the scoping stays.) Runs the CLI through ``scripts/openspec-cli.sh``
-    at the pinned ``OPENSPEC_VERSION`` and reads its ``--json`` report; when the
-    resolver cannot run the pinned CLI it prints SKIPPED locally (and fails under
-    CI) — the same convention as ``just spec-check``.
+    at the Justfile's pinned ``OPENSPEC_VERSION`` and reads its ``--json`` report.
+    Unlike ``just spec-check`` (which may skip on a contributor's machine), release
+    mode fails closed: with newly archived changes to judge, a resolver that is
+    missing or reports SKIPPED is an error, not a pass.
     """
     import os
 
     resolver = repo_root / "scripts" / "openspec-cli.sh"
-    if not resolver.is_file():
-        print("scripts/openspec-cli.sh missing — skipping archived-change validation")
-        return
-    env = {
-        **os.environ,
-        "OPENSPEC_VERSION": os.environ.get("OPENSPEC_VERSION")
-        or _openspec_version_from_justfile(repo_root),
-    }
     try:
         last_tag = _git(repo_root, "describe", "--tags", "--abbrev=0")
     except subprocess.CalledProcessError:
@@ -265,6 +258,18 @@ def validate_new_archives(repo_root: Path) -> None:
     if not new_names:
         return
 
+    # From here on a release is being cut with newly archived changes: the check must RUN.
+    # A skip is not a pass (pass 10, seat gpt-5.6-sol): before this, a machine without the
+    # pinned CLI printed SKIPPED and then "release consistency passed".
+    if not resolver.is_file():
+        raise ValueError(
+            "scripts/openspec-cli.sh is missing, so the newly archived change(s) "
+            f"{', '.join(new_names)} cannot be validated; release mode does not skip this check"
+        )
+    # The pin is the Justfile's, never the caller's environment (pass 10, seat gpt-5.6-luna):
+    # a stale `OPENSPEC_VERSION` export must not validate the archive against another release.
+    env = {**os.environ, "OPENSPEC_VERSION": _openspec_version_from_justfile(repo_root)}
+
     proc = subprocess.run(
         ["bash", str(resolver), "validate", "--archived", "--all", "--no-interactive", "--json"],
         cwd=repo_root,
@@ -275,9 +280,11 @@ def validate_new_archives(repo_root: Path) -> None:
         env=env,
     )
     if proc.stdout.lstrip().startswith("SKIPPED"):
-        # the resolver could not run the pinned CLI locally (never under CI, where it exits 1)
-        print(proc.stdout.strip())
-        return
+        raise ValueError(
+            "openspec archived-change validation did not run (the resolver reported "
+            f"{proc.stdout.strip()!r}); release mode needs the pinned openspec CLI — install it, "
+            "or make node available so npx can fetch it"
+        )
     if proc.returncode not in (0, 1):
         raise ValueError(
             f"openspec archived-change validation could not run (exit {proc.returncode}): "

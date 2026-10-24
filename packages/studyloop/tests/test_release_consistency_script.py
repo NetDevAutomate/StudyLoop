@@ -383,3 +383,90 @@ def test_release_mode_refuses_an_empty_folded_deferral(tmp_path: Path) -> None:
     assert result.returncode == 1
     assert "neither archived nor deferred" in result.stderr
     assert "some-change" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Pass 10 of the 2026-10 review (seats gpt-5.6-sol and gpt-5.6-luna): the
+# archived-change validation runs through scripts/openspec-cli.sh. In release
+# mode a skip is not a pass -- the release is the moment the check exists for --
+# and the pinned version is the Justfile's, never an environment variable's.
+# ---------------------------------------------------------------------------
+
+
+def _write_archived_change_fixture(tmp_path: Path, resolver_body: str) -> None:
+    """A tagged repo, then a post-tag commit adding one ARCHIVED change, with a
+    stand-in `scripts/openspec-cli.sh` whose behaviour the test controls."""
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-06")
+    (tmp_path / "Justfile").write_text(
+        'export OPENSPEC_VERSION := "1.14.1"\n\nspec-check:\n    true\n', encoding="utf-8"
+    )
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    resolver = scripts / "openspec-cli.sh"
+    resolver.write_text(resolver_body, encoding="utf-8")
+    resolver.chmod(0o755)
+    init_git_repo_with_tag(tmp_path, tag="v1.2.3", tag_date="2026-09-06")
+    archived = tmp_path / "openspec" / "changes" / "archive" / "2026-09-07-shipped-thing"
+    archived.mkdir(parents=True)
+    (archived / "proposal.md").write_text("# proposal\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "archive change"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_release_mode_fails_closed_when_the_archived_validation_is_skipped(
+    tmp_path: Path,
+) -> None:
+    _write_archived_change_fixture(
+        tmp_path, "#!/usr/bin/env bash\necho 'SKIPPED — NOT VERIFIED: no openspec here'\nexit 0\n"
+    )
+    result = run_release_check(tmp_path)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "SKIPPED" in result.stderr or "not verified" in result.stderr.lower()
+    assert "release consistency passed" not in result.stdout
+
+
+def test_release_mode_fails_closed_when_the_resolver_is_missing_but_archives_are_new(
+    tmp_path: Path,
+) -> None:
+    _write_archived_change_fixture(tmp_path, "#!/usr/bin/env bash\nexit 0\n")
+    (tmp_path / "scripts" / "openspec-cli.sh").unlink()
+    result = run_release_check(tmp_path)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "openspec-cli.sh" in result.stderr
+
+
+def test_archived_validation_passes_the_justfile_pin_and_ignores_the_environment(
+    tmp_path: Path,
+) -> None:
+    """The resolver is told the Justfile's pin even when the caller's environment carries
+    another OPENSPEC_VERSION (a stale shell export must not validate another release)."""
+    seen = tmp_path / "seen-version.txt"
+    _write_archived_change_fixture(
+        tmp_path,
+        "#!/usr/bin/env bash\n"
+        f'printf "%s" "$OPENSPEC_VERSION" > "{seen}"\n'
+        'echo \'{"items": [{"id": "2026-09-07-shipped-thing", "valid": true}]}\'\n',
+    )
+    argv = [
+        sys.executable,
+        str(SCRIPT),
+        "--repo-root",
+        str(tmp_path),
+        "--skip-wheel",
+        "--release",
+    ]
+    result = subprocess.run(
+        argv,
+        check=False,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "OPENSPEC_VERSION": "9.9.9"},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert seen.read_text(encoding="utf-8") == "1.14.1"
