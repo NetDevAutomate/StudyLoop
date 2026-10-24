@@ -164,3 +164,141 @@ spec = "live-session-orchestration"
 scenario = "A blank brain dump renders no section"
 test = "packages/studyloop/tests/test_session_start_purpose.py::TestBrainDump::test_blank_brain_dump_renders_no_section"
 reason = "Starts a planning session with a whitespace-only brain_dump and asserts the persona has no 'brain dump' text and still carries '### Existing plans'."
+
+# ---------------------------------------------------------------------------------------------
+# agent-adapters
+# ---------------------------------------------------------------------------------------------
+# Same pattern as live-session-orchestration: keyword-less descriptive sentences that cannot stay
+# with their SHALL (pair > 500) and cannot take a modal without a verb change move verbatim into a
+# scenario. The one note that is a pure rationale (session-db visible but not trusted) is the
+# textbook moved-body-text case.
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Custom adapters from config override built-in adapters of the same name"
+ordinal = 2
+scenario = "Custom adapter entry fields"
+text = '''Each entry specifies `binary`, `strategy` (`"cli-flag"` or `"cwd-file"`), `launch` template (with `{binary}`, `{persona}`, `{session_dir}` placeholders), optional `resume` template, optional `env` vars, optional `teardown` shell command, and optional `mcp` config.'''
+reason = "Keyword-less inventory of the config entry's fields. The body keeps the SHALL, the merge/override sentence (the heading's own claim) and the shlex-quoting rule (489); with this sentence it measures 754 and with only the SHALL + merge sentence the quoting rule would have had to move instead."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Agent detection respects STUDYLOOP_AGENT env var and configured priority order"
+ordinal = 3
+scenario = "get_default_agent returns the first detected agent"
+text = '''`get_default_agent()` returns the first element or `None`.'''
+reason = "Keyword-less one-line helper description; the body measured 501 — one character over — with no whitespace slack, and the SHALL + priority-order pair is 442."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Persona injection uses one of two strategies depending on agent capability"
+ordinal = 2
+scenario = "Claude and the local-LLM adapters use cli_flag_setup"
+text = '''Claude and the local-LLM adapters (ollama, lmstudio) use `cli_flag_setup`.'''
+reason = "Keyword-less strategy note (74 chars); the three-sentence body measures 562 and the SHALL + per-adapter file table is 487. The base scenario 'Claude adapter setup' and the local-LLM requirement's own SHALL ('SHALL use cli_flag_setup') both already state it."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
+ordinal = 2
+scenario = "Local-LLM config and its defaults"
+text = '''Config (base URL, model) is read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with defaults `http://localhost:4000` / `http://localhost:1234` and model `qwen3-coder`.'''
+reason = "Keyword-less config-source note; the SHALL sentence alone is 444 so neither trailing sentence can stay (619 / 560). The base scenario 'Ollama adapter launch with default config' already asserts the defaults."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
+ordinal = 3
+scenario = "Local-LLM detection uses the adapter's own binary"
+text = '''Detection uses each adapter's own `binary` — `ollama` and `lms` respectively — not the `claude` binary they launch.'''
+reason = "Keyword-less detection note (same 444-char SHALL constraint as above)."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "`studyloop install agents` symlinks platform-specific definitions from the source checkout"
+ordinal = 3
+scenario = "Platform detection before linking"
+text = '''It detects available platforms via `detect_available_agent_tools()` (checks for `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for CLI tools).'''
+reason = "Keyword-less; the body measured 938. The SHALL sentence with the symlink-semantics sentences (relative/absolute, --uninstall, shared link — the heading's subject) is 482; adding this one gives 637. The base scenario 'Fresh install on a machine with Claude and Kiro' already exercises the detection (~/.kiro and ~/.claude present)."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "`studyloop install agents` symlinks platform-specific definitions from the source checkout"
+ordinal = 7
+scenario = "The CLI surface of studyloop install agents"
+text = '''The CLI surface is `studyloop install agents` (`cli/_install.py`), accepting `--tool` (repeatable, constrained to `_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude, pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode and grok are preview) and `--uninstall`.'''
+reason = "Keyword-less CLI-surface description (300 chars; see the previous entry for the arithmetic). The command itself is in the heading."
+
+[[moved-body-text]]
+spec = "agent-adapters"
+heading = "Harness-launched architects carry the plan tools"
+ordinal = 3
+scenario = "session-db is visible but not trusted"
+text = '''The `session-db` server is visible for the loaded `shared/session-protocol.md` session-start step and is not trusted: its tools prompt.'''
+reason = "Rationale for the Kiro arrays sentence (why @session-db is in `tools` but not in `allowedTools`); no modal. The Kiro arrays sentence alone is 422, so the pair (558) could not stay together."
+
+[[split-sentence]]
+spec = "agent-adapters"
+heading = "Architect persona prefers the MCP plan tools"
+ordinal = 2
+old = '''The MCP subsection SHALL name the nine plan lifecycle tools (the plan-application-seam design, §4) — `list_study_plans`, `get_study_plan`, `get_planning_interview`, `create_study_plan`, `update_study_plan`, `set_study_plan_status`, `set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan` — in lifecycle order (discover → interview → create as `draft` → revise → activate → tick → evaluate → delete), and SHALL state the three guards the plan application layer enforces: activation only once `readiness` reports ready (never creating as `active` to skip the gate), `evaluate_study_plan` with `record=False` as a preview that writes nothing versus `record=True` to persist a checkpoint, and `delete_study_plan` only with `confirmed=True` after the learner has explicitly confirmed.'''
+new = [
+  '''The MCP subsection SHALL name the nine plan lifecycle tools (the plan-application-seam design, §4) — `list_study_plans`, `get_study_plan`, `get_planning_interview`, `create_study_plan`, `update_study_plan`, `set_study_plan_status`, `set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan` — in lifecycle order (discover → interview → create as `draft` → revise → activate → tick → evaluate → delete).''',
+  '''The MCP subsection SHALL state the three guards the plan application layer enforces: activation only once `readiness` reports ready (never creating as `active` to skip the gate), `evaluate_study_plan` with `record=False` as a preview that writes nothing versus `record=True` to persist a checkpoint, and `delete_study_plan` only with `confirmed=True` after the learner has explicitly confirmed.'''
+]
+added_tokens = [".", "The", "MCP", "subsection"]
+reason = "794-char SHALL sentence (evidence line 10). Cut at ', and SHALL state' — the original already carries both modals, so the second sentence only repeats the subject 'The MCP subsection'; ', and' dropped at the cut, one '.' added. 'never'/'only' stay where they were."
+
+[[split-sentence]]
+spec = "agent-adapters"
+heading = "Harness-launched architects carry the plan tools"
+ordinal = 1
+old = '''The `study-plan-architect` definitions for Kiro CLI (`agents/kiro/study-plan-architect.json`) and Claude Code (`agents/claude/study-plan-architect.md`) SHALL attach the `studyloop` MCP server and allow exactly the nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full shell permissions; receipt `docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`).'''
+new = [
+  '''The `study-plan-architect` definitions for Kiro CLI (`agents/kiro/study-plan-architect.json`) and Claude Code (`agents/claude/study-plan-architect.md`) SHALL attach the `studyloop` MCP server.''',
+  '''The `study-plan-architect` definitions SHALL allow exactly the nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full shell permissions; receipt `docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`).'''
+]
+added_tokens = [".", "The", "`study-plan-architect`", "definitions", "SHALL"]
+reason = "622-char SHALL sentence (evidence line 17). Cut at 'and allow'; the second sentence repeats the subject noun phrase 'The `study-plan-architect` definitions' and the modal; 'and' dropped at the cut, one '.' added. Both 'no' tokens stay in the second sentence where they were."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Every one of the nine tools is introduced inside the MCP subsection"
+test = "packages/studyloop/tests/test_plan_architect_persona.py::test_plan_architect_persona_prefers_mcp_over_cli_ordering"
+reason = "Isolates the MCP section and asserts each of PLAN_MCP_TOOLS appears backticked inside it ('not only mentioned in passing somewhere after the fallback'); also the ordering assertions the original heading's fragment relies on."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The MCP subsection states the lifecycle guards"
+test = "packages/studyloop/tests/test_plan_architect_persona.py::test_mcp_section_states_the_lifecycle_guards"
+reason = "Asserts 'readiness' and 'active', 'confirm' with `delete_study_plan`, and record=false/preview versus record=true inside the MCP section."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The CLI fallback names every subcommand and no delete"
+test = "packages/studyloop/tests/test_plan_architect_persona.py::test_plan_architect_persona_names_the_nine_mcp_tools_when_purpose_is_planning"
+reason = "Isolates the CLI fallback section and asserts `studyloop plan <sub>` for every _CLI_FALLBACK_SUBCOMMANDS entry, and that 'studyloop plan delete' appears nowhere."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Revise and Delete rows point at the MCP tool and say so, not at a Web UI door"
+test = "packages/studyloop/tests/test_plan_architect_persona.py::test_fallback_table_does_not_point_at_web_ui_controls_that_do_not_exist"
+reason = "Reads the Revise and Delete rows of the fallback table: no Web UI door, `update_study_plan` / `delete_study_plan` named, 'no web ui control' on Delete, and 'say so to the learner' in the MCP section."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Kiro architect grants exactly the ten plan tools"
+test = "packages/studyloop/tests/test_install_agent_contracts.py::test_kiro_architect_carries_the_studyloop_server_and_exactly_the_plan_tools"
+reason = "Collects the @studyloop/ grants of agents/kiro/study-plan-architect.json and asserts they equal PLAN_TOOL_NAMES + LEARNING_RECORD_TOOL exactly, with no duplicates."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Claude architect grants exactly the ten plan tools"
+test = "packages/studyloop/tests/test_install_agent_contracts.py::test_claude_architect_allowlists_exactly_the_plan_tools"
+reason = "Collects the mcp__ entries of the Claude frontmatter and asserts they equal mcp__studyloop__<name> for the ten exactly, with no wildcard/bare entry and no duplicates."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Manifest hashes regenerate for the architect projections"
+test = "packages/studyloop/tests/test_plan_architect_persona.py::test_manifest_hashes_regenerate_byte_identically_for_the_architect_projections"
+reason = "Recomputes the generator's hash for every architect projection the manifest tracks and compares to agents/manifest.json."
