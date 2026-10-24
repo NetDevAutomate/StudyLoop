@@ -13,7 +13,7 @@ heading = "load_raw_config expands dotted top-level keys before any consumer rea
 ordinal = 3
 text = '''This closes a defect (fixed in `a7eabb6`) where two of `doctor/voice.py`'s own repair messages were worded as a flat dotted key (`"Set tts.backend: openvox to enable this check"`) — a user following them literally would write a top-level `tts.backend: openvox` scalar key, which `raw.get("tts", {})` could not see (there was no `"tts"` key, only a literal key named `"tts.backend"`), silently keeping `backend` at its `"kokoro"` default and skipping the `openvox_api` check the hint promised to enable.'''
 scenario = "The defect behind the loader-level expansion"
-reason = "Defect history (no SHALL): a 502-char non-normative sentence that no fragment can hold under 500 and that split-sentence cannot touch (its pieces would carry no modal). Moved verbatim into a history scenario under the fragment whose SHALL it motivates."
+reason = "Class: description of a known defect (no SHALL; history of a7eabb6, not what the system does): a 502-char non-normative sentence that no fragment can hold under 500 and that split-sentence cannot touch (its pieces would carry no modal). Moved verbatim into a history scenario under the fragment whose SHALL it motivates."
 
 [[moved-body-text]]
 spec = "voice-tts"
@@ -21,7 +21,7 @@ heading = "load_raw_config expands dotted top-level keys before any consumer rea
 ordinal = 4
 text = '''`a7eabb6` fixes this at the loader level (`_expand_dotted_keys()` in `settings.py`, benefiting all 6 `raw.get("tts", ...)`-style consumers at once) and rephrases both `doctor/voice.py` repair hints to describe the nested form (`"Set backend: openvox under the tts: section of config.yaml..."`, `doctor/voice.py:105-106`) so new users are no longer taught the broken flat form, while the loader still accepts it from existing configs.'''
 scenario = "The defect behind the loader-level expansion"
-reason = "Second sentence of the same defect history (no SHALL, 433 chars): with the 396-char SHALL it would exceed 500, and it belongs with the sentence before it. Same history scenario."
+reason = "Class: description of a known defect, second sentence (no SHALL, 433 chars; what the fix touched, not an obligation): with the 396-char SHALL it would exceed 500, and it belongs with the sentence before it. Same history scenario."
 
 # ---------------------------------------------------------------------------------------------
 # web-ui
@@ -29,13 +29,20 @@ reason = "Second sentence of the same defect history (no SHALL, 433 chars): with
 
 # -- Starting a 4th topic requires parking one first (682) -> 2 fragments
 
-[[moved-body-text]]
+[[modalise]]
 spec = "web-ui"
 heading = "Starting a 4th topic requires parking one first"
 ordinal = 2
-text = '''Escape or "Keep all" cancels without starting.'''
-scenario = "Keep all or Escape cancels the start"
-reason = "Keyword-less behaviour note on the overlay's cancel path (not governed by a lead-in). With the 470-char park-first SHALL it would exceed 500, and it belongs to the overlay, not to the Body Double exemption; it becomes the overlay fragment's second scenario, verbatim."
+old = '''Escape or "Keep all" cancels without starting.'''
+new = '''Escape or "Keep all" SHALL cancel without starting.'''
+verb = ["cancels", "cancel"]
+reason = "Rework (ruling L5): states system behaviour (the overlay's cancel path) — a requirement without the keyword, so `modalise`, not a scenario. One modal added, `cancels` -> `cancel`. It cannot share the 470-char park-first SHALL's fragment (517) and does not belong to the Body Double exemption, so it is its own fragment under the `Park-first —` stem."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "Escape dismisses the overlay and starts nothing"
+test = "packages/studyloop/tests/test_web_smoke_browser.py::test_park_first_modal_blocks_fourth_topic"
+reason = "The modalised cancel fragment needs a scenario; this browser test opens the park-first overlay for a fourth topic, presses Escape and waits for the overlay to hide without a session starting. It proves the Escape path only; the 'Keep all' button has no test (searched collected-nodeids for keep.?all: none), which the scenario body reflects."
 
 # -- Live agent consoles are addressed by origin, never broadcast (537) -> 1 fragment + rationale scenario
 
@@ -45,7 +52,7 @@ heading = "Live agent consoles are addressed by origin, never broadcast"
 ordinal = 3
 text = '''Alpine initialises `x-data` on elements hidden by `x-show`, so multiple console instances are live simultaneously — visibility is not liveness, and an unaddressed broadcast would mount a second xterm and open a second WebSocket to the same PTY session.'''
 scenario = "Why a console answers only its own origin"
-reason = "Pure rationale (no SHALL) explaining why addressing is needed; the two SHALLs plus this sentence exceed 500 and the rationale cannot stand alone. The (ADR-0002) citation stays in the body after the second SHALL."
+reason = "Class: rationale (no SHALL; explains why addressing is needed, tells the implementer nothing to do); the two SHALLs plus this sentence exceed 500 and the rationale cannot stand alone. The (ADR-0002) citation stays in the body after the second SHALL."
 
 # -- Activation is readiness-gated on every entry path (1244) -> 4 fragments, stem 'Readiness gate —'
 
@@ -126,7 +133,7 @@ heading = "Plan with architect journey"
 ordinal = 16
 text = '''The architect's one-question-at-a-time protocol is asserted as persona text (owner decision D-B): the browser and unit tests prove the brief — including the brain dump — is delivered to the agent process; no test asserts how a live model behaves with it, and the docs say so.'''
 scenario = "What the tests prove about the architect's brief"
-reason = "A note about test scope (no SHALL): the last unit of the requirement, preceded only by keyword-less units (#14, #15) and by #13 which with it exceeds 500. Homed as a scenario beside 'The brief's structure, never its wording', which is the behaviour it describes."
+reason = "Class: test-coverage note (no SHALL; what the tests prove, not what the system does): the last unit of the requirement, preceded only by keyword-less units (#14, #15) and by #13 which with it exceeds 500. Homed as a scenario beside 'The brief's structure, never its wording', which is the behaviour it describes."
 
 [[test-sourced]]
 spec = "web-ui"
@@ -158,7 +165,7 @@ heading = "Plan with architect journey"
 ordinal = 14
 text = '''Navigating away is **not** the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
 scenario = "Navigating away is not the abandon path"
-reason = "Owner-decision note (no SHALL, 401 chars) between the abandon SHALL (#13, 294) and 'There is no cancel for a pending launch' (#15); with #13 it exceeds 500 and no other SHALL is adjacent. Homed as a scenario under the abandon fragment beside 'Leaving before the launch lands leaves a session like any other', which proves it."
+reason = "Class: rationale / owner-decision note (no SHALL, 401 chars; explains why navigating away is not the abandon path — the behaviour itself is the abandon SHALL and the grace-period requirement elsewhere) between the abandon SHALL (#13, 294) and 'There is no cancel for a pending launch' (#15); with #13 it exceeds 500 and no other SHALL is adjacent. Homed as a scenario under the abandon fragment beside 'Leaving before the launch lands leaves a session like any other', which proves it."
 
 # -- Plan list rows carry readiness and the sidebar marks a husk (812) -> 3 fragments
 
@@ -171,21 +178,29 @@ reason = "The 'decided from the row's own ready / colour not the only carrier' f
 
 # -- PATCH carries the mission to the one RevisePlan (813) -> 1 fragment + sourced scenario
 
-[[moved-body-text]]
+[[modalise]]
 spec = "web-ui"
 heading = "PATCH carries the mission to the one RevisePlan"
 ordinal = 3
-text = '''The seam's refusals map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
-scenario = "The refusals and the receipt are unchanged"
-reason = "Keyword-less restatement of mappings owned by other requirements ('as they always have'); only #1 carries a SHALL, and #1+#2+#3 exceeds 500. Both halves are already exercised by the two existing scenarios; conserved verbatim in a scenario."
+old = '''The seam's refusals map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
+new = '''The seam's refusals SHALL map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
+verb = []
+reason = "Rework (ruling L5): states system behaviour (which refusal maps to 400 and which to 422, and that nothing is written) — a requirement without the keyword, so `modalise`. One modal added; the plural subject's verb `map` is already the base form, so no verb is de-inflected (`verb` is empty on purpose — the checker would otherwise expect a second `map`). #1+#2+#3 exceeds 500, so it is its own fragment under the `PATCH mission —` stem; the existing 'A string where a list belongs is the seam's 400' is re-homed under it."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "web-ui"
 heading = "PATCH carries the mission to the one RevisePlan"
 ordinal = 4
-text = '''The `PATCH` response is the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
-scenario = "The refusals and the receipt are unchanged"
-reason = "Keyword-less description of the response shape; #1+#2+#4+#5 exceeds 500 and #4 cannot stand alone. Same scenario as the refusals, as the two together are the response contract. #5 (the consequence sentence) stays in the body."
+old = '''The `PATCH` response is the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
+new = '''The `PATCH` response SHALL be the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
+verb = ["is", "be"]
+reason = "Rework (ruling L5): states system behaviour (the response shape and where the mission is read back) — `modalise`. One modal added, `is` -> `be` (the second `is`, 'is read back', is unchanged). Its own fragment: with the refusal sentence it would be one fragment of two behaviours; with #1+#2+#5 it exceeds 500."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The receipt carries plan and readiness; the mission is read back"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_patch_mission_fields_travel_to_the_seam_and_repair_a_husk_in_one_call"
+reason = "The receipt fragment; the test asserts the 200 body's plan.status/plan.ready and readiness.blockers, then reads the four mission values back from GET /api/plans/husk. Cited twice on purpose: the same test is the husk scenario on the accepting fragment."
 
 # ---------------------------------------------------------------------------------------------
 # mcp-server

@@ -173,9 +173,13 @@ proceeds with the start.
 - **THEN** the park-first overlay appears in-page, and the session only
   starts after one active topic is demoted to the parking lot
 
-#### Scenario: Keep all or Escape cancels the start
-- **WHEN** the park-first overlay is showing
-- **THEN** Escape or "Keep all" cancels without starting
+### Requirement: Park-first — Escape or Keep all cancels without starting
+Escape or "Keep all" SHALL cancel without starting.
+
+#### Scenario: Escape dismisses the overlay and starts nothing
+- **WHEN** the park-first overlay is showing for a fourth topic and the
+  learner presses Escape
+- **THEN** the overlay is hidden and no session starts
 
 ### Requirement: Park-first — Body Double starts are exempt
 Body Double starts are exempt: they SHALL NOT query `GET /api/backlog` and
@@ -798,16 +802,6 @@ and writes nothing itself. An absent key is `None` ("leave as is"); a
 supplied list replaces the whole list. With this the Web UI's whole-document
 `PATCH markdown` is no longer the only mission writer.
 
-#### Scenario: The refusals and the receipt are unchanged
-- **WHEN** `PATCH /api/plans/{id}` carries mission fields
-- **THEN** the seam's refusals map as they always
-  have: a bare string where a list belongs is the seam's `InvalidField` → `400`
-  naming the field; a write whose resulting document would be active but not
-  ready is `422` with the `readiness` body and nothing written
-- **AND** the `PATCH`
-  response is the write receipt (`updated`, `plan`, `readiness`); the mission is
-  read back from `GET /api/plans/{id}`
-
 #### Scenario: Partial mission on a husk is 422; the whole mission lands and the row flips to ready
 - **WHEN** `PATCH /api/plans/husk` is sent `{"why": "…"}` on an active plan
   with no mission, and then `{"why": "…", "success": ["…"], "constraints":
@@ -819,7 +813,23 @@ supplied list replaces the whole list. With this the Web UI's whole-document
   returns the four mission values, and the `GET /api/plans` row for `husk`
   has `ready: true`
 
+### Requirement: PATCH mission — the seam's refusals map as they always have
+The seam's refusals SHALL map as they always have: a bare string where a list
+belongs is the seam's `InvalidField` → `400` naming the field; a write whose
+resulting document would be active but not ready is `422` with the `readiness`
+body and nothing written.
+
 #### Scenario: A string where a list belongs is the seam's 400
 - **WHEN** `PATCH /api/plans/{id}` is sent `{"success": "one string"}`
 - **THEN** the response is `400` naming `success` and the document is
   unchanged
+
+### Requirement: PATCH mission — the response is the write receipt and the mission is read back from GET
+The `PATCH` response SHALL be the write receipt (`updated`, `plan`,
+`readiness`); the mission is read back from `GET /api/plans/{id}`.
+
+#### Scenario: The receipt carries plan and readiness; the mission is read back
+- **WHEN** `PATCH /api/plans/husk` lands the whole mission on an active plan
+- **THEN** the `200` body carries `plan` (status `active`, `ready: true`) and
+  `readiness` (`blockers: []`), and the four mission values are read back
+  from `GET /api/plans/husk`, not from the `PATCH` body
