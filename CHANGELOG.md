@@ -598,6 +598,12 @@ experience may change before `1.0.0`.
 - A browser page served from another port on this machine can no longer open the
   dashboard's WebSockets: a loopback origin is accepted only on the server's own port.
   `STUDYLOOP_ALLOWED_ORIGINS` remains the explicit allow-list for anything else.
+- `fastmcp` 3.2.0 → 3.4.11 (GHSA-7xgj-8392-5q4r, post-transform component
+  authorization skipped on direct calls), `filelock` 3.25.0 → 4.2.4
+  (CVE-2026-112907, CVE-2026-112913, CVE-2026-112940; a transitive dependency of
+  `virtualenv`, `huggingface-hub` and `torch`, none of which uses the
+  `SoftReadWriteLock` whose on-disk protocol 4.0 changed) and `setuptools` 83.0.0 →
+  84.2.1 (GHSA-xmj3-9gf7-h52w); both dependency audits are clean again.
 
 ### Removed
 
