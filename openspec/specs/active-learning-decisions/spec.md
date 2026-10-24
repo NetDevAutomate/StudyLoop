@@ -542,7 +542,7 @@ the body-doubling floor):
   in `energy_deferred_repairs`, and no `body_double` candidate exists
 
 ### Requirement: Now-engine rule 2: a struggle repair carries its own energy demand
-A struggle **repair** carries an energy demand of its own, which SHALL be derived once in
+A struggle **repair** SHALL carry an energy demand of its own, derived once in
 the struggle collector from its own row classes and carried in the
 candidate's `metadata["energy_demand"]`: `struggling` seen within 14 days →
 `high` (asks for 6/10); `struggling` older than that, or a row whose only
@@ -606,7 +606,7 @@ folded into it.
   `sql`, casefolded); the other two carry no refs
 
 ### Requirement: Now-engine rule 3: a plan-related candidate names the next milestone only on an eligible plan
-Rule 3 SHALL be: It names the plan's next milestone (`milestone_index`) only when the
+It SHALL name the plan's next milestone (`milestone_index`) only when the
 key equals one of that milestone's concepts **and** the plan is eligible —
 ready and within the energy capability; a topic or finished-milestone
 match, or any match on an energy-deferred or active-but-unready plan,

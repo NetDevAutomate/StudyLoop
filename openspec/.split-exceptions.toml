@@ -193,12 +193,14 @@ new = [
 ]
 added_tokens = ["Each", "Each", "Each", "Each", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "SHALL", "SHALL", "SHALL", "SHALL", "carry", "carry", "carry", "carry", "it", ".", ".", ".", "."]
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "Active-plan guidance is a deterministic read"
 ordinal = 5
+verb = ["is", "be"]
 reason = "Closing sentence `This view is the one plan-static read the now decision engine consumes` has no modal and no ≤500 SHALL-bearing partner left in order (#2+#3+#4+#5 = 622); `is` → `SHALL be`. It restates what the now engine's first sentence already requires (exactly one call to get_active_guidance). Logged as a RULING CORRECTION candidate: the unit is not a list item under a lead-in."
 new = "This view SHALL be the one plan-static read the `now` decision engine consumes (see \"The now engine is plan-aware with tested ranking rules\")."
+# pass 10 (Q5 ruling): reclassified inherit-shall -> modalise: a closing sentence, not a list item under a modal lead-in; same text
 
 [[test-sourced]]
 spec = "active-learning-decisions"
@@ -338,10 +340,11 @@ new = [
 ]
 added_tokens = ["When", "a", "concept", "resolved", "the", "move", "SHALL", "be", "."]
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "The body-double proposal carries one passive first move"
 ordinal = 20
+verb = ["are", "be"]
 reason = "Closing sentence (`… its no-lesson shapes are one definition, _first_move_sentence …`) has no modal; it closes the requirement alone because #18+#19+#20 = 583. `are` → `SHALL be`. RULING CORRECTION candidate (not a list item under a lead-in) — same case as active-guidance #5."
 new = "The one other carrier of a first move is the warm-up on a plan-related active primary (the requirement below, rubric 3c (e1)); the sentence, its evidence rule and its no-lesson shapes SHALL be one definition, `_first_move_sentence`, differing only in the material named and the tail."
 
@@ -352,6 +355,7 @@ new = "The one other carrier of a first move is the warm-up on a plan-related ac
 # whose HEADINGS restate the lead-in (`Body double — the why-clause when …`), immediately after the fragment
 # that holds #6 verbatim. The six closing sentences were never governed by #6 in prose; their fragments carry
 # their own context. One entry per governed unit, as the checker consumes them.
+# pass 10 (Q5 ruling): reclassified inherit-shall -> modalise (lane A had flagged this one itself); same text
 
 [[context-restated]]
 spec = "active-learning-decisions"
@@ -601,12 +605,14 @@ new = [
 ]
 added_tokens = ["Renderers", "."]
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "The now engine is plan-aware with tested ranking rules"
 ordinal = 8
+verb = ["carries", "carry"]
 reason = "Rule 2's repair-demand sentence (365 chars) is keyword-less and governed by `It SHALL apply these rules`; it must stand alone (#7+#8 = 455 but #7 is keyword-less too; #8+#9 = 767). `derived once … and carried` → `which SHALL be derived once … and carried`."
-new = "A struggle **repair** carries an energy demand of its own, which SHALL be derived once in the struggle collector from its own row classes and carried in the candidate's `metadata[\"energy_demand\"]`: `struggling` seen within 14 days → `high` (asks for 6/10); `struggling` older than that, or a row whose only signal is a weak teach-back → `medium` (4/10); `learning` → `low` (0/10)."
+new = '''A struggle **repair** SHALL carry an energy demand of its own, derived once in the struggle collector from its own row classes and carried in the candidate's `metadata["energy_demand"]`: `struggling` seen within 14 days → `high` (asks for 6/10); `struggling` older than that, or a row whose only signal is a weak teach-back → `medium` (4/10); `learning` → `low` (0/10).'''
+# pass 10 (Q5 ruling): the modal now sits on the sentence's own finite verb (carries -> SHALL carry) instead of an inserted 'which SHALL be'; seat gpt-5.6-sol
 
 [[inherit-shall]]
 spec = "active-learning-decisions"
@@ -622,12 +628,14 @@ ordinal = 13
 reason = "Rule 3 (#12+#13+#14 = 595) is entirely keyword-less under `It SHALL apply these rules`. Its first sentence (first line #12 + continuation #13) takes the modal on the prohibition: `; no substring test.` → `; there SHALL be no substring test.` (`there` is the expletive subject; `no` unmoved). #12 stays verbatim so it remains the checker's lead-in for #13 inside the same fragment."
 new = "topic or course **equals** one of the plan's `match_keys`; there SHALL be no substring test."
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "The now engine is plan-aware with tested ranking rules"
 ordinal = 14
+verb = ["names", "name"]
 reason = "Rule 3's second sentence (443 chars, `It names the plan's next milestone … only when …`) must stand alone (#13+#14 = 521) and has no `is`/`are` whose replacement would keep the meaning; `names → SHALL name` is a verb-form change the token rule forbids. The modal is added as a frame that repeats the rule's own name: `Rule 3 SHALL be: It names …` (subject `Rule 3` + `be`; 4 extra tokens). RULING CORRECTION in the lane log: the natural inherited form `It SHALL name …` should be allowed."
-new = "Rule 3 SHALL be: It names the plan's next milestone (`milestone_index`) only when the key equals one of that milestone's concepts **and** the plan is eligible — ready and within the energy capability; a topic or finished-milestone match, or any match on an energy-deferred or active-but-unready plan, carries `milestone_index = None` (plan-related repair), so a payload never names a milestone it also reports as deferred or that the seam would refuse to tick."
+new = "It SHALL name the plan's next milestone (`milestone_index`) only when the key equals one of that milestone's concepts **and** the plan is eligible — ready and within the energy capability; a topic or finished-milestone match, or any match on an energy-deferred or active-but-unready plan, carries `milestone_index = None` (plan-related repair), so a payload never names a milestone it also reports as deferred or that the seam would refuse to tick."
+# pass 10 (Q5 ruling): the 'Rule 3 SHALL be:' scaffold is removed; the modal sits on the sentence's own verb (names -> SHALL name); seat gpt-5.6-sol
 
 [[inherit-shall]]
 spec = "active-learning-decisions"
@@ -636,19 +644,23 @@ ordinal = 15
 reason = "Rule 4 is keyword-less under `It SHALL apply these rules`; its first line `4. Scoring is today's scoring …` → `4. Scoring SHALL be today's scoring …`."
 new = "4. Scoring SHALL be today's scoring plus one bounded bias for plan-related"
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "The now engine is plan-aware with tested ranking rules"
 ordinal = 33
+verb = ["are", "be"]
 reason = "The `NowPlan` tail's `Exactly two changes are plan-independent (rule 2's repair half): …` (411 chars) is keyword-less and has no ≤500 SHALL partner (#32+#33 = 697, #33+#34 = 538). `are` → `SHALL be`. It sits under the `It SHALL apply these rules …:` lead-in by the convention's `after it` reading and in the checker's governance map; RULING CORRECTION candidate (not a list item)."
 new = "Exactly two changes SHALL be plan-independent (rule 2's repair half): every struggle-collector candidate's `metadata` carries `energy_demand` at every energy, and repair above the day's capability — a live struggle, an older struggle or a weak teach-back at low energy — is deferred into `energy_deferred_repairs` (with the starter, if nothing else was collected) where the learner used to receive the repair itself."
+# pass 10 (Q5 ruling): reclassified inherit-shall -> modalise: the NowPlan tail sentence is not a list item; same text
 
-[[inherit-shall]]
+[[modalise]]
 spec = "active-learning-decisions"
 heading = "The now engine is plan-aware with tested ranking rules"
 ordinal = 34
+verb = []
 reason = "`medium and high demand both need at least medium self-reported energy today; …` (126 chars) is keyword-less; pairing it with the Renderers sentence (377) would mix repair-demand and rendering in one fragment. `both need` → `both SHALL need` (bare infinitive already; only SHALL added). Same RULING CORRECTION candidate as #33."
 new = "`medium` and `high` demand both SHALL need at least medium self-reported energy today; the class is carried so the payload says why."
+# pass 10 (Q5 ruling): reclassified inherit-shall -> modalise: plural subject, verb form unchanged (need -> SHALL need); same text
 
 [[reference-expansion]]
 spec = "active-learning-decisions"
