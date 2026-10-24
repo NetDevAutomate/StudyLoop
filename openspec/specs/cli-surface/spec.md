@@ -77,23 +77,22 @@ package (`packages/agent-session-tools/pyproject.toml`) SHALL install
 `tutor-checkpoint`, `study-speak`, and `session-db-mcp` as separate
 entry points.
 
-#### Scenario: The uv workspace joins the two packages through the sessions extra
-- **WHEN** the two packages are resolved for installation
-- **THEN** the two packages are independent installables joined by
-  a `uv` workspace; the `sessions` optional extra on `studyloop`
-  declares `agent-session-tools` as a workspace dependency so a single
-  `uv tool install studyloop[sessions]` pulls both
+#### Scenario: Installing with all extras
+- **WHEN** a user installs `studyloop[all]`
+- **AND** the workspace resolver finds `agent-session-tools`
+- **THEN** all entry points from both packages are available
+
+### Requirement: Two workspace packages are joined by a uv workspace and the sessions extra pulls both
+The two packages SHALL be independent installables joined by a `uv`
+workspace; the `sessions` optional extra on `studyloop` declares
+`agent-session-tools` as a workspace dependency so a single
+`uv tool install studyloop[sessions]` pulls both.
 
 #### Scenario: Installing studyloop without the sessions extra
 - **WHEN** a user installs `studyloop` without the `[sessions]` extra
 - **THEN** only `studyloop`, `studyloop-mcp`, and
   `studyloop-fake-agent` are on PATH — `session-export` and
   `session-query` are not available
-
-#### Scenario: Installing with all extras
-- **WHEN** a user installs `studyloop[all]`
-- **AND** the workspace resolver finds `agent-session-tools`
-- **THEN** all entry points from both packages are available
 
 ### Requirement: Optional extras gate command bodies, not command registration
 Optional dependencies (`web`, `content`, `mcp`, `bedrock`,

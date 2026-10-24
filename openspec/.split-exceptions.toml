@@ -134,13 +134,14 @@ reason = "Same test: asserts 'hand edit' not in the post-gate husk's message and
 # cli-surface
 # ---------------------------------------------------------------------------------------------
 
-[[moved-body-text]]
+[[modalise]]
 spec = "cli-surface"
 heading = "Two workspace packages install distinct console_scripts entry points"
 ordinal = 3
-text = "The two packages are independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
-scenario = "The uv workspace joins the two packages through the sessions extra"
-reason = "Keyword-less rationale for how the two packages install together; the two SHALL sentences (one per package) stay under the original heading (469). Content not corrected: test_extras_contract.py says the sessions extra is no longer advertised - a MODIFIED delta for another change, noted in the lane log."
+old = "The two packages are independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
+new = "The two packages SHALL be independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
+verb = ["are", "be"]
+reason = "Rework (ruling L5), lane judgement on the entry the coordinator left open: the sentence tells the implementer how the two packages are joined (a uv workspace; the sessions extra declares the workspace dependency) — structure the implementer must build, not a rationale — so it may not sit in a scenario. It cannot rejoin its SHALL siblings (469 + 238 > 500); it heads a fragment of its own with exactly one modal added on the main clause ('are' -> 'SHALL be'); the 'declares ... so ... pulls both' clause is unchanged. The base scenario 'Installing studyloop without the sessions extra' re-homes here (same original requirement; it exercises the sessions-extra join), so no new scenario text is written. Content still not corrected: test_extras_contract.py says the sessions extra is no longer advertised and agent-session-tools is a required dependency — a MODIFIED delta for another change (FOUND-NOT-FIXED in the lane log)."
 
 [[moved-body-text]]
 spec = "cli-surface"
@@ -148,7 +149,7 @@ heading = "Shared output uses a Rich console singleton and click.echo for JSON"
 ordinal = 3
 text = "Commands offering `--json` include: `now`, `recap today`, `doctor`, `self-test`, `update`, `chat-note`, `practice verify`, `progress`, and several `content` subcommands (`discover`, `ingest`, `import-review`)."
 scenario = "Commands that offer --json"
-reason = "Non-normative inventory ('include:'); the three SHALL sentences stay together under the original heading (326)."
+reason = "Class: inventory of examples ('include:', 'several content subcommands') — an open illustration of where --json appears, not a rule about which commands must offer it; stays moved-body-text under ruling L5 (rework reclassification, coordinator and lane agree). The three SHALL sentences stay together under the original heading (326)."
 
 [[split-sentence]]
 spec = "cli-surface"
@@ -159,7 +160,7 @@ new = [
   "`_fail_for` SHALL map `PlanConflict` → `A study plan with id '<id>' already exists. Choose another id.`; `InvalidPlanId` → `Invalid plan id '<id>': <reason>`; `InvalidField` → `Invalid value: <reason>`; `InvalidMilestone` → `No such milestone on '<id>': <reason>`, where `<reason>` is the seam's own text (`No milestone at index <i> (plan has <n>)`).",
 ]
 added_tokens = ["`_fail_for`", "SHALL", "map", "."]
-reason = "717-char single-SHALL sentence whose six mappings are a semicolon list after a colon. Sentence 2 repeats the subject `_fail_for` (named in the source) with SHALL and the source's own verb 'map' - the one addition outside the closed list (a second grammatical sentence needs a predicate; the source has one). Mapping order unchanged; one ';' dropped."
+reason = "717-char single-SHALL sentence whose six mappings are a semicolon list after a colon. Sentence 2 repeats the subject `_fail_for` (named in the source) with SHALL and the source's own verb 'map' — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens; a second grammatical sentence needs a predicate and the source has one). Mapping order unchanged; one ';' dropped."
 
 [[split-sentence]]
 spec = "cli-surface"
@@ -220,7 +221,7 @@ new = [
   "The brief's first section SHALL be the same `CompletionReview` the `now` engine puts on its completion action, so the two never disagree on a count (new-topic rows excluded) — then, for a non-active plan, the `Status:` line above, then the plan as it stands (title, id, status, topics, milestones done/total, created), every learner-authored value one line (`planning.one_line`, council review 6 F2).",
 ]
 added_tokens = ["The", "brief's", "first", "section", "SHALL", "be", "."]
-reason = "788-char single-SHALL sentence (one copula). Sentence 2 repeats the subject noun phrase 'The brief's first section' with SHALL and the source's own copula 'be' - the one addition outside the closed list (the dash-chained content description has no second verb). Nothing dropped; 'never' stays with 'disagree'."
+reason = "788-char single-SHALL sentence (one copula). Sentence 2 repeats the subject noun phrase 'The brief's first section' with SHALL and the source's own copula 'be' — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens; the dash-chained content description has no second verb). Nothing dropped; 'never' stays with 'disagree'."
 
 [[test-sourced]]
 spec = "cli-surface"
