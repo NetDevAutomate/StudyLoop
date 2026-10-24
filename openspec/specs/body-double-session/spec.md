@@ -15,17 +15,7 @@ The Body Double view SHALL render its own start picker while no session is
 active and no start is in flight, containing: an agent `<select>`, a
 transport `<select>` (`pty` | `acp`, with `acp` carrying its own hint when
 the selected agent supports it), and a single freeform text input labelled
-for the current activity, plus a start button. It SHALL NOT render the
-study-target cascade (target kind, topic, vendor, course, lesson) and SHALL
-NOT render a session-type selector. While a start is in flight the view
-SHALL show a starting spinner in place of the picker.
-
-(As shipped, the picker uses the Body Double view's own `bd-`-prefixed
-markup — `#bd-activity-input`, `#bd-agent-select`, `#bd-transport-select`,
-`#bd-start-session` — sharing `.picker-select` / `.picker-hint` /
-`.picker-error` atoms with the Study picker rather than the full
-`.session-start-picker` block originally proposed. The `ttyd` transport
-option was removed by ADR-0008 before this spec was synced.)
+for the current activity, plus a start button.
 
 #### Scenario: Opening Body Double with no active session
 - **WHEN** the learner navigates to `#body-double` with no session active
@@ -42,6 +32,27 @@ option was removed by ADR-0008 before this spec was synced.)
 - **WHEN** the Body Double picker is rendered at desktop and narrow widths
 - **THEN** every `.picker-field` and the start button have non-zero bounding
   boxes and do not overlap each other or the Pomodoro timer panel
+
+### Requirement: Body Double picker — no study-target cascade and no session-type selector
+The Body Double view SHALL NOT render the study-target cascade (target kind,
+topic, vendor, course, lesson) and SHALL NOT render a session-type selector.
+
+#### Scenario: As-shipped picker markup
+- **WHEN** the Body Double picker is inspected as shipped
+- **THEN** (As shipped, the picker uses the Body Double view's own `bd-`-prefixed
+  markup — `#bd-activity-input`, `#bd-agent-select`, `#bd-transport-select`,
+  `#bd-start-session` — sharing `.picker-select` / `.picker-hint` /
+  `.picker-error` atoms with the Study picker rather than the full
+  `.session-start-picker` block originally proposed. The `ttyd` transport
+  option was removed by ADR-0008 before this spec was synced.)
+
+### Requirement: Body Double picker — a starting spinner replaces it while a start is in flight
+While a start is in flight the view SHALL show a starting spinner in place
+of the picker.
+
+#### Scenario: Starting spinner replaces the picker
+- **WHEN** a Body Double start is in flight
+- **THEN** the view shows a starting spinner in place of the picker
 
 ### Requirement: The freeform activity is the session topic
 The Body Double start SHALL be gated on non-empty freeform activity text and
@@ -70,17 +81,20 @@ No new endpoint and no session-type field SHALL be introduced. (ADR-0001)
 The Body Double view SHALL render the agent surface via
 `liveAgentConsole('body-double')` — a terminal (xterm.js, or the ghostty
 canvas renderer under `--dev`) for `pty`, and the ACP chat surface for
-`acp`. The console SHALL exist in the DOM only while the Body Double view is
-current (`x-if` on nav, not `x-show`), so a hidden mount can never shadow
-the Study console's selectors. (ADR-0004; the interim "unmount
-`terminalPanel()`, don't delete it" state was later superseded by ADR-0008,
-which retired ttyd — and `terminalPanel()`, `_mountLegacyIframe()` and the
-`/terminal/` iframe with it.)
+`acp`.
 
 #### Scenario: PTY session started from Body Double
 - **WHEN** a Body Double session starts on the `pty` transport
 - **THEN** a terminal mounts in the Body Double terminal pane with a
   non-zero bounding box and connects to the returned `ws_url`
+
+### Requirement: Body Double console — present in the DOM only while the view is current
+The console SHALL exist in the DOM only while the Body Double view is
+current (`x-if` on nav, not `x-show`), so a hidden mount can never shadow
+the Study console's selectors. (ADR-0004; the interim "unmount
+`terminalPanel()`, don't delete it" state was later superseded by ADR-0008,
+which retired ttyd — and `terminalPanel()`, `_mountLegacyIframe()` and the
+`/terminal/` iframe with it.)
 
 #### Scenario: The console is absent outside the Body Double view
 - **WHEN** any other view is current
