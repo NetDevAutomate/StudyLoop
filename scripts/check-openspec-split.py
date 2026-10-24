@@ -900,13 +900,67 @@ def compare_spec(
     for name, n in names.items():
         if n > 1:
             report.fail("scenario-name-duplicate", spec, f"'{name}' appears {n} times")
+    # A scenario whose (name, body) is unchanged but whose host moved. Within the fragments of
+    # its own original requirement that is routine (a drift note). Under a *different* original
+    # requirement it changes what the scenario claims to prove, so it must be declared.
+    origin_of_head_req: dict[str, str | None] = {}
+    base_heading_set = {b.heading for b in base.requirements}
+    # a fragment made only of rewritten units (split-sentence / inherit-shall /
+    # reference-expansion output) maps back through the entry that produced them
+    rewritten_origin: dict[str, str] = {}
+    for exc in exceptions:
+        if exc.kind in (
+            "split-sentence",
+            "inherit-shall",
+            "reference-expansion",
+            "context-restated",
+        ):
+            if exc.data.get("spec") != spec:
+                continue
+            news = exc.data.get("new", [])
+            for s in news if isinstance(news, list) else [news]:
+                rewritten_origin[_norm(str(s))] = _norm(str(exc.data.get("heading", "")))
+    for hreq in head.requirements:
+        origin = next(
+            (
+                b.heading
+                for b in base.requirements
+                for u in hreq.units
+                if u != "\x01FENCE\x01" and u in b.units
+            ),
+            None,
+        )
+        if origin is None:
+            origin = next((rewritten_origin[u] for u in hreq.units if u in rewritten_origin), None)
+        if origin is None and hreq.heading in base_heading_set:
+            origin = hreq.heading
+        origin_of_head_req[hreq.heading] = origin
     for name, home in head_home.items():
         if (
             name in base_home
             and base_home[name] != home
             and (name, _sc_body(head, name)) in base_sc
         ):
-            report.note("scenario-rehomed", spec, name, f"{base_home[name]} -> {home}")
+            origin = origin_of_head_req.get(home)
+            if origin == base_home[name]:
+                report.note("scenario-rehomed", spec, name, f"{base_home[name]} -> {home}")
+                continue
+            exc = _take(exceptions, "scenario-rehome", spec, scenario=name)
+            if exc is None:
+                report.fail(
+                    "scenario-rehomed-across-requirements",
+                    spec,
+                    f"'{name}' moved from '{base_home[name]}' to '{home}' (origin "
+                    f"'{origin}'); declare a scenario-rehome entry naming the test that "
+                    "cites it",
+                )
+            else:
+                report.note(
+                    "scenario-rehome",
+                    spec,
+                    name,
+                    f"{base_home[name]} -> {home}; test={exc.data.get('test', '?')}",
+                )
 
     # ---- Headings
     head_headings = Counter(r.heading for r in head.requirements)

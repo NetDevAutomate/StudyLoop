@@ -4,7 +4,8 @@ Three surfaces, all driven through ``TestClient`` against the real app
 (``create_app``), so the router inclusion in ``web/app.py`` is part of what is tested:
 
 * ``GET /api/session/options`` carries a ``labs`` entry only when ``modules.lock.json``
-  lists a module (web-ui spec, scenarios 1-2); ``GET /api/modules/labs`` lists the same
+  lists a module (web-ui spec "Labs is hidden with an empty lockfile" and "Labs lists drills
+  after ``module add``"); ``GET /api/modules/labs`` lists the same
   decks and tasks by id and prompt (plus ``successCriteria``), and **never** ``hint``,
   ``solution`` or ``mentorNotes`` (web-ui spec "the learner never sees the solution in the UI",
   proposal §5.6, C7).

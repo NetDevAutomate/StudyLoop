@@ -1397,7 +1397,9 @@ def test_positional_scenario_citation_to_a_split_file_fails(checker, tmp_path: P
     )
     src = head / "packages" / "studyloop" / "src" / "mod.py"
     src.parent.mkdir(parents=True)
-    src.write_text('"""Lists drills (web-ui spec scenario 2)."""\n', encoding="utf-8")
+    # built from parts so the repo-wide sweep does not read this fixture as a real citation
+    positional = "scenario" + " 2"
+    src.write_text(f'"""Lists drills (web-ui spec {positional})."""\n', encoding="utf-8")
     report = _run(checker, base, head, citation_roots=[head / "packages"])
     assert not report.ok
     assert "positional-citation" in _codes(report)
@@ -1583,3 +1585,79 @@ def test_tool_rules_agree_with_the_installed_openspec_cli(checker, tmp_path: Pat
     # the 500 boundary is strict `>`: a 500-char body passes, 501 fails, on both sides
     assert "tool-body-too-long" not in mine.get("p-exactly-500", set())
     assert "tool-body-too-long" in mine["p-501"]
+
+
+# --------------------------------------------------------------------------------------------
+# Lane E ruling correction 2: a cross-requirement re-home must be declarable and declared
+# --------------------------------------------------------------------------------------------
+
+
+def test_scenario_moved_to_a_different_original_requirement_needs_a_declared_rehome(
+    checker, tmp_path: Path
+) -> None:
+    """Re-homing within the fragments of one original requirement is routine (a drift note).
+    Moving an unchanged scenario under a *different* original requirement changes what the
+    scenario claims to prove, so it fails until a `[[scenario-rehome]]` entry names the move,
+    and that entry is consumed (not reported unused)."""
+    base, head = _pair(tmp_path)
+    _write_spec(
+        base,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Delivery
+        The envelope SHALL be delivered once.
+        {SCENARIO_OK}
+        #### Scenario: ACP keeps order
+        - **WHEN** two prompts are queued
+        - **THEN** they reach the agent in order
+        ### Requirement: Ordering
+        Prompts SHALL go to the agent in the order their callers asked.
+        #### Scenario: Order
+        - **WHEN** callers race
+        - **THEN** the order is the callers' order
+        """,
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Delivery
+        The envelope SHALL be delivered once.
+        {SCENARIO_OK}
+        ### Requirement: Ordering
+        Prompts SHALL go to the agent in the order their callers asked.
+        #### Scenario: Order
+        - **WHEN** callers race
+        - **THEN** the order is the callers' order
+        #### Scenario: ACP keeps order
+        - **WHEN** two prompts are queued
+        - **THEN** they reach the agent in order
+        """,
+    )
+    report = _run(checker, base, head)
+    assert not report.ok
+    _assert_only(report, ["scenario-rehomed-across-requirements"])
+
+    _write_exceptions(
+        head,
+        """
+        [[scenario-rehome]]
+        spec = "demo"
+        scenario = "ACP keeps order"
+        from = "Delivery"
+        to = "Ordering"
+        test = "packages/studyloop/tests/test_demo.py::test_acp_order"
+        reason = "the scenario exercises the ordering rule, not delivery"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert any(e.kind == "scenario-rehome" for e in report.drift)
