@@ -22,3 +22,167 @@ ordinal = 4
 text = '''`a7eabb6` fixes this at the loader level (`_expand_dotted_keys()` in `settings.py`, benefiting all 6 `raw.get("tts", ...)`-style consumers at once) and rephrases both `doctor/voice.py` repair hints to describe the nested form (`"Set backend: openvox under the tts: section of config.yaml..."`, `doctor/voice.py:105-106`) so new users are no longer taught the broken flat form, while the loader still accepts it from existing configs.'''
 scenario = "The defect behind the loader-level expansion"
 reason = "Second sentence of the same defect history (no SHALL, 433 chars): with the 396-char SHALL it would exceed 500, and it belongs with the sentence before it. Same history scenario."
+
+# ---------------------------------------------------------------------------------------------
+# web-ui
+# ---------------------------------------------------------------------------------------------
+
+# -- Starting a 4th topic requires parking one first (682) -> 2 fragments
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Starting a 4th topic requires parking one first"
+ordinal = 2
+text = '''Escape or "Keep all" cancels without starting.'''
+scenario = "Keep all or Escape cancels the start"
+reason = "Keyword-less behaviour note on the overlay's cancel path (not governed by a lead-in). With the 470-char park-first SHALL it would exceed 500, and it belongs to the overlay, not to the Body Double exemption; it becomes the overlay fragment's second scenario, verbatim."
+
+# -- Live agent consoles are addressed by origin, never broadcast (537) -> 1 fragment + rationale scenario
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Live agent consoles are addressed by origin, never broadcast"
+ordinal = 3
+text = '''Alpine initialises `x-data` on elements hidden by `x-show`, so multiple console instances are live simultaneously — visibility is not liveness, and an unaddressed broadcast would mount a second xterm and open a second WebSocket to the same PTY session.'''
+scenario = "Why a console answers only its own origin"
+reason = "Pure rationale (no SHALL) explaining why addressing is needed; the two SHALLs plus this sentence exceed 500 and the rationale cannot stand alone. The (ADR-0002) citation stays in the body after the second SHALL."
+
+# -- Activation is readiness-gated on every entry path (1244) -> 4 fragments, stem 'Readiness gate —'
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Activation is readiness-gated on every entry path"
+ordinal = 1
+new = [
+  '''Every Web API write that can leave a study plan in the `active` state — create-with-status, raw-Markdown import, whole-document replacement, status transition, and in-place revision of fields or milestones (including a body that combines a status change with field edits) — SHALL delegate to `PlanApplication.apply` as a single intent.''',
+  '''Every Web API write that can leave a study plan in the `active` state SHALL be refused by the seam's single readiness gate when the *resulting* document — the document as it would be saved, after every supplied field is applied — has no mission `why`, no success criteria, or no milestones.''',
+]
+added_tokens = ["Every", "Web", "API", "write", "that", "can", "leave", "a", "study", "plan", "in", "the", "`active`", "state", "."]
+reason = "559-char sentence with two SHALL clauses ('SHALL delegate ... and SHALL be refused ...'). Split at the 'and'; the second sentence repeats the subject noun phrase verbatim (without the parenthetical list of doors, which stays with the first). Only subject, modal (already present) and a full stop were added; 'and' dropped."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The plan routes import plans only through the seam"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_adapters_import_plans_only_through_the_seam"
+reason = "The fragment 'the routes hold no readiness check and perform no store write of their own' is pinned by the architecture guard, which scans studyloop/web/routes/plans.py and fails on any import of the store, index, authoring (readiness) or evaluation modules."
+
+# -- Plan routes map seam errors to HTTP status codes in one place (686) -> 2 fragments (no entries needed)
+
+# -- The milestone checkbox is one SetMilestone; the toggle request is not replay-safe (1151) -> 3 fragments
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "Each toggle request applies exactly one SetMilestone"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_legacy_toggle_repeated_requests_flip_twice"
+reason = "The test spies PlanApplication.apply and asserts exactly one SetMilestone per request with done = the opposite of the read state and no route-side write. The existing scenario 'Toggle flips and flips back' (same test) is re-homed under the not-replay-safe fragment, whose heading it names."
+
+# -- Checkpoint recording reports each sink (722) -> 3 fragments
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "An unknown phase is the seam's 400 after the 404"
+test = "packages/studyloop/tests/test_web_plans_seam.py::test_record_unknown_phase_is_the_seams_400_after_the_404"
+reason = "The 'route holds no phase check of its own' fragment had no scenario of its own; this test asserts the seam's InvalidField -> 400 for an unknown phase and the 404 first for a missing plan."
+
+# -- Plan with architect journey (4304) -> 14 fragments, stem 'Plan with architect —'
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 1
+new = [
+  '''The Study Plans view SHALL offer a **Plan with architect** control beside **New plan** (button name `Plan with architect`, `data-testid="plan-architect"`) with an optional subject field (`data-testid="plan-architect-subject"`, labelled for assistive technology).''',
+  '''The **Plan with architect** control SHALL offer an optional brain-dump textarea (`data-testid="plan-architect-braindump"`, labelled, `maxlength` equal to the server's `BRAIN_DUMP_MAX_CHARS`) and a live status region (`data-testid="plan-architect-status"`, `role="status"`, `aria-live="polite"`).''',
+]
+added_tokens = ["The", "Plan", "with", "architect", "control", "SHALL", "offer", "."]
+reason = "RULING CORRECTION (logged): a 510-char single-predicate sentence ('SHALL offer a control ... with A, B and C'). The closed additions of the fission rule (subject noun phrase, modal, punctuation) cannot give the second sentence a verb, so the verb 'offer' is repeated once beside the repeated noun phrase 'The **Plan with architect** control' (the object of the first sentence). No other token added; nothing dropped but one ','."
+
+[[split-sentence]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 4
+new = [
+  '''The Plans view SHALL NOT post, open a WebSocket, mount a terminal or listen for the console's `study-session-start` event: it dispatches one `plan-architect-request` window event (detail `{purpose, topic, brainDump}`).''',
+  '''The Plans view SHALL NOT post, open a WebSocket, mount a terminal or listen for the console's `study-session-start` event: the Study Session view's session timer — the one owner of the start POST, the 409 handling and the `study-session-start` event the live console mounts on — starts the session and navigates the learner to the existing console (`#study-session`), then reports the outcome back with exactly one `plan-architect-result` event.''',
+]
+added_tokens = ["The", "Plans", "view", "SHALL", "NOT", "post", ",", "open", "a", "WebSocket", ",", "mount", "a", "terminal", "or", "listen", "for", "the", "console's", "`study-session-start`", "event", ":", "."]
+reason = "RULING CORRECTION (logged): a 544-char SHALL NOT sentence whose colon clause holds two indicative sub-clauses joined by 'and'. The sub-clauses carry no modal of their own and their verbs cannot be changed (token drift), so the governing clause 'The Plans view SHALL NOT ... event:' is repeated verbatim before the second sub-clause — the fission analogue of duplicating a lead-in. The repeated 'NOT' is the same obligation restated, not a polarity change; pass 10 to read."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The control is offered beside New plan and takes a subject"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console[chromium]"
+reason = "The fission left the control-and-subject-field sentence alone in the heading fragment; this browser test clicks the control with a subject typed and lands on the console."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The textarea's text travels as the brain dump"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_brain_dump_reaches_the_architect_persona[chromium]"
+reason = "The textarea/status-region fragment; the test fills [data-testid=plan-architect-braindump] and proves the dump reaches the persona. The existing scenario 'The brain dump reaches the architect' (same test) is homed under the 'never folded into topic' fragment it proves."
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 16
+text = '''The architect's one-question-at-a-time protocol is asserted as persona text (owner decision D-B): the browser and unit tests prove the brief — including the brain dump — is delivered to the agent process; no test asserts how a live model behaves with it, and the docs say so.'''
+scenario = "What the tests prove about the architect's brief"
+reason = "A note about test scope (no SHALL): the last unit of the requirement, preceded only by keyword-less units (#14, #15) and by #13 which with it exceeds 500. Homed as a scenario beside 'The brief's structure, never its wording', which is the behaviour it describes."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The Plans view mounts no terminal of its own"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_one_console_one_websocket[chromium]"
+reason = "First half of the fissioned SHALL NOT sentence (the Plans view posts nothing and mounts nothing); the test asserts zero .xterm-mount/.agent-console under .plans-panel, one start event and one WebSocket."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "The start lands the learner on the existing console"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console[chromium]"
+reason = "Second half of the fissioned sentence (the Study Session view's timer owns the POST and navigates to #study-session); the same browser test asserts the one POST, the 201 and the navigation. Cited twice on purpose: one test proves both halves."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "One launch, one listener, one socket"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_one_console_one_websocket[chromium]"
+reason = "The 'listeners register once' fragment: a doubly registered listener would fire two study-session-start events and open two sockets; the test asserts exactly one of each. The 'second activation is a no-op' SHALL in the same fragment has no direct test (searched test_web_plan_architect_journey.py for twice/double/in-flight: none)."
+
+[[test-sourced]]
+spec = "web-ui"
+scenario = "A click that beats the options fetch still starts exactly once"
+test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_click_that_beats_the_options_fetch_still_starts_exactly_once[chromium]"
+reason = "The bounded-wait fragment (council review 6); the test holds /api/session/options and asserts exactly one start POST after it resolves."
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 14
+text = '''Navigating away is **not** the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
+scenario = "Navigating away is not the abandon path"
+reason = "Owner-decision note (no SHALL, 401 chars) between the abandon SHALL (#13, 294) and 'There is no cancel for a pending launch' (#15); with #13 it exceeds 500 and no other SHALL is adjacent. Homed as a scenario under the abandon fragment beside 'Leaving before the launch lands leaves a session like any other', which proves it."
+
+# -- Plan list rows carry readiness and the sidebar marks a husk (812) -> 3 fragments
+
+[[restates-shall]]
+spec = "web-ui"
+scenario = "The mark is decided from the row's own ready"
+restates = "The mark is computed from the row's own `ready`; the sidebar SHALL make no further request to decide it."
+searched_tests = "grep -i 'husk|sidebar' over evidence/collected-nodeids-1a511029.txt: only CLI husk tests (test_cli_plan_seam.py::test_plan_list_marks_husks, ::test_husk_refusal_names_both_pause_and_repair) and unrelated sidebar tests; grep -rl 'sidebar-plan-husk' packages/studyloop/tests: no file. No web test exercises the sidebar mark's data source or colour."
+reason = "The 'decided from the row's own ready / colour not the only carrier' fragment (#3+#4, 204 chars) cannot join the 308-char render SHALL (#2) under 500 and has no test; scaffolding scenario restating #3 with no literal the body lacks."
+
+# -- PATCH carries the mission to the one RevisePlan (813) -> 1 fragment + sourced scenario
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "PATCH carries the mission to the one RevisePlan"
+ordinal = 3
+text = '''The seam's refusals map as they always have: a bare string where a list belongs is the seam's `InvalidField` → `400` naming the field; a write whose resulting document would be active but not ready is `422` with the `readiness` body and nothing written.'''
+scenario = "The refusals and the receipt are unchanged"
+reason = "Keyword-less restatement of mappings owned by other requirements ('as they always have'); only #1 carries a SHALL, and #1+#2+#3 exceeds 500. Both halves are already exercised by the two existing scenarios; conserved verbatim in a scenario."
+
+[[moved-body-text]]
+spec = "web-ui"
+heading = "PATCH carries the mission to the one RevisePlan"
+ordinal = 4
+text = '''The `PATCH` response is the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
+scenario = "The refusals and the receipt are unchanged"
+reason = "Keyword-less description of the response shape; #1+#2+#4+#5 exceeds 500 and #4 cannot stand alone. Same scenario as the refusals, as the two together are the response contract. #5 (the consequence sentence) stays in the body."
