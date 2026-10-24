@@ -34,13 +34,10 @@ and their content is silently dropped from the export.
 
 ### Requirement: gemini/aider incremental re-import has divergent failure modes
 `exporters/gemini.py` (and three sibling exporters) SHALL delete existing
-messages for a session before re-inserting on incremental re-export. If
-`session_clean` has already scrubbed that session, the DELETE raises an
-`IntegrityError` (FK from `scrub_log`) that is currently swallowed,
-silently halting further updates to that session. `exporters/aider.py`
-instead assigns a fresh `uuid4()` message ID on every parse with no
-delete-before-reinsert step, so every incremental re-export duplicates all
-prior messages for that session.
+messages for a session before re-inserting on incremental re-export.
+`exporters/aider.py` instead assigns a fresh `uuid4()` message ID on every
+parse with no delete-before-reinsert step, so every incremental re-export
+duplicates all prior messages for that session.
 
 #### Scenario: Re-exporting a scrubbed Gemini session
 - **WHEN** `session-export` runs again on a Gemini session that
@@ -48,6 +45,13 @@ prior messages for that session.
 - **THEN** the delete-before-reinsert step raises an FK `IntegrityError`
   that is swallowed, and that session stops receiving updates from future
   exports
+
+#### Scenario: The DELETE on a previously scrubbed Gemini session is swallowed
+- **WHEN** the delete-before-reinsert step of an incremental re-export runs
+  against a Gemini session
+- **THEN** if `session_clean` has already scrubbed that session, the DELETE
+  raises an `IntegrityError` (FK from `scrub_log`) that is currently
+  swallowed, silently halting further updates to that session
 
 #### Scenario: Re-exporting the same Aider session twice
 - **WHEN** `session-export` runs twice against an unchanged Aider log

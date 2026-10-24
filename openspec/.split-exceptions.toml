@@ -1,0 +1,16 @@
+# Plan 7 split exceptions — lane C (cli-surface, health-and-diagnostics,
+# configuration-and-secrets, session-export, data-store-and-sync).
+# Read by scripts/check-openspec-split.py; every entry must be consumed exactly once.
+# Ordinals are 1-based positions among the original requirement's prose units (fences skipped).
+
+# ---------------------------------------------------------------------------------------------
+# session-export
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "session-export"
+heading = "gemini/aider incremental re-import has divergent failure modes"
+ordinal = 2
+text = "If `session_clean` has already scrubbed that session, the DELETE raises an `IntegrityError` (FK from `scrub_log`) that is currently swallowed, silently halting further updates to that session."
+scenario = "The DELETE on a previously scrubbed Gemini session is swallowed"
+reason = "Non-normative description of the observed Gemini failure mode (no SHALL); the only non-normative prose in a 532-char body whose other two sentences cannot be separated (the aider sentence has no modal, so it cannot stand as its own fragment)."
