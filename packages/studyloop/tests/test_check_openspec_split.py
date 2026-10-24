@@ -1862,3 +1862,230 @@ def test_compound_heading_split_is_reported_even_when_the_first_sentence_was_fis
     report = _run(checker, base, head)
     assert report.ok, [(f.code, f.detail) for f in report.findings]
     assert [f.code for f in report.findings if f.level == "WARN"] == ["compound-heading-split"]
+
+
+# --------------------------------------------------------------------------------------------
+# Lane B rulings: tables, lead-in scope, restated lead-ins
+# --------------------------------------------------------------------------------------------
+
+TABLE_BASE = """
+# demo Specification
+## Purpose
+A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+## Requirements
+### Requirement: Study-plan tools
+`register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:
+
+| Tool | Seam call |
+|---|---|
+| `list_study_plans()` | `browse()` |
+| `get_study_plan(id)` | `inspect(id)` |
+| `delete_study_plan(id)` | `apply(DeletePlan(id))` |
+
+Every response SHALL be the seam view's `to_json_dict()`.
+
+#### Scenario: Discover
+- **WHEN** `list_study_plans()` is called
+- **THEN** `browse()` answers
+#### Scenario: Delete
+- **WHEN** `delete_study_plan` is called
+- **THEN** `apply(DeletePlan)` runs
+"""
+
+
+def test_table_rows_are_governed_units_and_header_rows_are_duplicable_structure(
+    checker, tmp_path: Path
+) -> None:
+    """One fragment per tool: the lead-in and the table's header + delimiter are repeated, the
+    rows are distributed. No unit is lost or added; a governed row moved into a scenario is a
+    demotion."""
+    base, head = _pair(tmp_path)
+    _write_spec(base, "demo", TABLE_BASE)
+    _write_spec(
+        head,
+        "demo",
+        """
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Study-plan tools
+        `register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:
+
+        | Tool | Seam call |
+        |---|---|
+        | `list_study_plans()` | `browse()` |
+        | `get_study_plan(id)` | `inspect(id)` |
+
+        #### Scenario: Discover
+        - **WHEN** `list_study_plans()` is called
+        - **THEN** `browse()` answers
+        ### Requirement: Study-plan tools — `delete_study_plan`
+        `register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:
+
+        | Tool | Seam call |
+        |---|---|
+        | `delete_study_plan(id)` | `apply(DeletePlan(id))` |
+
+        Every response SHALL be the seam view's `to_json_dict()`.
+        #### Scenario: Delete
+        - **WHEN** `delete_study_plan` is called
+        - **THEN** `apply(DeletePlan)` runs
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    kinds = [e.kind for e in report.drift]
+    assert "lead-in-duplicated" in kinds and "table-header-duplicated" in kinds
+
+    # a governed row moved into a scenario is a demotion, whatever the entry says
+    _write_spec(
+        head,
+        "demo",
+        """
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Study-plan tools
+        `register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:
+
+        | Tool | Seam call |
+        |---|---|
+        | `list_study_plans()` | `browse()` |
+        | `get_study_plan(id)` | `inspect(id)` |
+
+        Every response SHALL be the seam view's `to_json_dict()`.
+
+        #### Scenario: Discover
+        - **WHEN** `list_study_plans()` is called
+        - **THEN** `browse()` answers
+        #### Scenario: Delete
+        - **WHEN** `delete_study_plan` is called
+        - **THEN** | `delete_study_plan(id)` | `apply(DeletePlan(id))` |
+        """,
+    )
+    _write_exceptions(
+        head,
+        """
+        [[moved-body-text]]
+        spec = "demo"
+        heading = "Study-plan tools"
+        ordinal = 6
+        text = "| `delete_study_plan(id)` | `apply(DeletePlan(id))` |"
+        scenario = "Delete"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert not report.ok
+    assert "inherited-normative-moved" in _codes(report)
+
+
+def test_lead_in_scope_ends_with_its_paragraph_or_table(checker, tmp_path: Path) -> None:
+    """The trailing paragraph after the table is not governed by the colon lead-in: a fragment that
+    holds only it does not need the lead-in repeated."""
+    base, head = _pair(tmp_path)
+    _write_spec(base, "demo", TABLE_BASE)
+    _write_spec(
+        head,
+        "demo",
+        """
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Study-plan tools
+        `register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:
+
+        | Tool | Seam call |
+        |---|---|
+        | `list_study_plans()` | `browse()` |
+        | `get_study_plan(id)` | `inspect(id)` |
+        | `delete_study_plan(id)` | `apply(DeletePlan(id))` |
+
+        #### Scenario: Discover
+        - **WHEN** `list_study_plans()` is called
+        - **THEN** `browse()` answers
+        ### Requirement: Study-plan tools — responses are seam views
+        Every response SHALL be the seam view's `to_json_dict()`.
+        #### Scenario: Delete
+        - **WHEN** `delete_study_plan` is called
+        - **THEN** `apply(DeletePlan)` runs
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+
+
+def test_a_restated_lead_in_may_be_duplicated_across_fragments(checker, tmp_path: Path) -> None:
+    """When the verbatim lead-in does not fit beside a long row, one `context-restated` entry gives
+    a shorter lead-in that every fragment may carry (like a verbatim one)."""
+    base, head = _pair(tmp_path)
+    _write_spec(base, "demo", TABLE_BASE)
+    short = "`register_tools(mcp)` SHALL register the study-plan tool below as a thin seam adapter:"
+    verbatim = (
+        "`register_tools(mcp)` SHALL register three study-plan tools, each a thin seam adapter:"
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Study-plan tools
+        {short}
+
+        | Tool | Seam call |
+        |---|---|
+        | `list_study_plans()` | `browse()` |
+
+        Every response SHALL be the seam view's `to_json_dict()`.
+        #### Scenario: Discover
+        - **WHEN** `list_study_plans()` is called
+        - **THEN** `browse()` answers
+        ### Requirement: Study-plan tools — `get_study_plan`
+        {short}
+
+        | Tool | Seam call |
+        |---|---|
+        | `get_study_plan(id)` | `inspect(id)` |
+
+        #### Scenario: Inspect
+        - **WHEN** `get_study_plan` is called
+        - **THEN** `inspect` answers
+        ### Requirement: Study-plan tools — `delete_study_plan`
+        {short}
+
+        | Tool | Seam call |
+        |---|---|
+        | `delete_study_plan(id)` | `apply(DeletePlan(id))` |
+
+        #### Scenario: Delete
+        - **WHEN** `delete_study_plan` is called
+        - **THEN** `apply(DeletePlan)` runs
+        """,
+    )
+    _write_exceptions(
+        head,
+        f"""
+        [[context-restated]]
+        spec = "demo"
+        heading = "Study-plan tools"
+        ordinal = 1
+        old = "{verbatim}"
+        new = "{short}"
+        reason = "the verbatim lead-in does not fit beside the longest row"
+
+        [[restates-shall]]
+        spec = "demo"
+        heading = "Study-plan tools — `get_study_plan`"
+        scenario = "Inspect"
+        restates = "{short}"
+        searched_tests = "none"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert sum(1 for e in report.drift if e.kind == "lead-in-duplicated") == 2

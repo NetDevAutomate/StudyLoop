@@ -66,6 +66,8 @@ SCENARIO_RE = re.compile(r"^####\s+(?:Scenario:\s*)?(.+?)\s*$")
 METADATA_RE = re.compile(r"^\*\*[^*]+\*\*:")
 KEYWORD_RE = re.compile(r"\b(SHALL|MUST)\b")
 LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)]|[a-z][.)])\s+")
+TABLE_ROW_RE = re.compile(r"^\|")
+TABLE_DELIM_RE = re.compile(r"^\|\s*:?-{3,}")
 LEAD_IN_WORDS = re.compile(
     r"\b(when|if|unless|only|for each|where|after|before|in this order|whenever)\b", re.I
 )
@@ -142,6 +144,7 @@ class Requirement:
     fences: list[str]  # normalised fenced blocks in body order
     units: list[str]  # ordered prose units (normalised)
     lead_ins: dict[int, str]  # unit index -> governing lead-in (normalised)
+    table_headers: set[str]  # header + delimiter rows of each table (structure, duplicable)
     metadata_lines: list[str]
     order: int
 
@@ -165,7 +168,7 @@ def _split_units(paragraph_lines: list[str]) -> list[str]:
     units: list[str] = []
     buf: list[str] = []
     for line in paragraph_lines:
-        if LIST_ITEM_RE.match(line.strip()):
+        if LIST_ITEM_RE.match(line.strip()) or TABLE_ROW_RE.match(line.strip()):
             if buf:
                 units.extend(_sentences(" ".join(buf)))
                 buf = []
@@ -239,31 +242,46 @@ def _parse_requirement(heading: str, lines: list[str], order: int) -> Requiremen
     # paragraphs split on blank lines; fence markers separate too
     units: list[str] = []
     lead_ins: dict[int, str] = {}
+    table_headers: set[str] = set()
     current_lead: str | None = None
+    lead_block_open = False  # the lead-in's own paragraph, or the list/table right after it
     para: list[str] = []
 
+    def _starts_block(line: str) -> bool:
+        t = line.strip()
+        return bool(LIST_ITEM_RE.match(t) or TABLE_ROW_RE.match(t))
+
     def _flush() -> None:
-        nonlocal current_lead, para
+        nonlocal current_lead, para, lead_block_open
         for unit in _split_units(para):
             idx = len(units)
             units.append(unit)
+            if TABLE_DELIM_RE.match(unit) and idx > 0 and TABLE_ROW_RE.match(units[idx - 1]):
+                # a table's header row and delimiter row are structure, not an obligation:
+                # conserved, but a fragment that keeps some rows repeats them (like a lead-in)
+                table_headers.update((units[idx - 1], unit))
+                lead_ins.pop(idx - 1, None)
+                continue
             if _is_lead_in(unit):
                 current_lead = unit
-            elif current_lead is not None:
+                lead_block_open = True
+            elif current_lead is not None and lead_block_open:
                 lead_ins[idx] = current_lead
         para = []
 
-    for line in prose:
+    for pos, line in enumerate(prose):
         if line == "\x01FENCE\x01":
             _flush()
             units.append("\x01FENCE\x01")
             continue
         if not line.strip():
             _flush()
-            # a blank line ends a lead-in's paragraph unless a list follows it
+            # a blank line ends the lead-in's scope unless a list or table follows it directly
+            following = next((ln for ln in prose[pos + 1 :] if ln.strip()), "")
+            lead_block_open = lead_block_open and _starts_block(following)
             continue
-        if LIST_ITEM_RE.match(line.strip()) and para and not LIST_ITEM_RE.match(para[-1].strip()):
-            # list starts: the preceding sentence(s) may be the lead-in; flush them first
+        if _starts_block(line) and para and not _starts_block(para[-1]):
+            # list/table starts: the preceding sentence(s) may be the lead-in; flush them first
             _flush()
         para.append(line)
     _flush()
@@ -294,6 +312,7 @@ def _parse_requirement(heading: str, lines: list[str], order: int) -> Requiremen
         fences=fences,
         units=units,
         lead_ins=lead_ins,
+        table_headers=table_headers,
         metadata_lines=metadata,
         order=order,
     )
@@ -532,6 +551,11 @@ def compare_spec(
 
     lost = base_count - head_count
     added = head_count - base_count
+    restated_leads = {
+        _norm(str(e.data.get("new", "")))
+        for e in exceptions
+        if e.kind == "context-restated" and e.data.get("spec") == spec
+    }
 
     # consume exceptions that explain a lost unit
     for unit, n in list(lost.items()):
@@ -690,7 +714,7 @@ def compare_spec(
                         for idx, u in enumerate(r.units)
                         if u == unit
                     )
-                    is_list_item = bool(LIST_ITEM_RE.match(unit))
+                    is_list_item = bool(LIST_ITEM_RE.match(unit) or TABLE_ROW_RE.match(unit))
                     if KEYWORD_RE.search(unit) or (is_list_item and governed):
                         report.fail(
                             "inherited-normative-moved",
@@ -715,9 +739,17 @@ def compare_spec(
             if unit in base_scenario_text and unit not in head_scenario_text:
                 report.note("scenario-text-promoted", spec, "?", unit)
                 continue
-            # a duplicated lead-in is the expected repair, not an addition
-            if any(unit in r.lead_ins.values() for r in base.requirements):
+            # a duplicated lead-in is the expected repair, not an addition; so is a lead-in
+            # restated through a context-restated entry (the first copy consumes the entry,
+            # every later copy is a duplicate like a verbatim one)
+            if (
+                any(unit in r.lead_ins.values() for r in base.requirements)
+                or unit in restated_leads
+            ):
                 report.note("lead-in-duplicated", spec, "?", unit)
+                continue
+            if any(unit in r.table_headers for r in base.requirements):
+                report.note("table-header-duplicated", spec, "?", unit)
                 continue
             report.fail("unit-added", spec, unit)
 
@@ -762,12 +794,15 @@ def compare_spec(
     head_unit_locations: dict[str, list[Requirement]] = {}
     for r in head.requirements:
         for u in r.units:
+            if u in r.table_headers:
+                continue  # structure shared by every table; it locates nothing
             head_unit_locations.setdefault(u, []).append(r)
     for breq in base.requirements:
         for idx, lead in breq.lead_ins.items():
             unit = breq.units[idx]
             for hreq in head_unit_locations.get(unit, []):
-                if lead not in hreq.units and _norm(lead) not in " ".join(hreq.units):
+                carried = lead in hreq.units or any(u in restated_leads for u in hreq.units)
+                if not carried:
                     exc = _take(
                         exceptions, "context-restated", spec, heading=breq.heading, unit=unit
                     )
@@ -837,6 +872,7 @@ def compare_spec(
     for hreq in head.requirements:
         body_text = " ".join(u for u in hreq.units if u != "\x01FENCE\x01")
         has_list = any(LIST_ITEM_RE.match(u) for u in hreq.units if u != "\x01FENCE\x01")
+        has_table = any(TABLE_ROW_RE.match(u) for u in hreq.units if u != "\x01FENCE\x01")
         has_fence = bool(hreq.fences)
         for m in DEICTIC_RE.finditer(body_text):
             phrase = m.group(0)
@@ -855,7 +891,7 @@ def compare_spec(
                 continue  # unchanged requirement; reference stood before and stands now
             resolved = False
             if low.startswith(("the list", "the table", "the following", "these rules")):
-                resolved = has_list or has_fence
+                resolved = has_list or has_fence or has_table
             elif low.startswith(("rule", "rules")):
                 resolved = bool(re.search(r"(?im)^\s*\d+[.)]\s", "\n".join(hreq.units))) or bool(
                     re.search(r"rule \d+", hreq.heading, re.I)
