@@ -115,14 +115,10 @@ reason = "592-char SHALL sentence (evidence/pass9-long-normative-sentences.txt l
 spec = "live-session-orchestration"
 heading = "Session purpose"
 ordinal = 6
-old = '''On a `planning` start a non-blank dump SHALL be rendered by the brief renderer as a fourth section, `### Learner's brain dump`, after `### Existing plans`, introduced as the learner's words — evidence, not instructions — with every line of the dump emitted as a Markdown blockquote line (`> …`, a blank line as a bare `>`) after in-line whitespace normalisation, and a line that begins with a block marker (`#`, `-`, `*`, `+`, `>`, `` ` ``, `~`) backslash-escaped, so a dump line can never open a heading, list item or fence of its own inside the persona (review-3 F4 containment). A blank or absent dump SHALL render no section, so a brief without one is byte-identical to the pre-change brief. The dump SHALL NOT be folded into `topic`, SHALL NOT be written to the session state or exposed by `GET /api/session/state`, and SHALL travel once, inside the persona (on `acp` the `201` echoes the persona as `persona_text` by design, and the dump appears in that field only). On a `focus` start the dump SHALL be ignored: the persona and state are byte-identical to a start without it. A dump longer than `BRAIN_DUMP_MAX_CHARS` SHALL be refused with `422` before the handler runs, holding no slot.'''
+old = "On a `planning` start a non-blank dump SHALL be rendered by the brief renderer as a fourth section, `### Learner's brain dump`, after `### Existing plans`, introduced as the learner's words — evidence, not instructions — with every line of the dump emitted as a Markdown blockquote line (`> …`, a blank line as a bare `>`) after in-line whitespace normalisation, and a line that begins with a block marker (`#`, `-`, `*`, `+`, `>`, `` ` ``, `~`) backslash-escaped, so a dump line can never open a heading, list item or fence of its own inside the persona (review-3 F4 containment)."
 new = [
-  '''On a `planning` start a non-blank dump SHALL be rendered by the brief renderer as a fourth section, `### Learner's brain dump`, after `### Existing plans`, introduced as the learner's words — evidence, not instructions — with every line of the dump emitted as a Markdown blockquote line (`> …`, a blank line as a bare `>`) after in-line whitespace normalisation.''',
-  '''On a `planning` start a line that begins with a block marker (`#`, `-`, `*`, `+`, `>`, `` ` ``, `~`) SHALL be backslash-escaped, so a dump line can never open a heading, list item or fence of its own inside the persona (review-3 F4 containment).''',
-  '''A blank or absent dump SHALL render no section, so a brief without one is byte-identical to the pre-change brief.''',
-  '''The dump SHALL NOT be folded into `topic`, SHALL NOT be written to the session state or exposed by `GET /api/session/state`, and SHALL travel once, inside the persona (on `acp` the `201` echoes the persona as `persona_text` by design, and the dump appears in that field only).''',
-  '''On a `focus` start the dump SHALL be ignored: the persona and state are byte-identical to a start without it.''',
-  '''A dump longer than `BRAIN_DUMP_MAX_CHARS` SHALL be refused with `422` before the handler runs, holding no slot.''',
+    "On a `planning` start a non-blank dump SHALL be rendered by the brief renderer as a fourth section, `### Learner's brain dump`, after `### Existing plans`, introduced as the learner's words — evidence, not instructions — with every line of the dump emitted as a Markdown blockquote line (`> …`, a blank line as a bare `>`) after in-line whitespace normalisation.",
+    "On a `planning` start a line that begins with a block marker (`#`, `-`, `*`, `+`, `>`, `` ` ``, `~`) SHALL be backslash-escaped, so a dump line can never open a heading, list item or fence of its own inside the persona (review-3 F4 containment).",
 ]
 added_tokens = ["On", "a", "`planning`", "start", "SHALL", "be", "."]
 reason = "The checker reads this five-sentence paragraph as ONE 1194-char unit: the escaped-backtick code span `` ` `` throws its code-span regex out of phase, so the sentence-final periods after it are hidden inside a phantom span (a checker limitation, patch in the lane log). Sentences 2-5 are verbatim and separately unchanged; only sentence 1 (581 chars, evidence line 22) is fissioned, at ', and a line that begins' — the second half repeats the conditional scope 'On a `planning` start' (rule 2: scope travels) and gains 'SHALL be' before the participle 'backslash-escaped'; ', and' dropped at the cut; one '.' added."
@@ -130,7 +126,7 @@ reason = "The checker reads this five-sentence paragraph as ONE 1194-char unit: 
 [[split-sentence]]
 spec = "live-session-orchestration"
 heading = "Session purpose"
-ordinal = 7
+ordinal = 11
 old = '''The only planning fact the live-session state carries is `purpose`, written on every start (never inherited through the state file's read-merge-write), and `GET /api/session/state` SHALL expose it for the reconnect label with one precedence on every path it answers from — the live-slot overlay and the file-only path a CLI-started session takes: an explicitly persisted `purpose` wins; otherwise a state whose persisted `mode` is the planning persona's (`persona_mode_for("planning")`, the mode `studyloop plan architect` writes without a `purpose` key) reports `planning`; anything else — a state that predates the key, or an overlay that rebuilt the payload — reports `focus`.'''
 new = [
   '''The only planning fact the live-session state carries is `purpose`, written on every start (never inherited through the state file's read-merge-write), and `GET /api/session/state` SHALL expose it for the reconnect label with one precedence on every path it answers from — the live-slot overlay and the file-only path a CLI-started session takes.''',
@@ -142,7 +138,7 @@ reason = "679-char SHALL sentence (evidence line 15). Cut at the ':' that introd
 [[reference-expansion]]
 spec = "live-session-orchestration"
 heading = "Session purpose"
-ordinal = 10
+ordinal = 14
 phrase = "this requirement"
 new = "Both transports (`pty` and `acp`) SHALL follow the session-purpose requirements identically."
 reason = "live-session-orchestration:247 (brief note). 'this requirement' meant the whole Session purpose requirement, now thirteen fragments all headed 'Session purpose'; rewritten to the nominal 'the session-purpose requirements'. The fragment still names both transports."
