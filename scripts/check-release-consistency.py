@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -163,6 +164,20 @@ def _deferred_reason(change_dir: Path) -> str | None:
 _YAML_BLOCK_INDICATORS = frozenset({">", ">-", ">+", "|", "|-", "|+"})
 
 
+_OPENSPEC_PIN = re.compile(r'^export OPENSPEC_VERSION := "(\d+\.\d+\.\d+)"$', re.M)
+
+
+def _openspec_version_from_justfile(repo_root: Path) -> str:
+    """The pinned OpenSpec CLI release, read from the Justfile so the literal lives once.
+
+    ``just`` exports it to recipes; this script is also run by hand, so it reads the same line.
+    """
+    match = _OPENSPEC_PIN.search((repo_root / "Justfile").read_text(encoding="utf-8"))
+    if not match:
+        raise ValueError("Justfile does not pin OPENSPEC_VERSION")
+    return match.group(1)
+
+
 def validate_openspec_changes_shipped(repo_root: Path) -> None:
     """Release mode only: a change that shipped work must be archived.
 
@@ -220,14 +235,22 @@ def validate_new_archives(repo_root: Path) -> None:
     nobody is working on can never re-fail a future release and teach people
     to ignore the gate. (The July archive that motivated the scoping was
     reconciled against the tree on 2026-09-23; ``--archived --all`` is green
-    today, and the scoping stays.) Soft-skips when the openspec CLI is absent
-    — the same convention as ``just spec-check``.
+    today, and the scoping stays.) Runs the CLI through ``scripts/openspec-cli.sh``
+    at the pinned ``OPENSPEC_VERSION`` and reads its ``--json`` report; when the
+    resolver cannot run the pinned CLI it prints SKIPPED locally (and fails under
+    CI) — the same convention as ``just spec-check``.
     """
-    import shutil
+    import os
 
-    if shutil.which("openspec") is None:
-        print("openspec CLI not found — skipping archived-change validation")
+    resolver = repo_root / "scripts" / "openspec-cli.sh"
+    if not resolver.is_file():
+        print("scripts/openspec-cli.sh missing — skipping archived-change validation")
         return
+    env = {
+        **os.environ,
+        "OPENSPEC_VERSION": os.environ.get("OPENSPEC_VERSION")
+        or _openspec_version_from_justfile(repo_root),
+    }
     try:
         last_tag = _git(repo_root, "describe", "--tags", "--abbrev=0")
     except subprocess.CalledProcessError:
@@ -242,15 +265,30 @@ def validate_new_archives(repo_root: Path) -> None:
     if not new_names:
         return
 
-    report = subprocess.run(
-        ["openspec", "validate", "--archived", "--all", "--no-interactive"],
+    proc = subprocess.run(
+        ["bash", str(resolver), "validate", "--archived", "--all", "--no-interactive", "--json"],
         cwd=repo_root,
         capture_output=True,
         text=True,
         timeout=300,
         check=False,
-    ).stdout
-    failing = [name for name in new_names if f"✓ change/{name}" not in report]
+        env=env,
+    )
+    if proc.stdout.lstrip().startswith("SKIPPED"):
+        # the resolver could not run the pinned CLI locally (never under CI, where it exits 1)
+        print(proc.stdout.strip())
+        return
+    if proc.returncode not in (0, 1):
+        raise ValueError(
+            f"openspec archived-change validation could not run (exit {proc.returncode}): "
+            f"{proc.stderr.strip()[:400]}"
+        )
+    try:
+        report = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"openspec --json output was not JSON: {proc.stdout[:200]!r}") from exc
+    valid = {item["id"] for item in report.get("items", []) if item.get("valid")}
+    failing = [name for name in new_names if name not in valid]
     if failing:
         raise ValueError(
             f"newly archived openspec change(s) failed validation: {', '.join(failing)}. "

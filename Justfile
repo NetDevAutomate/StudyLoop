@@ -5,6 +5,13 @@ set shell := ["bash", "-cu"]
 # deprecations remain visible. Remove when upstream swig/swig#2881 lands here.
 export PYTHONWARNINGS := "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning"
 
+# The one OpenSpec CLI release the repository validates against. `scripts/openspec-cli.sh`
+# resolves it (a matching local binary, else npx at exactly this version) and refuses any other
+# local version; `just spec-check` and the release gate both go through that script. Bumping
+# this is a deliberate commit: a new release can add validation rules (1.14 promoted the
+# >500-character requirement finding to a warning, which is how 84 of them appeared at once).
+export OPENSPEC_VERSION := "1.14.1"
+
 default:
     @just --list
 
@@ -146,6 +153,7 @@ lint:
 
 shellcheck:
     shellcheck \
+        scripts/openspec-cli.sh \
         scripts/install.sh \
         scripts/smoke-installed-cli.sh \
         scripts/build-release.sh \
@@ -157,14 +165,14 @@ typecheck:
 docs:
     NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
 
-# Structural validation of openspec/specs + openspec/changes.
-# Skips (does not fail) when the openspec CLI is not installed.
+# Structural validation of openspec/specs + openspec/changes, STRICT: every warning fails
+# (requirement bodies over 500 characters, placeholder Purposes, missing scenarios…). The CLI is
+# resolved by scripts/openspec-cli.sh at the pinned OPENSPEC_VERSION; on a machine without it the
+# recipe prints SKIPPED and exits 0 (a skip is not a pass — see docs/contributor-conventions.md,
+# OpenSpec section), and under CI the same absence is a failure, because CI is where this gate is
+# enforced (the `spec-check` job in .github/workflows/ci.yml).
 spec-check:
-    if command -v openspec >/dev/null 2>&1; then \
-        openspec validate --specs --all; \
-    else \
-        echo "openspec CLI not found — skipping spec validation (see the OpenSpec section of docs/contributing.md)"; \
-    fi
+    scripts/openspec-cli.sh validate --specs --all --strict
 
 audit:
     # Local mirror of ci.yml's `audit` job: same pip-audit release, no fixed /tmp

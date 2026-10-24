@@ -58,17 +58,30 @@ small fix with a test goes straight to a pull request.
 1. Create `openspec/changes/<id>/` with `proposal.md` (what and why), `design.md` (how, and the
    decisions taken), `tasks.md` (the ordered work) and `specs/<capability>/spec.md` holding the
    **delta** to the living spec in `openspec/specs/<capability>/spec.md`. Requirements use SHALL
-   and each has at least one `#### Scenario:` with WHEN/THEN.
+   and each has at least one `#### Scenario:` with WHEN/THEN. **One requirement states one
+   behaviour**, and its body (the prose before the first scenario; fenced code does not count) stays
+   under 500 characters -- the validator fails a longer one. When a requirement wants to say more,
+   that is two requirements, or examples and edge cases that belong in scenarios; a conditional
+   lead-in ("When the learner has an active plan: ...") is part of every requirement it governs, so
+   repeat it rather than leave a SHALL without its condition.
 2. Add `.openspec.yaml` (`schema: spec-driven`, `created:`). A documentation-only change declares
    `skip_specs: true` there, as `openspec/changes/contributor-guide-v1/.openspec.yaml` does: the
    `openspec` CLI refuses a change with no spec delta unless the flag is set (this change failed
    `spec-check` until it was added), so the flag is the reviewer's cue that "no delta" was a choice.
-3. Validate the structure. The recipe runs `openspec validate --specs --all` when the `openspec`
-   CLI is installed and prints a skip message otherwise -- a skip is not a pass:
+3. Validate the structure with `openspec validate --specs --all --strict`: every warning fails, so
+   the output is a gate and not a list nobody reads. The recipe resolves the CLI through `scripts/openspec-cli.sh` at the one pinned
+   release (`OPENSPEC_VERSION` in the `Justfile`; a local `openspec` at any other version is
+   refused, otherwise `npx` fetches the pinned one). Without node or the CLI the recipe prints
+   `SKIPPED` and exits 0 on your machine -- a skip is not a pass -- and the `spec-check` job in CI,
+   which runs the same recipe, fails on the same absence:
 
 ```bash
 just spec-check
 ```
+
+   Changing `OPENSPEC_VERSION` is a deliberate commit: a new CLI release can add rules (1.14
+   started warning on requirement bodies over 500 characters, which is how 84 warnings appeared
+   at once and hid a placeholder Purpose among them).
 
 4. Ship the spec delta in the same pull request as the code; the spec describes behaviour, the
    tests prove it.

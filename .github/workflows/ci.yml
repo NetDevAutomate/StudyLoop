@@ -200,6 +200,22 @@ jobs:
           node-version: "24"
       - run: node --test packages/studyloop/tests/js/*.test.js
 
+  spec-check:
+    # OpenSpec structural validation, STRICT, at the one pinned CLI release (OPENSPEC_VERSION in
+    # the Justfile, resolved by scripts/openspec-cli.sh via npx on this runner). Runs the same
+    # recipe contributors run locally; here absence of the CLI is a failure, not a skip, because
+    # this job is where the gate is enforced. Until plan 7 (2026-10-24) nothing hosted ran
+    # openspec at all, and the local recipe printed 85 warnings and passed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - run: just spec-check
+
   web-profile:
     runs-on: ubuntu-latest
     timeout-minutes: 15
