@@ -139,13 +139,7 @@ TOCTOU with `--resume`.
 `agent_session_tools.sync` SHALL transfer new and updated sessions between
 machines by comparing `updated_at` timestamps. The session with the later
 `updated_at` wins on conflict. Sync streams `INSERT OR REPLACE` SQL over
-SSH (with `-C` compression) rather than copying the entire database. Global
-tables (`study_progress`, `study_sessions`, `teach_back_scores`,
-`knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
-`message_concepts`, `parked_topics`, `scrub_log`) are synced in full on
-every operation. Session-scoped tables (`sessions`, `messages`,
-`session_notes`, `session_tags`, `session_learning_metadata`,
-`file_references`) are filtered to only the delta session IDs.
+SSH (with `-C` compression) rather than copying the entire database.
 
 #### Scenario: Push to a remote that has never been seeded
 - **WHEN** `session-sync push <remote>` runs and `_remote_db_exists()`
@@ -167,6 +161,27 @@ every operation. Session-scoped tables (`sessions`, `messages`,
 - **THEN** push includes `abc123` in the delta (local wins), and all
   related rows in session-scoped tables are overwritten on remote via
   INSERT OR REPLACE
+
+### Requirement: Cross-machine sync — global tables travel in full, session-scoped tables are filtered to the delta
+Global tables (`study_progress`, `study_sessions`, `teach_back_scores`,
+`knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
+`message_concepts`, `parked_topics`, `scrub_log`) SHALL be synced in full on
+every operation. Session-scoped tables (`sessions`, `messages`,
+`session_notes`, `session_tags`, `session_learning_metadata`,
+`file_references`) are filtered to only the delta session IDs.
+
+#### Scenario: A one-session delta still carries every global table
+- **WHEN** `_dump_delta_sql(db_path, {"test-session-001"})` builds the SQL
+  for one session on a migrated database
+- **THEN** the SQL carries an `INSERT INTO` for `study_progress`,
+  `study_sessions`, `teach_back_scores`, `knowledge_bridges`,
+  `parked_topics` and `scrub_log`, alongside the session's own
+  `session_learning_metadata` and `file_references` rows
+
+#### Scenario: Only the requested sessions' rows are in the delta
+- **WHEN** `_dump_delta_sql(db_path, {"keep"})` runs on a database whose
+  `sessions` and `messages` tables hold `keep`, `skip-1` and `skip-2`
+- **THEN** the SQL contains `keep` and contains neither `skip-1` nor `skip-2`
 
 ### Requirement: Sync validates session IDs against an allow-pattern before building SQL
 `sync._validate_session_ids()` SHALL reject any session ID not matching

@@ -760,3 +760,342 @@ spec = "active-learning-decisions"
 scenario = "Low energy defers medium and high demand and carries low"
 test = "packages/studyloop/tests/test_now_plan_guidance.py::test_repair_demand_capability_matrix[low-deferred0]"
 reason = "Fragment `Now-engine rule 2's repair half: medium and high demand need medium energy` (#34′). The low-energy row of the matrix: live and stale struggles deferred, the learning row ranked, deferred and ranked sets disjoint."
+
+# ---- lane C (cli-surface, health-and-diagnostics, configuration-and-secrets, session-export, data-store-and-sync) ----
+
+# Plan 7 split exceptions — lane C (cli-surface, health-and-diagnostics,
+# configuration-and-secrets, session-export, data-store-and-sync).
+# Read by scripts/check-openspec-split.py; every entry must be consumed exactly once.
+# Ordinals are 1-based positions among the original requirement's prose units (fences skipped).
+
+# ---------------------------------------------------------------------------------------------
+# session-export
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "session-export"
+heading = "gemini/aider incremental re-import has divergent failure modes"
+ordinal = 2
+text = "If `session_clean` has already scrubbed that session, the DELETE raises an `IntegrityError` (FK from `scrub_log`) that is currently swallowed, silently halting further updates to that session."
+scenario = "The DELETE on a previously scrubbed Gemini session is swallowed"
+reason = "Class: description of a known defect ('currently swallowed, silently halting') — it reports what the code does wrong today, not what the system must do; stays moved-body-text under ruling L5 (rework reclassification, coordinator and lane agree). No SHALL; the only non-normative prose in a 532-char body whose other two sentences cannot be separated (the aider sentence has no modal, so it cannot stand as its own fragment)."
+
+# ---------------------------------------------------------------------------------------------
+# data-store-and-sync
+# ---------------------------------------------------------------------------------------------
+
+[[modalise]]
+spec = "data-store-and-sync"
+heading = "Cross-machine sync streams SQL deltas over SSH using INSERT OR REPLACE with last-writer-wins on updated_at"
+ordinal = 4
+old = "Global tables (`study_progress`, `study_sessions`, `teach_back_scores`, `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`, `message_concepts`, `parked_topics`, `scrub_log`) are synced in full on every operation."
+new = "Global tables (`study_progress`, `study_sessions`, `teach_back_scores`, `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`, `message_concepts`, `parked_topics`, `scrub_log`) SHALL be synced in full on every operation."
+verb = ["are", "be"]
+reason = "Rework (ruling L5): states system behaviour (which tables every sync operation carries in full) — a requirement without the keyword, not an illustration — so it may not sit in a scenario. It cannot rejoin the SHALL sibling (290 + 232 > 500), so it heads a fragment of its own with its paired sentence (ordinal 5), which keeps its indicative form because it now shares a fragment with this SHALL. Content deliberately NOT corrected (FOUND-NOT-FIXED plan-6 item 12: the tests assert INSERT INTO … ON CONFLICT, not INSERT OR REPLACE)."
+
+[[test-sourced]]
+spec = "data-store-and-sync"
+heading = "Cross-machine sync — global tables travel in full, session-scoped tables are filtered to the delta"
+scenario = "A one-session delta still carries every global table"
+test = "packages/agent-session-tools/tests/test_sync.py::TestDumpDeltaSql::test_includes_durable_metadata_tables"
+reason = "Proves the global-tables sentence: a delta built for one session still carries an INSERT for every global table the test seeds (study_progress, study_sessions, teach_back_scores, knowledge_bridges, parked_topics, scrub_log) beside the session's own session_learning_metadata and file_references rows."
+
+[[test-sourced]]
+spec = "data-store-and-sync"
+heading = "Cross-machine sync — global tables travel in full, session-scoped tables are filtered to the delta"
+scenario = "Only the requested sessions' rows are in the delta"
+test = "packages/agent-session-tools/tests/test_sync.py::TestDumpDeltaSql::test_only_specified_sessions"
+reason = "Proves the session-scoped sentence (ordinal 5, indicative, riding with its SHALL sibling): with sessions keep/skip-1/skip-2 present, the delta for {keep} contains keep and neither skip id."
+
+# ---------------------------------------------------------------------------------------------
+# configuration-and-secrets
+# ---------------------------------------------------------------------------------------------
+
+[[modalise]]
+spec = "configuration-and-secrets"
+heading = "Provider credentials are verified before persistence via test_provider_auth"
+ordinal = 2
+old = "A `(bool, str)` tuple is returned."
+new = "A `(bool, str)` tuple SHALL be returned."
+verb = ["is", "be"]
+reason = "Rework (ruling L5): the return contract of test_provider_auth() is behaviour the implementer must honour, not an illustration, so it may not sit in a scenario. It cannot rejoin its SHALL sibling (468 + 34 > 500) and that sibling is under 500 so split-sentence does not apply; it heads a fragment of its own with exactly one modal added ('is' -> 'SHALL be')."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "Provider credential verification returns a (bool, str) tuple"
+scenario = "A network timeout still returns a bool and message tuple"
+test = "packages/studyloop/tests/test_secrets.py::TestProviderAuthMocked::test_network_timeout_returns_false"
+reason = "Proves the tuple contract on a failure path: the HTTP client raises httpx.TimeoutException and the call still returns (False, msg) with the timeout/network named, no exception escaping. The base scenarios all exercise the verification procedure (ordinal 1) and stay with it."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "second_brain retired keys are reported by name"
+scenario = "A retired CLI adapter key is reported, not ignored"
+test = "packages/studyloop/tests/test_second_brain_config.py::test_a_retired_cli_adapter_key_is_reported_not_ignored[daily_note]"
+reason = "The retired-keys SHALL (original ordinal 3) could not join the parse/errors fragment (518 > 500) and no base scenario exercises it; the parametrised test proves it for each retired key."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "`mutate_raw_config()` is the single mutation owner for every configuration writer"
+scenario = "write_raw_config delegates to the shared mutation owner"
+test = "packages/studyloop/tests/test_settings_mutation.py::test_write_raw_config_delegates_to_shared_mutation_owner"
+reason = "The single-owner SHALL (original ordinal 3) has no base scenario; the four existing scenarios all exercise the procedure/invariants fragment."
+
+# ---------------------------------------------------------------------------------------------
+# health-and-diagnostics
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "health-and-diagnostics"
+heading = "doctor --fix applies safe automatic repairs and re-runs checks"
+ordinal = 3
+text = "Current auto-fixable repairs include: creating a default config (`ensure_default_config`), creating missing review directories (`ensure_review_directories`), migrating the review database (`ensure_review_database`), reinstalling workspace tools (`install_workspace_tools`), refreshing agent definitions (`install_agent_definitions`), wiring session-export steering mandates (`install_session_db_mandate`), and upgrading packages."
+scenario = "The current auto-fixable repair inventory"
+reason = "Class: inventory of examples ('Current ... include:') — an open, dated snapshot of what --fix happens to repair today, not a rule about what it must repair; stays moved-body-text under ruling L5 (rework reclassification, coordinator and lane agree). No SHALL, not a list item, not governed. The two SHALL sentences stay together (237) under the original heading."
+
+[[modalise]]
+spec = "health-and-diagnostics"
+heading = "install.sh guarantees a working CLI with self-test and doctor validation"
+ordinal = 3
+old = "The script accepts `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
+new = "The script SHALL accept `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
+verb = ["accepts", "accept"]
+reason = "Rework (ruling L5), lane judgement against the coordinator's provisional 'inventory' reading: a closed enumeration with no 'include', naming the script's flag surface, and pinned by a contract test (test_install_script_help_documents_supported_flags) — it tells the implementer what the script does, so it is behaviour and may not sit in a scenario. It cannot rejoin its SHALL sibling (442 + 96 > 500); it heads a fragment of its own with exactly one modal added ('accepts' -> 'SHALL accept')."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "install.sh accepts the --tools-only, --agents-only, --no-smoke and --non-interactive flags"
+scenario = "install.sh --help names every supported flag"
+test = "packages/studyloop/tests/test_install_script_contract.py::test_install_script_help_documents_supported_flags"
+reason = "Runs bash scripts/install.sh --help and asserts each of the four flags appears in stdout; the closest proof the suite offers that the script knows these flags."
+
+[[split-sentence]]
+spec = "health-and-diagnostics"
+heading = "doctor names each active-but-unready study plan"
+ordinal = 2
+new = [
+  "It SHALL emit one `warn` row per husk with `name=\"study_plans\"`, `fix_auto=False` (the repair is a conversation with the architect, not a script).",
+  "It SHALL emit a message naming the plan id, its title, the exact `ReadinessView.blockers`, and the shared provenance sentence (`husk_provenance`: `This plan's creation stamp predates the readiness gate (<READINESS_GATE_DATE>); the seam cannot tell when it became incomplete` only for a `created` that parses as a date before `READINESS_GATE_DATE`, else `cannot tell how it got that way`), and a `fix_hint` naming both exits: `studyloop plan repair <id>  (or: studyloop plan status <id> paused)`.",
+  "The shared provenance sentence SHALL never `hand edit`, never `never judged` — a stamp establishes when the document was created, not what judged it or when it became incomplete; council review 6 F4.",
+]
+added_tokens = ["It", "SHALL", "emit", ".", "The", "shared", "provenance", "sentence", "SHALL", "."]
+reason = "790-char single-SHALL sentence. Sentence 2 repeats the subject+modal+predicate head 'It SHALL emit': the source has one main verb and a grammatical second sentence needs it — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens). Sentence 3 adds only the repeated subject noun phrase 'The shared provenance sentence' and SHALL; the two 'never' clauses keep their object (`hand edit`, `never judged`) and 'not' stays in its stamp clause — polarity counts unchanged. The never-clause now follows the fix_hint clause; otherwise clause order is the source's. Dropped: one ',' and one ';'."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "Study-plan check: one warn row per husk, never auto-fixed"
+scenario = "Every husk row is a config warn that --fix will not touch"
+test = "packages/studyloop/tests/test_cli_doctor.py::TestStudyPlansCheck::test_doctor_names_each_active_but_unready_plan_with_its_blockers"
+reason = "The base scenario 'Two husks, one ready active plan, one draft' exercises all three fission sentences and can have one home (the message fragment); this test asserts status/category/name/fix_auto on every husk row."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "Study-plan check: the provenance sentence never claims hand edit or never judged"
+scenario = "A husk created after the gate date is not accused of a hand edit"
+test = "packages/studyloop/tests/test_cli_doctor.py::TestStudyPlansCheck::test_doctor_names_each_active_but_unready_plan_with_its_blockers"
+reason = "Same test: asserts 'hand edit' not in the post-gate husk's message and 'cannot tell how it got that way' is."
+
+# ---------------------------------------------------------------------------------------------
+# cli-surface
+# ---------------------------------------------------------------------------------------------
+
+[[modalise]]
+spec = "cli-surface"
+heading = "Two workspace packages install distinct console_scripts entry points"
+ordinal = 3
+old = "The two packages are independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
+new = "The two packages SHALL be independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
+verb = ["are", "be"]
+reason = "Rework (ruling L5), lane judgement on the entry the coordinator left open: the sentence tells the implementer how the two packages are joined (a uv workspace; the sessions extra declares the workspace dependency) — structure the implementer must build, not a rationale — so it may not sit in a scenario. It cannot rejoin its SHALL siblings (469 + 238 > 500); it heads a fragment of its own with exactly one modal added on the main clause ('are' -> 'SHALL be'); the 'declares ... so ... pulls both' clause is unchanged. The base scenario 'Installing studyloop without the sessions extra' re-homes here (same original requirement; it exercises the sessions-extra join), so no new scenario text is written. Content still not corrected: test_extras_contract.py says the sessions extra is no longer advertised and agent-session-tools is a required dependency — a MODIFIED delta for another change (FOUND-NOT-FIXED in the lane log)."
+
+[[moved-body-text]]
+spec = "cli-surface"
+heading = "Shared output uses a Rich console singleton and click.echo for JSON"
+ordinal = 3
+text = "Commands offering `--json` include: `now`, `recap today`, `doctor`, `self-test`, `update`, `chat-note`, `practice verify`, `progress`, and several `content` subcommands (`discover`, `ingest`, `import-review`)."
+scenario = "Commands that offer --json"
+reason = "Class: inventory of examples ('include:', 'several content subcommands') — an open illustration of where --json appears, not a rule about which commands must offer it; stays moved-body-text under ruling L5 (rework reclassification, coordinator and lane agree). The three SHALL sentences stay together under the original heading (326)."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The CLI maps every seam refusal through one shared mapping and exit 1"
+ordinal = 1
+new = [
+  "Every `studyloop plan` command that reads or writes through `PlanApplication` SHALL catch `PlanError` and map it in one place (`_fail_for`): `PlanNotFound` → `No study plan with id '<id>'. Try: studyloop plan list`; `PlanNotReady` → `Cannot activate '<id>' — the plan is incomplete.` followed by the blockers and nudges (several lines — this is the one mapping that prints more than one).",
+  "`_fail_for` SHALL map `PlanConflict` → `A study plan with id '<id>' already exists. Choose another id.`; `InvalidPlanId` → `Invalid plan id '<id>': <reason>`; `InvalidField` → `Invalid value: <reason>`; `InvalidMilestone` → `No such milestone on '<id>': <reason>`, where `<reason>` is the seam's own text (`No milestone at index <i> (plan has <n>)`).",
+]
+added_tokens = ["`_fail_for`", "SHALL", "map", "."]
+reason = "717-char single-SHALL sentence whose six mappings are a semicolon list after a colon. Sentence 2 repeats the subject `_fail_for` (named in the source) with SHALL and the source's own verb 'map' — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens; a second grammatical sentence needs a predicate and the source has one). Mapping order unchanged; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+ordinal = 4
+new = [
+  "`studyloop plan repair <id>` SHALL be the architect launch and never a second path: it SHALL `_inspect(id)` (unknown id → the seam's not-found through `_fail_for`, exit `1`), SHALL exit `0` with `Nothing to repair on '<id>'` and no launch for a ready plan.",
+  "It SHALL exit `0` with no launch and a pointer to `studyloop plan architect` for a plan that is not active (a draft or a paused plan is unready by nature, not a husk), and for a husk SHALL `ctx.invoke(study, …, mode=\"plan-architect\", topic=<the plan's title>, brief=…, brief_intro=…)`.",
+]
+added_tokens = ["It", "."]
+reason = "539-char sentence with four SHALL clauses; split at the third SHALL. Only the subject 'It' and a full stop are added; one ',' dropped; clause order unchanged."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+ordinal = 6
+new = [
+  "The brief's first section SHALL be `### Repair: what this plan is missing` listing exactly `readiness.blockers` as `- ` lines and nothing else, followed by the plan as it stands (title, id, status, topics, milestones done/total, created) and one provenance sentence: `creation stamp predates the readiness gate` (and `cannot tell when it became incomplete`) only when `created` parses as a date before `READINESS_GATE_DATE`; otherwise `cannot tell how it got that way`.",
+  "The provenance sentence SHALL never `never judged` (council review 6 F4).",
+]
+added_tokens = ["The", "provenance", "sentence", "SHALL", "."]
+reason = "513-char single-SHALL sentence. The trailing 'never `never judged`' clause becomes its own sentence with only the repeated subject noun phrase 'the provenance sentence' and SHALL added (elliptical like the source); both 'never' tokens stay with `never judged`; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 2
+new = [
+  "It SHALL `_inspect(id)` (unknown id → the seam's not-found through `_fail_for`, exit `1`).",
+  "It SHALL exit `1` with `'<id>' still has N open milestone(s)` and no launch while any milestone is open; SHALL exit `1` with a pointer to `studyloop plan architect` for a plan with no milestones; SHALL exit `0` with no launch for a plan that is already `complete`; and for a fully-checked plan of any other status SHALL run the end assessment as a **preview** (`AssessPlan(phase=\"end\", record=False)`) and launch once.",
+]
+added_tokens = ["It", "."]
+reason = "506-char sentence with five SHALL clauses; split after the first so the inspect clause can join the launch-chain sentence under the original heading. Only 'It' and a full stop added; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 3
+new = [
+  "A fully-checked `draft`, `paused` or `abandoned` plan is reviewed like an active one (owner decision 2026-09-18, council review 6 open item 2): the learner may close it or delete it, and the architect asks which — the brief's closing section SHALL end with a `Status: <status> — not active; ask the learner whether to close it (…) or delete it (…)` line naming both doors, `set_study_plan_status(plan_id, \"complete\")` and `delete_study_plan(plan_id, confirmed=True)`.",
+  "the status line SHALL name the status.",
+]
+added_tokens = ["."]
+reason = "510-char sentence with two SHALL clauses; split at the second ('and the status line SHALL name the status'). Only a full stop added; one ',' and one 'and' dropped. The sentence keeps the source's lowercase 'the': the checker's token model is case-sensitive, so capitalising it registers as a lost 'the' (split-sentence-token-drift). Cosmetic; pass 10 may capitalise."
+
+[[list-split]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+fragments = "'Plan close — the brief opens with the closing review's four count lines and its evidence' carries the 'first four lines ... followed by evidence lines' part; 'Plan close — the review is the now engine's CompletionReview, then the status line, then the plan one value per line' carries the 'then the Status: line, then the plan as it stands' part, in document order."
+reason = "order-marker-split fired on 'first four `- ` lines ... then, for a non-active plan ... then the plan' inside the 788-char sentence - a content-order description of the brief, not a numbered rule list. Declared so the drift report records that the two fission fragments keep the source order (first lines, then status line, then plan)."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 5
+new = [
+  "The brief's first section SHALL be `### Closing review`, whose first four `- ` lines are `Due reviews on plan concepts: N`, `Struggles on plan concepts: N`, `Unverified milestones: N` and `Proposal: extend|close` — or `Proposal: unassessed — the review is partial` when a reader was unavailable (council review 6 F1) — followed by one `- ` evidence line per counted item and one `Not read: …` line per unavailable reader.",
+  "The brief's first section SHALL be the same `CompletionReview` the `now` engine puts on its completion action, so the two never disagree on a count (new-topic rows excluded) — then, for a non-active plan, the `Status:` line above, then the plan as it stands (title, id, status, topics, milestones done/total, created), every learner-authored value one line (`planning.one_line`, council review 6 F2).",
+]
+added_tokens = ["The", "brief's", "first", "section", "SHALL", "be", "."]
+reason = "788-char single-SHALL sentence (one copula). Sentence 2 repeats the subject noun phrase 'The brief's first section' with SHALL and the source's own copula 'be' — permitted by ruling L9 (a verb the old sentence already contains, declared in added_tokens; the dash-chained content description has no second verb). Nothing dropped; 'never' stays with 'disagree'."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Optional extras gate command bodies, not command registration"
+scenario = "A bare install with no extras still imports the CLI"
+test = "packages/studyloop/tests/test_wheel_extras_smoke.py::test_bare_wheel_with_no_extras_still_works"
+reason = "Both base scenarios exercise the missing-extra behaviour sentence (now its own fragment); this test proves commands register and the CLI imports with no extra installed."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The CLI maps every seam refusal through one shared mapping and exit 1"
+scenario = "A PlanNotReady refusal on create prints the seam's own text"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_new_refusal_text_comes_from_the_seam_exception"
+reason = "The base scenario 'Each refusal has its own line' names four of the second fission sentence's mappings and re-homes there; this test proves the first sentence's PlanNotReady mapping through _fail_for."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Refusal mapping — an already-active PlanNotReady adds the pause-or-repair line"
+scenario = "evaluate --record on an active-but-unready plan is refused with the repair hint"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_evaluate_record_on_unready_active_plan_is_refused_with_a_repair_hint"
+reason = "No base scenario exercises the already_active line."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Every plan command reads and writes through the seam"
+scenario = "The architecture guard scans the CLI adapter"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_adapters_import_plans_only_through_the_seam"
+reason = "Both base scenarios exercise plan new (now its own fragment); the body itself names this guard as its proof."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan seam — interview, reindex and the other plan readers go through the seam"
+scenario = "plan interview is prepare_planning with the unchanged payload"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_interview_is_prepare_planning"
+reason = "No base scenario covers interview/reindex/other readers."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Recorded checkpoints report a complete, partial or absent recording"
+scenario = "Both sinks save"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_evaluate_is_an_assessment_and_reports_a_complete_recording"
+reason = "Both base scenarios exercise the failed-sink sentence (now its own fragment); this test proves 'Checkpoint recorded.' when every sink saved."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Learning records are one revision through the seam"
+scenario = "Each record command applies one RevisePlan carrying the record"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_record_is_revise_plan_with_a_learning_record"
+reason = "The two base scenarios exercise the created-outcome and retry sentences (now their own fragments)."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+scenario = "A husk is visible in plan list before any write trips over it"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_list_marks_husks"
+reason = "The lead sentence ('the CLI SHALL let the learner find one') cannot join the plan-list sentence (504 > 500); the plan-list test is the proof that a husk is findable."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — a non-active plan gets a pointer, a husk gets one study launch with brief keywords"
+scenario = "plan repair on an unready draft points at the architect without launching"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_nonactive_unready_is_noop_with_pointer"
+reason = "The base launch scenario re-homes to the brief-content fragment; this test proves the not-active pointer clause."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the brief_intro says PLAN REPAIR and the default intro keeps the planning sentence"
+scenario = "The repair intro asks only for what is missing"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing"
+reason = "Asserts PLAN REPAIR / ask the learner only for what is missing / not build a study plan on the captured intro."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the command itself writes nothing"
+scenario = "plan repair leaves the documents and the checkpoint log untouched"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing"
+reason = "Same test: asserts the documents are byte-identical and checkpoint_history('husk') is empty after the command."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the refusal a husk write meets names both exits"
+scenario = "A write refused on a husk names pause and repair"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_husk_refusal_names_both_pause_and_repair"
+reason = "The base scenario naming both exits re-homes to the repair-launch fragment (two of its three clauses); this test is the direct proof."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+scenario = "plan close on an unknown id is the seam's not-found"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_unknown_id_is_the_seams_not_found"
+reason = "The three base scenarios exercise the refusal, non-active and review fragments; the inspect clause joined the heading fragment and this test proves it."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the status line names the status and the command itself writes nothing"
+scenario = "plan close on a paused plan names paused and leaves it paused"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_on_a_checked_non_active_plan_launches_and_names_both_doors[paused]"
+reason = "Asserts the status appears in the output, one launch, documents unchanged and status still paused."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the review is the now engine's CompletionReview, then the status line, then the plan one value per line"
+scenario = "Multi-line learner values are rendered one line each in both briefs"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_repair_and_closing_briefs_contain_multiline_plan_fields"
+reason = "Proves the planning.one_line clause of the second fission sentence; the four-count-lines base scenario re-homes to the first."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the brief_intro says CLOSING REVIEW and only when the learner agrees"
+scenario = "The closing intro asks for consent and does not restart planning"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_launches_the_architect_with_the_assessment_in_the_brief"
+reason = "Asserts CLOSING REVIEW / only when the learner agrees / not build a study plan on the captured intro."

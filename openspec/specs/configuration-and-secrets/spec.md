@@ -106,7 +106,7 @@ equivalent); for `bedrock` it delegates to
 `provider_auth.test_bedrock_bearer()` which issues a minimal
 `converse(maxTokens=1)` call; for `ollama` it delegates to
 `provider_auth.test_ollama_generate()` which runs a real generation and
-validates schema output. A `(bool, str)` tuple is returned.
+validates schema output.
 
 #### Scenario: Valid OpenAI key tested
 - **WHEN** `test_provider_auth("openai", "sk-valid...")` is called
@@ -120,6 +120,15 @@ validates schema output. A `(bool, str)` tuple is returned.
 - **THEN** `test_ollama_generate()` discovers installed models via
   `/api/tags`, generates a flashcard deck from a test source, and returns
   `(True, ...)` only if the output is a schema-valid non-empty deck
+
+### Requirement: Provider credential verification returns a (bool, str) tuple
+A `(bool, str)` tuple SHALL be returned.
+
+#### Scenario: A network timeout still returns a bool and message tuple
+- **WHEN** `test_provider_auth("openai", "sk-timeout-test")` runs and the
+  HTTP client raises `httpx.TimeoutException`
+- **THEN** the call returns `(False, msg)` with `msg` naming the timeout or
+  the network, and no exception escapes
 
 ### Requirement: The setup wizard writes merged config non-destructively
 `studyloop setup` (`cli/_setup.py`) SHALL guide the user through 5
@@ -178,20 +187,39 @@ skippable via `STUDYLOOP_SKIP_LEGACY_MIGRATION` environment variable.
 backlinks, xtiles_destination_url)`, defaulting `provider` to `none` and the
 destination to absent. A provider outside `none|obsidian|xtiles`, a non-boolean
 `backlinks`, or a folder that is absolute or contains `..` SHALL raise
-`ConfigError` with a one-line message. Any retired key `use_cli`, `vault_name`,
-`template`, or `daily_note` SHALL also raise and name the key.
-`xtiles_destination_url`, when present, SHALL be at most 2,048 characters and
-SHALL be an HTTPS URL on exactly `xtiles.app` or `app.xtiles.app`, with no
-userinfo, non-default port, query, fragment, Unicode or IDNA-lookalike hostname,
-and with a non-home path. Validation errors and logs SHALL NOT include the
-complete URL. The destination value SHALL NOT change provider selection, and
-`second_brain` SHALL remain a known key for the unknown-key report.
+`ConfigError` with a one-line message.
 
 #### Scenario: Misspelled provider
 - **GIVEN** `config.yaml` contains `second_brain: {provider: obsidan}`
 - **WHEN** `studyloop brain status` loads configuration
 - **THEN** it prints one `ConfigError` line naming the allowed values
 - **AND** it exits 1 without a traceback
+
+### Requirement: second_brain retired keys are reported by name
+Any retired key `use_cli`, `vault_name`,
+`template`, or `daily_note` SHALL also raise and name the key.
+
+#### Scenario: A retired CLI adapter key is reported, not ignored
+- **GIVEN** `config.yaml` contains `second_brain: {provider: obsidian, daily_note: true}`
+- **WHEN** settings are loaded
+- **THEN** a `ConfigError` is raised whose message names `daily_note` and says the key is withdrawn
+
+### Requirement: second_brain destination URL is a bounded HTTPS xtiles.app URL never disclosed in full
+`xtiles_destination_url`, when present, SHALL be at most 2,048 characters and
+SHALL be an HTTPS URL on exactly `xtiles.app` or `app.xtiles.app`, with no
+userinfo, non-default port, query, fragment, Unicode or IDNA-lookalike hostname,
+and with a non-home path. Validation errors and logs SHALL NOT include the
+complete URL.
+
+#### Scenario: Unsafe destination is rejected without disclosure
+- **GIVEN** an xTiles destination uses HTTP, credentials, a non-default port, an unreviewed host, a home path, query, fragment, Unicode hostname, or more than 2,048 characters
+- **WHEN** settings are loaded or the destination command validates the value
+- **THEN** a one-line `ConfigError` is raised before any write
+- **AND** the complete URL is absent from the error and logs
+
+### Requirement: second_brain destination never selects the provider and stays a known key
+The destination value SHALL NOT change provider selection, and
+`second_brain` SHALL remain a known key for the unknown-key report.
 
 #### Scenario: Valid destination is retained without selecting xTiles
 - **GIVEN** `second_brain.provider` is `none`
@@ -200,20 +228,13 @@ complete URL. The destination value SHALL NOT change provider selection, and
 - **THEN** the destination is available on `SecondBrainConfig`
 - **AND** the provider remains `none`
 
-#### Scenario: Unsafe destination is rejected without disclosure
-- **GIVEN** an xTiles destination uses HTTP, credentials, a non-default port, an unreviewed host, a home path, query, fragment, Unicode hostname, or more than 2,048 characters
-- **WHEN** settings are loaded or the destination command validates the value
-- **THEN** a one-line `ConfigError` is raised before any write
-- **AND** the complete URL is absent from the error and logs
-
 ### Requirement: `mutate_raw_config()` serializes and atomically replaces validated configuration
 `studyloop.settings.mutate_raw_config()` SHALL acquire one process-visible lock
 before rereading the active YAML file, apply one mutation to that current mapping,
 validate the resulting configuration, and atomically replace the destination with
 a sibling temporary file. It SHALL preserve unrelated keys and existing file mode,
 use mode `0600` for a new file, flush file data before replacement, and remove the
-temporary file after every failure. `write_raw_config()` and every Second Brain
-configuration command SHALL use this single mutation owner.
+temporary file after every failure.
 
 #### Scenario: Two serialized writers update different keys
 - **GIVEN** two configuration mutations target different keys
@@ -238,3 +259,12 @@ configuration command SHALL use this single mutation owner.
 - **WHEN** each destination is successfully mutated
 - **THEN** the existing file retains its prior mode
 - **AND** the newly created file has mode `0600`
+
+### Requirement: `mutate_raw_config()` is the single mutation owner for every configuration writer
+`write_raw_config()` and every Second Brain
+configuration command SHALL use this single mutation owner.
+
+#### Scenario: write_raw_config delegates to the shared mutation owner
+- **GIVEN** `mutate_raw_config()` is replaced by a capture that applies the mutator to a stale mapping
+- **WHEN** `write_raw_config({"browser": "safari"})` is called
+- **THEN** the capture receives the mutator, which yields `{"browser": "safari"}`, and the returned path is the configured file
