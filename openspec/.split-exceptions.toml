@@ -92,3 +92,35 @@ heading = "Conformance precedence: the most specific rule wins, and MC009 runs t
 scenario = "a secret after a placeholder on the same line is still caught"
 test = "packages/studyloop/tests/test_module_check.py::test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line"
 reason = "Fragment holds the MC009 SHALL (keyword detector with heuristic filters disabled); the test writes one script line with a placeholder first and a real-shaped token second and asserts exactly MC009 at scripts/check.sh line 2, the key named and the value not echoed. The scenario names no key literal so the repository's own secret hooks are not tripped."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/session-transports
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "Delivery queue discipline: the envelope is never retried and prompts keep their callers' order"
+scenario = "the learner's prompt and the envelope reach the agent in the order they were sent"
+test = "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn"
+reason = "Fragment holds 'Prompts SHALL go to the agent in the order their callers asked, learner input and deliveries alike'; the test sends the learner's prompt, delivers while the mentor holds that turn open, and asserts turn 1 is the learner's prompt intact with zero overlapping session/prompt and turn 2 is the labelled envelope. ADR-0012 maps this test to the 'delivery on ACP does not interleave with a learner turn' scenario, which stays under the envelope's delivery requirement in this file; this scenario states the ordering half the same run proves."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "The transient `practice_check` event records the delivery outcome and learner history is untouched"
+scenario = "the event row carries the delivery outcome"
+test = "packages/studyloop/tests/test_module_runner.py::test_practice_check_event_row_carries_identity_outcome_and_delivery"
+reason = "Fragment holds 'The transient practice_check event SHALL record the outcome'; the test records a check that exited 1 with DeliveryOutcome('delivered') and asserts one practice_check_events row with identity, attempt id, phase, exit class/code, duration, truncation flags, delivery_status 'delivered', and no output columns."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "The transient `practice_check` event records the delivery outcome and learner history is untouched"
+scenario = "a recorded check leaves learner history unchanged"
+test = "packages/studyloop/tests/test_module_runner.py::test_drill_writes_no_observation"
+reason = "Fragment holds 'nothing SHALL be written to learner history'; the test snapshots every learner-history table, runs and records a passing check, and asserts the tables are unchanged and exactly one practice_check event exists."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "A drill run outside the web server process reaches the mentor through an authenticated loopback hop"
+scenario = "the CLI's typed fields reach the mentor through the route"
+test = "packages/studyloop/tests/test_module_drill_cli.py::test_mentor_told_when_the_loopback_route_accepts_the_typed_fields"
+reason = "The original heading's fragment holds only the route-exposure SHALL; its three scenarios all exercise the token/dedup/CLI sentences and moved with them. The test claims a session, runs drill check, and asserts one request to the route with the token header and exactly the envelope's typed fields (no message), 'Mentor told.' in the output and delivery_status 'delivered' on the event row."
