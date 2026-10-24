@@ -51,16 +51,18 @@ any target that resolves outside the vault or lacks the marker.
 `ObsidianBackend` SHALL compare the rendered projection against the existing
 file's own contents and, when they are identical, return the path under
 `PublishResult.unchanged` without calling `os.replace` or changing `st_mtime_ns`.
-The comparison SHALL NOT use the `content_hash` recorded in the existing file's
-ownership marker: that value records what StudyLoop last intended to write, so a
-projection the learner has edited by hand still carries the hash of the correct
-content and would be reported as unchanged, leaving the edit in place and making
-the vault a second source of truth.
 
 #### Scenario: Publish twice
 - **WHEN** `publish_plan(<id>)` runs twice with the plan unchanged
 - **THEN** the second result lists the path under `unchanged` and the file's
   mtime is identical
+
+### Requirement: Republishing — the unchanged check reads the file's contents, never the marker's content_hash
+The comparison SHALL NOT use the `content_hash` recorded in the existing file's
+ownership marker: that value records what StudyLoop last intended to write, so a
+projection the learner has edited by hand still carries the hash of the correct
+content and would be reported as unchanged, leaving the edit in place and making
+the vault a second source of truth.
 
 #### Scenario: An edited projection is restored
 - **WHEN** the learner appends a line to `Study/Plans/<id>.md` and
@@ -141,11 +143,7 @@ including `--connector xtiles` only when a connector named exactly `xtiles` is
 attached to that session. A disabled provider SHALL produce no offer. A
 configured, publish-capable Obsidian provider SHALL produce the pinned Obsidian
 publish offer. A configured xTiles provider SHALL produce the pinned xTiles
-offer only when the exact `xtiles` connector is attached. Declining either
-offer SHALL produce no publish or connector write. An accepted xTiles flow
-SHALL write the learning record to the source plan first, then invoke the
-assistant-owned xTiles connector. StudyLoop SHALL NOT become an xTiles API
-client or store xTiles credentials.
+offer only when the exact `xtiles` connector is attached.
 
 #### Scenario: No second-brain provider is configured
 - **WHEN** the wind-down command runs with `provider: none`
@@ -166,9 +164,17 @@ client or store xTiles credentials.
   named exactly `xtiles`
 - **THEN** it returns the pinned xTiles offer exactly once
 
+### Requirement: Wind-down offers — declining writes nothing
+Declining either offer SHALL produce no publish or connector write.
+
 #### Scenario: The learner declines an offer
 - **WHEN** the learner declines either the Obsidian or xTiles wind-down offer
 - **THEN** the agent performs no publish and no connector write
+
+### Requirement: Wind-down offers — an accepted xTiles flow writes the plan first and never makes StudyLoop an xTiles client
+An accepted xTiles flow SHALL write the learning record to the source plan
+first, then invoke the assistant-owned xTiles connector. StudyLoop SHALL NOT
+become an xTiles API client or store xTiles credentials.
 
 #### Scenario: The learner accepts the xTiles offer
 - **WHEN** the learner accepts the xTiles wind-down offer
