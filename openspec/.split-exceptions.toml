@@ -186,3 +186,149 @@ ordinal = 4
 text = '''The `PATCH` response is the write receipt (`updated`, `plan`, `readiness`); the mission is read back from `GET /api/plans/{id}`.'''
 scenario = "The refusals and the receipt are unchanged"
 reason = "Keyword-less description of the response shape; #1+#2+#4+#5 exceeds 500 and #4 cannot stand alone. Same scenario as the refusals, as the two together are the response contract. #5 (the consequence sentence) stays in the body."
+
+# ---------------------------------------------------------------------------------------------
+# mcp-server
+# ---------------------------------------------------------------------------------------------
+
+# -- studyloop-mcp registers a fixed set of study tools (929) -> 3 fragments
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "studyloop-mcp registers a fixed set of study tools"
+ordinal = 1
+# RULING CORRECTION (logged): this one sentence needs BOTH a reference-expansion (mcp-server:22-24,
+# "the two study-plan requirements in this specification" -> "the study-plan tool requirements",
+# the nominal form the cross-lane note gives) AND a fission (782 chars). The checker consumes one
+# entry per lost unit, so the expansion is pre-applied in `old` and recorded here; the drift
+# report prints the real base sentence beside the new ones.
+old = '''The system SHALL register exactly 32 tools via `register_tools(mcp)` (`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle and course-explorer tools — `list_courses`, `get_study_context`, `record_study_progress`, `generate_flashcards`, `generate_quiz`, `get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`, `get_study_history`, `list_session_options`, `end_session`, `record_topic_progress`, `log_topic`, `get_due_cards`, `log_review_outcome`, `get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`, `read_lesson`, `search_lessons`, `get_concept_context`, `record_plan_learning` — plus the nine study-plan lifecycle tools of the study-plan tool requirements, exactly `studyloop.mcp.inventory.PLAN_TOOL_NAMES`.'''
+reference_expansion_phrase = "the two study-plan requirements in this specification"
+reference_expansion_new = "the study-plan tool requirements"
+new = [
+  '''The system SHALL register exactly 32 tools via `register_tools(mcp)` (`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle and course-explorer tools plus the nine study-plan lifecycle tools of the study-plan tool requirements, exactly `studyloop.mcp.inventory.PLAN_TOOL_NAMES`.''',
+  '''The system SHALL register `list_courses`, `get_study_context`, `record_study_progress`, `generate_flashcards`, `generate_quiz`, `get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`, `get_study_history`, `list_session_options`, `end_session`, `record_topic_progress`.''',
+  '''The system SHALL register `log_topic`, `get_due_cards`, `log_review_outcome`, `get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`, `read_lesson`, `search_lessons`, `get_concept_context`, `record_plan_learning`.''',
+]
+added_tokens = ["The", "system", "SHALL", "register", "The", "system", "SHALL", "register", ".", "."]
+reason = "RULING CORRECTION (logged): the 23-name list is 524 chars on its own, so no two-way fission fits; three sentences, the subject 'The system' and modal repeated twice, plus the verb 'register' (the sentence's own verb; the closed additions give the name lists no verb). The em-dashes around the list are not tokens. Pieces 2 and 3 keep the original name order."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The first twelve names are in the real stdio inventory"
+test = "packages/studyloop/tests/test_mcp_stdio_smoke.py::test_full_handshake_list_tools_and_call"
+reason = "The first name-list fragment; the stdio smoke test lists the real inventory over the transport and pins the count, the nine plan tools and the core names."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The remaining eleven names match the published table"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_mcp_readme_lists_the_whole_production_inventory"
+reason = "The second name-list fragment; the contract test compares the README table with register_tools name by name."
+
+# -- Review-loop tools enable a complete quiz cycle without the browser (620) -> 2 fragments
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "Review-loop tools enable a complete quiz cycle without the browser"
+ordinal = 1
+new = [
+  '''`get_due_cards(course=None, limit=20)` SHALL return real serialized `CardProgress` entries (per-course via `get_due(course)`, or aggregated across `list_course_summaries()` when no course is given).''',
+  '''`log_review_outcome(course, card_type, card_hash, correct, ...)` SHALL delegate to `record_review()` and reject `card_type` outside `{"flashcard","quiz"}` with `ToolError`.''',
+  '''`get_next_action(...)` SHALL delegate to `learning.decision.build_now_plan()` (the same engine as `/api/now`).''',
+  '''`get_active_topics()` SHALL split pending backlog items at `MAX_ACTIVE_TOPICS`.''',
+  '''`log_struggle(...)` SHALL park with `source="struggled"`.''',
+]
+added_tokens = [".", ".", ".", "."]
+reason = "Five independent 'X SHALL Y' clauses joined by semicolons; each becomes its own sentence (four ';' dropped, four full stops added). Nothing else changes."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "Active topics are capped at MAX_ACTIVE_TOPICS"
+test = "packages/studyloop/tests/test_mcp_session_parity.py::TestGetActiveTopics::test_caps_active_at_max_active_topics"
+reason = "The two trailing clauses (active-topic cap, log_struggle) did not fit under 500 with the three the review-loop scenario exercises; this test pins the cap."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "A struggle that cannot be parked is not reported as parked"
+test = "packages/studyloop/tests/test_mcp_tools.py::TestLogStruggleTruthfulness::test_log_struggle_raises_when_park_fails"
+reason = "Pins the log_struggle SHALL of the same fragment (it parks with source=struggled, and raises rather than lie when the park fails)."
+
+# -- record_plan_learning writes through the plan seam (1941) -> 4 fragments + pointer scenario
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 3
+new = [
+  '''Every seam refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the nine plan lifecycle tools use (before this fold the tool mapped inline, without a kind prefix): `PlanNotReady` SHALL render as `not_ready: plan is not ready to activate: <blocker>; <blocker>…` (with the already-active "pause it or repair" suffix when the plan was active) so the agent can tell the learner what to repair (the plan-application-seam design, §2: "ToolError containing blockers").''',
+  '''`PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's title/heading rule) SHALL render as `not_found: …`, `invalid_id: …` and `invalid: …` followed by their message, with the domain error chained as `__cause__`.''',
+]
+added_tokens = ["."]
+reason = "706-char sentence with three SHALL clauses; split at the ';' before `PlanNotFound` (the first piece keeps its two clauses and the colon so no token is lost). One ';' dropped, one full stop added."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 5
+text = '''The six read/write plan tools are the requirement "Study-plan discovery and authoring tools"; the three progression tools (`set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and deletion tools".'''
+scenario = "Where the nine plan tools and the inventory pin are specified"
+reason = "A pointer to two other requirement headings (no SHALL). Together with #6 it has no modal to stand on, and #4 (the success-shape sentence) plus this one plus the second refusal sentence exceed 500. Both headings it names survive verbatim on their keeper fragments. Conserved verbatim in a pointer scenario."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "record_plan_learning writes through the plan seam"
+ordinal = 6
+text = '''The stdio smoke test pins the exact production inventory (32 unique names), the nine plan tools and the core names.'''
+scenario = "Where the nine plan tools and the inventory pin are specified"
+reason = "Test-scope note (no SHALL) restating the inventory pin that 'Study-plan progression and deletion tools' states normatively; same pointer scenario."
+
+# -- The studyloop-mcp inventory is published where the harness registration is (856) -> 3 fragments
+
+[[reference-expansion]]
+spec = "mcp-server"
+heading = "The studyloop-mcp inventory is published where the harness registration is"
+ordinal = 2
+phrase = "Both"
+new = '''The table and the count SHALL be pinned to the registry by `tests/test_docs_plan_integration_contract.py`, so a tool added to or removed from `mcp/tools.py` fails a test rather than leaving a stale page.'''
+reason = "'Both' referred to the table and the count in the preceding sentence; once that sentence is the previous fragment the anaphor no longer resolves inside its own body. Rewritten to the nominal 'The table and the count'; nothing else changed."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The README table is the whole production inventory"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_mcp_readme_lists_the_whole_production_inventory"
+reason = "The 'pinned to the registry by a test' fragment is proven by the very test it names."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The agent-install table is the nine plan tools then record_plan_learning"
+test = "packages/studyloop/tests/test_docs_plan_integration_contract.py::test_agent_install_doc_table_is_the_nine_then_record_plan_learning"
+reason = "The per-harness reach fragment ('Study-plan tools over MCP' in docs/agent-install.md); the test pins that table's rows and order."
+
+# -- update_study_plan revises the mission through the one gate (1184) -> 2 fragments + scenario
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 1
+new = [
+  '''`update_study_plan` SHALL expose `why: str | None`, `success: list[str] | None`, `constraints: list[str] | None` and `out_of_scope: list[str] | None` beside its existing fields (item 3b, design §3b), forwarded unchanged onto the same one `RevisePlan` — so the schema's property set is exactly `plan_id, title, topics, target_date, energy_floor, review_cadence_days, notes, milestones, status, why, success, constraints, out_of_scope`.''',
+  '''`update_study_plan`: an omitted mission field SHALL reach the seam as `None` ("leave as is"), never as `""` or `[]`.''',
+]
+added_tokens = ["`update_study_plan`", ":", "."]
+reason = "534-char sentence with two SHALL clauses joined by ', and'. Split there; the second sentence is prefixed with the repeated subject `update_study_plan` and a colon (a capitalised 'An' would change a token), one ',' and one 'and' dropped, one full stop added."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 3
+text = '''The resulting document is judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
+scenario = "Judged by the one gate like every other field"
+reason = "Keyword-less restatement of the seam's readiness gate ('exactly as for every other field'; the gate itself is active-learning-decisions' requirement). The two fission pieces cannot share a fragment (551), the second piece plus the seam sentence is 305, and adding this sentence exceeds 500; it has no modal to stand on. Its behaviour is already the existing scenario 'Partial mission repair on a husk is refused; the whole repair lands once', homed in the same fragment."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "update_study_plan revises the mission through the one gate"
+ordinal = 4
+text = '''With this, every blocker `readiness()` can name — mission `why`, success criteria, milestones — is repairable with the tool the architect already holds, so `plan repair` is a repair rather than dictation.'''
+scenario = "Judged by the one gate like every other field"
+reason = "Rationale (no SHALL) that follows the gate restatement; same scenario, verbatim."

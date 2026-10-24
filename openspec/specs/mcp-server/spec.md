@@ -13,15 +13,8 @@ separate and out of scope for this capability.
 ### Requirement: studyloop-mcp registers a fixed set of study tools
 The system SHALL register exactly 32 tools via `register_tools(mcp)`
 (`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle
-and course-explorer tools — `list_courses`, `get_study_context`,
-`record_study_progress`, `generate_flashcards`, `generate_quiz`,
-`get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`,
-`get_study_history`, `list_session_options`, `end_session`,
-`record_topic_progress`, `log_topic`, `get_due_cards`, `log_review_outcome`,
-`get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`,
-`read_lesson`, `search_lessons`, `get_concept_context`,
-`record_plan_learning` — plus the nine study-plan lifecycle tools of the two
-study-plan requirements in this specification, exactly
+and course-explorer tools plus the nine study-plan lifecycle tools of the
+study-plan tool requirements, exactly
 `studyloop.mcp.inventory.PLAN_TOOL_NAMES`. The published inventory is the
 table in `agents/mcp/README.md` (see "The studyloop-mcp inventory is
 published where the harness registration is").
@@ -35,17 +28,40 @@ published where the harness registration is").
   (integration-marked), which pins the count, the nine plan tools and the
   core names
 
+### Requirement: Fixed tool set — the course, generation, backlog and session tools (1–12 of 23)
+The system SHALL register `list_courses`, `get_study_context`,
+`record_study_progress`, `generate_flashcards`, `generate_quiz`,
+`get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`,
+`get_study_history`, `list_session_options`, `end_session`,
+`record_topic_progress`.
+
+#### Scenario: The first twelve names are in the real stdio inventory
+- **WHEN** an MCP client completes the stdio handshake and calls `tools/list`
+  over the real transport
+- **THEN** every one of these twelve names is present exactly once in the
+  returned inventory
+
+### Requirement: Fixed tool set — the review-loop, explorer and plan-learning tools (13–23 of 23)
+The system SHALL register `log_topic`, `get_due_cards`, `log_review_outcome`,
+`get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`,
+`read_lesson`, `search_lessons`, `get_concept_context`,
+`record_plan_learning`.
+
+#### Scenario: The remaining eleven names match the published table
+- **WHEN** the contract test compares the `agents/mcp/README.md` table with
+  `register_tools`
+- **THEN** every one of these eleven names appears in both, each once, and the
+  test fails on any name present on one side only
+
 ### Requirement: Review-loop tools enable a complete quiz cycle without the browser
 `get_due_cards(course=None, limit=20)` SHALL return real serialized
 `CardProgress` entries (per-course via `get_due(course)`, or aggregated
-across `list_course_summaries()` when no course is given);
+across `list_course_summaries()` when no course is given).
 `log_review_outcome(course, card_type, card_hash, correct, ...)` SHALL
 delegate to `record_review()` and reject `card_type` outside
-`{"flashcard","quiz"}` with `ToolError`; `get_next_action(...)` SHALL
+`{"flashcard","quiz"}` with `ToolError`. `get_next_action(...)` SHALL
 delegate to `learning.decision.build_now_plan()` (the same engine as
-`/api/now`); `get_active_topics()` SHALL split pending backlog items at
-`MAX_ACTIVE_TOPICS`; `log_struggle(...)` SHALL park with
-`source="struggled"`.
+`/api/now`).
 
 #### Scenario: Desktop client runs a full review loop
 - **WHEN** an MCP client calls `get_due_cards` → presents cards →
@@ -53,6 +69,21 @@ delegate to `learning.decision.build_now_plan()` (the same engine as
 - **THEN** each outcome is persisted through the same SM-2 path the web UI
   uses, and the next-action recommendation comes from the shared decision
   engine, not a hardcoded string
+
+### Requirement: Review-loop tools — active topics are capped and a struggle parks as struggled
+`get_active_topics()` SHALL split pending backlog items at
+`MAX_ACTIVE_TOPICS`. `log_struggle(...)` SHALL park with
+`source="struggled"`.
+
+#### Scenario: Active topics are capped at MAX_ACTIVE_TOPICS
+- **WHEN** more pending backlog items exist than `MAX_ACTIVE_TOPICS` and
+  `get_active_topics()` is called
+- **THEN** the active set holds exactly `MAX_ACTIVE_TOPICS` items and the rest
+  are reported as backlog
+
+#### Scenario: A struggle that cannot be parked is not reported as parked
+- **WHEN** `log_struggle(...)` is called and the park write fails
+- **THEN** the tool raises instead of claiming the topic was parked
 
 ### Requirement: Course paths are validated against traversal
 The system SHALL resolve any tool-supplied `course` argument through
@@ -127,30 +158,7 @@ The `record_plan_learning(plan_id, title, body="", status="active")` tool
 SHALL apply one `RevisePlan(plan_id, learning_record=LearningRecordSpec(title,
 body, status))` through `studyloop.planning.PlanApplication` and SHALL import
 no storage module (`studyloop.planning.store` or the store's `record_learning`
-/ error family) and make no preliminary read. Its response SHALL keep the
-pre-seam keys `{"plan_id", "number", "title", "status", "created"}`; `created`
-SHALL be the mutation's own outcome — `PlanDetail.learning_record_outcome`,
-the store's `append_learning_record` verdict relayed by the seam — never
-inferred from an `inspect` taken before the revision, so a retry with the same
-title and body reports `created: false` with the original `number`, and so
-does a record another writer filed just before the mutation ran. Every seam
-refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the
-nine plan lifecycle tools use (before this fold the tool mapped inline, without
-a kind prefix): `PlanNotReady` SHALL render as `not_ready:
-plan is not ready to activate: <blocker>; <blocker>…` (with the already-active
-"pause it or repair" suffix when the plan was active) so the agent can tell
-the learner what to repair (the plan-application-seam design, §2: "ToolError
-containing blockers");
-`PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's title/heading
-rule) SHALL render as `not_found: …`, `invalid_id: …` and `invalid: …`
-followed by their message, with the domain error chained as `__cause__`. The
-success shape is unchanged by the fold.
-
-The six read/write plan tools are the requirement "Study-plan discovery and
-authoring tools"; the three progression tools (`set_study_plan_milestone`,
-`evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and
-deletion tools". The stdio smoke test pins the exact production inventory (32
-unique names), the nine plan tools and the core names.
+/ error family) and make no preliminary read.
 
 #### Scenario: One revision through the seam
 - **WHEN** `record_plan_learning("decorators", "MCP insight", body="prose")`
@@ -159,6 +167,15 @@ unique names), the nine plan tools and the core names.
   and body is applied, the response is `{"plan_id": "decorators", "number": 1,
   "title": "MCP insight", "status": "active", "created": true}`, and the plan
   document holds the record
+
+### Requirement: record_plan_learning — `created` is the mutation's own outcome
+Its response SHALL keep the
+pre-seam keys `{"plan_id", "number", "title", "status", "created"}`; `created`
+SHALL be the mutation's own outcome — `PlanDetail.learning_record_outcome`,
+the store's `append_learning_record` verdict relayed by the seam — never
+inferred from an `inspect` taken before the revision, so a retry with the same
+title and body reports `created: false` with the original `number`, and so
+does a record another writer filed just before the mutation ran.
 
 #### Scenario: Retry is one seam call and reports created false
 - **WHEN** the same call is repeated
@@ -171,6 +188,16 @@ unique names), the nine plan tools and the core names.
 - **THEN** the response has `created: false` and `number: 1`, the tool made no
   `inspect` call, and the plan holds one record
 
+### Requirement: record_plan_learning — refusals use the shared mapping and not-ready names the blockers
+Every seam
+refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the
+nine plan lifecycle tools use (before this fold the tool mapped inline, without
+a kind prefix): `PlanNotReady` SHALL render as `not_ready:
+plan is not ready to activate: <blocker>; <blocker>…` (with the already-active
+"pause it or repair" suffix when the plan was active) so the agent can tell
+the learner what to repair (the plan-application-seam design, §2: "ToolError
+containing blockers").
+
 #### Scenario: Not-ready refusal names the blockers
 - **WHEN** the seam raises `PlanNotReady` for the revision (the plan is active
   but has no mission, success criteria or milestones)
@@ -179,11 +206,26 @@ unique names), the nine plan tools and the core names.
   `ReadinessView` and the "already active … pause it or repair" hint, and
   chains the `PlanNotReady` as its cause
 
+### Requirement: record_plan_learning — not-found, invalid-id and invalid refusals; the success shape is unchanged
+`PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's title/heading
+rule) SHALL render as `not_found: …`, `invalid_id: …` and `invalid: …`
+followed by their message, with the domain error chained as `__cause__`. The
+success shape is unchanged by the fold.
+
 #### Scenario: Store rule and id refusals are tool errors
 - **WHEN** the title is blank, or the body contains a `###` line, or the plan
   id is unknown or malformed
 - **THEN** a `ToolError` is raised reading `invalid: …`, `not_found: …` or
   `invalid_id: …` followed by the seam's message, and no record is added
+
+#### Scenario: Where the nine plan tools and the inventory pin are specified
+- **WHEN** a reader looks for the nine plan lifecycle tools' own requirements
+- **THEN** the six read/write plan tools are the requirement "Study-plan discovery and
+  authoring tools"; the three progression tools (`set_study_plan_milestone`,
+  `evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and
+  deletion tools"
+- **AND** the stdio smoke test pins the exact production inventory (32
+  unique names), the nine plan tools and the core names
 
 ### Requirement: Study-plan discovery and authoring tools
 `register_tools(mcp)` SHALL register six study-plan tools in the production
@@ -439,13 +481,6 @@ under "studyloop-mcp (Study tools)" — the same page that carries every
 harness's registration snippet (Claude Code `mcp.json`, Kiro `study-mentor.json`,
 Codex `~/.codex/config.toml`, OpenCode, Grok Build `~/.grok/config.toml`) — as
 one table equal to the production registry, with the count stated in prose.
-Both SHALL be pinned to the registry by
-`tests/test_docs_plan_integration_contract.py`, so a tool added to or removed
-from `mcp/tools.py` fails a test rather than leaving a stale page. The
-learner-facing reach of the study-plan tools per harness (which harness
-definitions attach the server; the Kiro/Claude CLI fallback) SHALL be stated
-in `docs/agent-install.md`, "Study-plan tools over MCP". No other page SHALL
-carry a second copy of the inventory or a tool count.
 
 #### Scenario: A new contributor reads the inventory
 - **WHEN** someone reads `agents/mcp/README.md` to decide what an agent can do
@@ -454,23 +489,37 @@ carry a second copy of the inventory or a tool count.
   count, and the registration snippet for their harness — and the contract
   test fails if the table or the count ever disagrees with `register_tools`
 
+### Requirement: Inventory publication — the table and the count are pinned to the registry by a test
+The table and the count SHALL be pinned to the registry by
+`tests/test_docs_plan_integration_contract.py`, so a tool added to or removed
+from `mcp/tools.py` fails a test rather than leaving a stale page.
+
+#### Scenario: The README table is the whole production inventory
+- **WHEN** the contract test reads the `agents/mcp/README.md` table and the
+  count stated in its prose
+- **THEN** both equal the tool names `register_tools` registers, and the test
+  fails on any addition, removal or count drift
+
+### Requirement: Inventory publication — per-harness reach is stated in docs/agent-install.md and nowhere else
+The
+learner-facing reach of the study-plan tools per harness (which harness
+definitions attach the server; the Kiro/Claude CLI fallback) SHALL be stated
+in `docs/agent-install.md`, "Study-plan tools over MCP". No other page SHALL
+carry a second copy of the inventory or a tool count.
+
+#### Scenario: The agent-install table is the nine plan tools then record_plan_learning
+- **WHEN** the contract test reads the "Study-plan tools over MCP" table in
+  `docs/agent-install.md`
+- **THEN** its rows are exactly the nine plan lifecycle tools followed by
+  `record_plan_learning`, in the registry's order
+
 ### Requirement: update_study_plan revises the mission through the one gate
 `update_study_plan` SHALL expose `why: str | None`, `success: list[str] | None`,
 `constraints: list[str] | None` and `out_of_scope: list[str] | None` beside its
 existing fields (item 3b, design §3b), forwarded unchanged onto the same one
 `RevisePlan` — so the schema's property set is exactly `plan_id, title, topics,
 target_date, energy_floor, review_cadence_days, notes, milestones, status,
-why, success, constraints, out_of_scope`, and an omitted mission field SHALL
-reach the seam as `None` ("leave as is"), never as `""` or `[]`. The seam SHALL
-strip `why`, treat each list as a whole-list replacement stripped of blanks,
-and refuse a bare string where a list belongs as `InvalidField` (`invalid: …`)
-before any write. The resulting document is judged by the single readiness
-gate exactly as for every other field: on an active plan a write that leaves
-any blocker standing is `not_ready: …` and nothing is saved; a write that
-clears every blocker in one call is saved once. With this, every blocker
-`readiness()` can name — mission `why`, success criteria, milestones — is
-repairable with the tool the architect already holds, so `plan repair` is a
-repair rather than dictation.
+why, success, constraints, out_of_scope`.
 
 #### Scenario: Mission fields reach the seam on one intent
 - **WHEN** `update_study_plan("decorators", why="Own the nightly pipeline",
@@ -479,6 +528,13 @@ repair rather than dictation.
 - **THEN** exactly one `RevisePlan` is applied carrying those four values and
   `None` for every other field, and the response is the seam's
   `PlanDetail.to_json_dict()`
+
+### Requirement: update_study_plan — an omitted mission field is None and the seam normalises the lists
+`update_study_plan`: an omitted mission field SHALL
+reach the seam as `None` ("leave as is"), never as `""` or `[]`. The seam SHALL
+strip `why`, treat each list as a whole-list replacement stripped of blanks,
+and refuse a bare string where a list belongs as `InvalidField` (`invalid: …`)
+before any write.
 
 #### Scenario: Omitted mission fields are None
 - **WHEN** `update_study_plan("decorators", notes="Only this.")` is called
@@ -491,3 +547,14 @@ repair rather than dictation.
 - **THEN** the first is `not_ready: … No observable success criteria.` with the
   document unchanged, and the second saves once, leaves the plan `active`
   and `ready`, and `list_study_plans` no longer reports it as a husk
+
+#### Scenario: Judged by the one gate like every other field
+- **WHEN** a mission write reaches the seam
+- **THEN** the resulting document is judged by the single readiness
+  gate exactly as for every other field: on an active plan a write that leaves
+  any blocker standing is `not_ready: …` and nothing is saved; a write that
+  clears every blocker in one call is saved once
+- **AND** with this, every blocker
+  `readiness()` can name — mission `why`, success criteria, milestones — is
+  repairable with the tool the architect already holds, so `plan repair` is a
+  repair rather than dictation
