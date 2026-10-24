@@ -170,13 +170,15 @@ every operation. Session-scoped tables (`sessions`, `messages`,
 `session_notes`, `session_tags`, `session_learning_metadata`,
 `file_references`) are filtered to only the delta session IDs.
 
-#### Scenario: A one-session delta still carries the global tables its fixture seeds
+#### Scenario: A one-session delta still carries all ten global tables
 - **WHEN** `_dump_delta_sql(db_path, {"test-session-001"})` builds the SQL
-  for one session on a migrated database
-- **THEN** the SQL carries an `INSERT INTO` for `study_progress`,
-  `study_sessions`, `teach_back_scores`, `knowledge_bridges`,
-  `parked_topics` and `scrub_log`, alongside the session's own
-  `session_learning_metadata` and `file_references` rows
+  for one session on a migrated database seeded with one row in every
+  `GLOBAL_SYNC_TABLES` table
+- **THEN** the SQL carries a recency-gated `INSERT INTO … ON CONFLICT` for
+  each of the ten — `study_progress`, `study_sessions`, `teach_back_scores`,
+  `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
+  `message_concepts`, `parked_topics` and `scrub_log` — alongside the
+  session's own `session_learning_metadata` and `file_references` rows
 
 #### Scenario: Only the requested sessions' rows are in the delta
 - **WHEN** `_dump_delta_sql(db_path, {"keep"})` runs on a database whose

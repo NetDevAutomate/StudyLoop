@@ -12,6 +12,7 @@ import typer
 
 from agent_session_tools.migrations import migrate
 from agent_session_tools.sync import (
+    GLOBAL_SYNC_TABLES,
     _dump_delta_sql,
     _get_sync_state,
     _resolve_remote,
@@ -239,6 +240,34 @@ class TestDumpDeltaSql:
             """,
             ("test-session-001", "test-msg-001", "email", "[EMAIL_1]"),
         )
+        # The four concept-graph tables: two concepts, an alias on one, one
+        # relation between them, and a link from the seeded message.
+        conn.executemany(
+            """
+            INSERT INTO concepts (id, name, domain, description)
+            VALUES (?, ?, ?, ?)
+            """,
+            [
+                ("concept-1", "decorator", "python", "a callable wrapping a callable"),
+                ("concept-2", "closure", "python", "a function capturing its scope"),
+            ],
+        )
+        conn.execute(
+            "INSERT INTO concept_aliases (alias, concept_id) VALUES (?, ?)",
+            ("wrapper", "concept-1"),
+        )
+        conn.execute(
+            """
+            INSERT INTO concept_relations
+            (source_concept_id, target_concept_id, relation_type, evidence_session_id)
+            VALUES (?, ?, ?, ?)
+            """,
+            ("concept-1", "concept-2", "requires", "test-session-001"),
+        )
+        conn.execute(
+            "INSERT INTO message_concepts (message_id, concept_id, confidence) VALUES (?, ?, ?)",
+            ("test-msg-001", "concept-1", 0.8),
+        )
         conn.commit()
 
         sql = _dump_delta_sql(db_path, {"test-session-001"})
@@ -250,14 +279,10 @@ class TestDumpDeltaSql:
 
         # GLOBAL_SYNC_TABLES: R-19's recency gate replaces the blind
         # INSERT OR REPLACE with a conditional upsert (see test_sync_r19.py).
-        for table in (
-            "study_progress",
-            "study_sessions",
-            "teach_back_scores",
-            "knowledge_bridges",
-            "parked_topics",
-            "scrub_log",
-        ):
+        # Every table the spec names, not a sample: the loop reads the
+        # constant so adding a table there without seeding it here fails.
+        assert len(GLOBAL_SYNC_TABLES) == 10
+        for table in GLOBAL_SYNC_TABLES:
             assert f"INSERT INTO {table}" in sql
             assert f"INSERT OR REPLACE INTO {table}" not in sql
             assert "ON CONFLICT" in sql

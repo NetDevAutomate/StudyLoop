@@ -818,10 +818,12 @@ reason = "Rework (ruling L5): states system behaviour (which tables every sync o
 [[test-sourced]]
 spec = "data-store-and-sync"
 heading = "Cross-machine sync — global tables travel in full, session-scoped tables are filtered to the delta"
-scenario = "A one-session delta still carries the global tables its fixture seeds"
-# pass 10 (seat gpt-5.6-sol): the test seeds six of the ten global tables; the name said "every"
+scenario = "A one-session delta still carries all ten global tables"
+# pass 10 (seat gpt-5.6-sol): the test seeded six of the ten global tables while the name said "every";
+# closed after plan 7 (FOUND-NOT-FIXED plan-7 item 2): the fixture now seeds every GLOBAL_SYNC_TABLES
+# table and the loop reads the constant, so the scenario may name all ten again.
 test = "packages/agent-session-tools/tests/test_sync.py::TestDumpDeltaSql::test_includes_durable_metadata_tables"
-reason = "Proves the global-tables sentence: a delta built for one session still carries an INSERT for every global table the test seeds (study_progress, study_sessions, teach_back_scores, knowledge_bridges, parked_topics, scrub_log) beside the session's own session_learning_metadata and file_references rows."
+reason = "Proves the global-tables sentence: a delta built for one session still carries a recency-gated INSERT … ON CONFLICT for every GLOBAL_SYNC_TABLES table (all ten, seeded one row each) beside the session's own session_learning_metadata and file_references rows."
 
 [[test-sourced]]
 spec = "data-store-and-sync"
