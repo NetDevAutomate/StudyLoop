@@ -46,3 +46,49 @@ heading = "Disposable cluster — core's own `kind` runs with an allowlisted env
 scenario = "kind sees the allowlisted variables and nothing else"
 test = "packages/studyloop/tests/test_module_cluster.py::test_kind_runs_with_an_allowlisted_environment"
 reason = "Fragment holds the allowlisted-environment SHALL; the test plants AWS/GitHub secrets and KUBECONFIG in the parent environment beside Docker, kind, proxy, certificate and locale variables and asserts the fake kind saw the allowlisted set and neither the secrets nor KUBECONFIG."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/optional-modules
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Modules are installed from a local path into an immutable snapshot recorded in a lockfile"
+ordinal = 1
+old = "`studyloop module add <path>` SHALL first copy the module into a private staging area (regular files only — a symlink, hard link or special file anywhere in the tree is refused by name, never skipped), run `module check` on the staged copy and refuse on any finding, digest the staged copy, and publish it atomically as an immutable snapshot keyed by that digest (an existing snapshot at that digest is re-digested and refused on mismatch); and record `id`, `version`, digest and, when the path is a git checkout, the remote URL and HEAD sha read locally with no fetch, into `modules.lock.json`."
+new = [
+  "`studyloop module add <path>` SHALL first copy the module into a private staging area (regular files only — a symlink, hard link or special file anywhere in the tree is refused by name, never skipped).",
+  "`studyloop module add <path>` SHALL run `module check` on the staged copy and refuse on any finding.",
+  "`studyloop module add <path>` SHALL digest the staged copy, and publish it atomically as an immutable snapshot keyed by that digest (an existing snapshot at that digest is re-digested and refused on mismatch).",
+  "`studyloop module add <path>` SHALL record `id`, `version`, digest and, when the path is a git checkout, the remote URL and HEAD sha read locally with no fetch, into `modules.lock.json`.",
+]
+# Each new sentence repeats the subject noun phrase `studyloop module add <path>` and the modal
+# SHALL, and ends in a full stop; two commas, one semicolon and one 'and' are dropped at the
+# former clause joins. The checker tokenises the subject as the six tokens listed three times.
+added_tokens = [
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+]
+reason = "The sentence measures 595 on its own, over the 500 limit, so no fragment could hold it unsplit; it is a delta sentence and so absent from evidence/pass9-long-normative-sentences.txt, which measured living bodies only. Four clauses, one SHALL each, kept in document order: staging and check stay under the original heading, digest/publish and the lockfile record open the next requirement (the three repeated subjects made a staging/check/publish grouping measure 512)."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Re-add replaces the lock entry, list and remove read the lockfile only, and v1 touches no network"
+scenario = "re-adding an installed id replaces its entry and drops the orphaned snapshot"
+test = "packages/studyloop/tests/test_module_lifecycle.py::test_re_adding_the_same_id_replaces_the_entry_and_drops_the_orphaned_snapshot"
+reason = "Fragment holds the re-add SHALL (replace the lock entry, remove the orphaned snapshot, lockfile records the new digest); the test adds a module twice with a content change between, asserts the digests differ, the lockfile lists only the second digest, the first snapshot directory is gone and the second exists."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Conformance precedence: the most specific rule wins, and MC009 runs the keyword detector unfiltered"
+scenario = "a bad contract is reported as MC002 alone, never MC001"
+test = "packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC002]"
+reason = "Fragment holds the most-specific-rule-wins sentence, whose first example is 'a bad contract is MC002 ... never MC001'; the MC002 broken fixture carries contract: 99 and the parametrised test asserts the reported rule set is exactly {MC002}."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Conformance precedence: the most specific rule wins, and MC009 runs the keyword detector unfiltered"
+scenario = "a secret after a placeholder on the same line is still caught"
+test = "packages/studyloop/tests/test_module_check.py::test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line"
+reason = "Fragment holds the MC009 SHALL (keyword detector with heuristic filters disabled); the test writes one script line with a placeholder first and a real-shaped token second and asserts exactly MC009 at scripts/check.sh line 2, the key named and the value not echoed. The scenario names no key literal so the repository's own secret hooks are not tripped."
