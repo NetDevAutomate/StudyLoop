@@ -14,3 +14,23 @@ ordinal = 2
 text = "If `session_clean` has already scrubbed that session, the DELETE raises an `IntegrityError` (FK from `scrub_log`) that is currently swallowed, silently halting further updates to that session."
 scenario = "The DELETE on a previously scrubbed Gemini session is swallowed"
 reason = "Non-normative description of the observed Gemini failure mode (no SHALL); the only non-normative prose in a 532-char body whose other two sentences cannot be separated (the aider sentence has no modal, so it cannot stand as its own fragment)."
+
+# ---------------------------------------------------------------------------------------------
+# data-store-and-sync
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "data-store-and-sync"
+heading = "Cross-machine sync streams SQL deltas over SSH using INSERT OR REPLACE with last-writer-wins on updated_at"
+ordinal = 4
+text = "Global tables (`study_progress`, `study_sessions`, `teach_back_scores`, `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`, `message_concepts`, `parked_topics`, `scrub_log`) are synced in full on every operation."
+scenario = "Global tables travel in full and session-scoped tables are filtered to the delta"
+reason = "Keyword-less descriptive sentence (no SHALL, not a governed list item). The body has one SHALL sentence; the four other sentences carry no modal and are not list items under a lead-in, so no second fragment can stand and inherit-shall does not apply. Moved with its paired sentence (ordinal 5) so the global/session-scoped contrast stays together. Content deliberately NOT corrected (FOUND-NOT-FIXED plan-6 item 12)."
+
+[[moved-body-text]]
+spec = "data-store-and-sync"
+heading = "Cross-machine sync streams SQL deltas over SSH using INSERT OR REPLACE with last-writer-wins on updated_at"
+ordinal = 5
+text = "Session-scoped tables (`sessions`, `messages`, `session_notes`, `session_tags`, `session_learning_metadata`, `file_references`) are filtered to only the delta session IDs."
+scenario = "Global tables travel in full and session-scoped tables are filtered to the delta"
+reason = "Paired with ordinal 4 (see above); keyword-less, not a governed list item."

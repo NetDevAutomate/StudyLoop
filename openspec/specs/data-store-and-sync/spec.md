@@ -139,13 +139,17 @@ TOCTOU with `--resume`.
 `agent_session_tools.sync` SHALL transfer new and updated sessions between
 machines by comparing `updated_at` timestamps. The session with the later
 `updated_at` wins on conflict. Sync streams `INSERT OR REPLACE` SQL over
-SSH (with `-C` compression) rather than copying the entire database. Global
-tables (`study_progress`, `study_sessions`, `teach_back_scores`,
-`knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
-`message_concepts`, `parked_topics`, `scrub_log`) are synced in full on
-every operation. Session-scoped tables (`sessions`, `messages`,
-`session_notes`, `session_tags`, `session_learning_metadata`,
-`file_references`) are filtered to only the delta session IDs.
+SSH (with `-C` compression) rather than copying the entire database.
+
+#### Scenario: Global tables travel in full and session-scoped tables are filtered to the delta
+- **WHEN** any sync operation builds the SQL it streams
+- **THEN** global tables (`study_progress`, `study_sessions`,
+  `teach_back_scores`, `knowledge_bridges`, `concepts`, `concept_aliases`,
+  `concept_relations`, `message_concepts`, `parked_topics`, `scrub_log`)
+  are synced in full on every operation, and session-scoped tables
+  (`sessions`, `messages`, `session_notes`, `session_tags`,
+  `session_learning_metadata`, `file_references`) are filtered to only the
+  delta session IDs
 
 #### Scenario: Push to a remote that has never been seeded
 - **WHEN** `session-sync push <remote>` runs and `_remote_db_exists()`
