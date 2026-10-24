@@ -34,3 +34,29 @@ ordinal = 5
 text = "Session-scoped tables (`sessions`, `messages`, `session_notes`, `session_tags`, `session_learning_metadata`, `file_references`) are filtered to only the delta session IDs."
 scenario = "Global tables travel in full and session-scoped tables are filtered to the delta"
 reason = "Paired with ordinal 4 (see above); keyword-less, not a governed list item."
+
+# ---------------------------------------------------------------------------------------------
+# configuration-and-secrets
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "configuration-and-secrets"
+heading = "Provider credentials are verified before persistence via test_provider_auth"
+ordinal = 2
+text = "A `(bool, str)` tuple is returned."
+scenario = "Every verification returns a bool and message tuple"
+reason = "Keyword-less return-type sentence; the body's only other unit is a 468-char SHALL sentence (under 500, so split-sentence does not apply). Moving this 34-char sentence is the only legal way to bring the 503-char body under the limit."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "second_brain retired keys are reported by name"
+scenario = "A retired CLI adapter key is reported, not ignored"
+test = "packages/studyloop/tests/test_second_brain_config.py::test_a_retired_cli_adapter_key_is_reported_not_ignored[daily_note]"
+reason = "The retired-keys SHALL (original ordinal 3) could not join the parse/errors fragment (518 > 500) and no base scenario exercises it; the parametrised test proves it for each retired key."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "`mutate_raw_config()` is the single mutation owner for every configuration writer"
+scenario = "write_raw_config delegates to the shared mutation owner"
+test = "packages/studyloop/tests/test_settings_mutation.py::test_write_raw_config_delegates_to_shared_mutation_owner"
+reason = "The single-owner SHALL (original ordinal 3) has no base scenario; the four existing scenarios all exercise the procedure/invariants fragment."
