@@ -589,7 +589,33 @@ def compare_spec(
                     new_tok = Counter()
                     for s in news:
                         new_tok += _tokens(s)
-                    drift = (new_tok - old_tok) - allowed
+                    # A clause that governed the whole sentence (a conditional or ordering
+                    # lead-in inside the sentence) may be repeated verbatim into the fragments
+                    # that lost it; only a substring of the sentence qualifies, and the clause
+                    # may appear at most once per fragment beyond the copy the sentence had.
+                    clause = _norm(exc.data.get("repeated_clause", ""))
+                    clause_tok: Counter[str] = Counter()
+                    if clause:
+                        sentence = _norm(exc.data.get("old", unit))
+                        variants = {
+                            clause,
+                            clause[:1].lower() + clause[1:],
+                            clause[:1].upper() + clause[1:],
+                        }
+                        if not any(v in sentence for v in variants):
+                            report.fail(
+                                "split-sentence-clause-not-in-sentence",
+                                spec,
+                                f"[{heading} #{ordinal}] repeated_clause is not a clause of the "
+                                f"sentence: {clause}",
+                            )
+                        found = [next((v for v in variants if v in s), None) for s in news]
+                        # the sentence already paid for one copy; every further fragment that
+                        # carries the clause is credited the tokens of the form it carries
+                        for v in [v for v in found if v is not None][1:]:
+                            clause_tok += _tokens(v)
+                        report.note("clause-restated", spec, heading, f"[{ordinal}] {clause}")
+                    drift = (new_tok - old_tok) - allowed - clause_tok
                     missing = old_tok - new_tok
                     # connective words may be dropped by a fission (and/, /;) — nothing else
                     missing -= Counter(
@@ -1205,7 +1231,7 @@ def _materialise_base(repo: Path, rev: str) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--base", help="git revision holding the pre-split openspec/ tree")
     ap.add_argument(
         "--base-dir", type=Path, help="pre-split openspec/ directory (instead of --base)"

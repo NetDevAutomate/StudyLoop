@@ -224,7 +224,7 @@ lifecycle transition to `active` (`TransitionLifecycle`).
 - **THEN** all three succeed and `browse(status="active")` returns all three
 
 ### Requirement: Readiness gate — the refusal is PlanNotReady from one readiness function, before any write
-`apply` SHALL raise
+Whenever the *resulting* document would be `active`, `apply` SHALL raise
 `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when
 the plan has no mission `why`, no success criteria, or no milestones. Readiness
 SHALL be computed by exactly one function (`authoring.readiness`), reached only
@@ -1339,7 +1339,10 @@ one first move on the primary's own material.
   `Record evidence:`, once
 
 ### Requirement: Warm-up — the move rides as metadata first_move with the lesson fields, exactly as on the body double
-`learning/decision.py::_warm_up` SHALL carry it as
+When `build_now_plan` has ranked and applied the plan-backed guarantee, and
+the primary (and only the primary) is plan-related (carries a `PlanRef`), is
+not the body double, and is of an active kind — `action_type` in `hands-on`,
+`conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL carry it as
 `metadata["first_move"]` (with `first_move_lesson_id`/`first_move_lesson_title`
 when a lesson resolved, exactly as on the body double).
 

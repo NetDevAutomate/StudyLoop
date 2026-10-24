@@ -170,7 +170,7 @@ every operation. Session-scoped tables (`sessions`, `messages`,
 `session_notes`, `session_tags`, `session_learning_metadata`,
 `file_references`) are filtered to only the delta session IDs.
 
-#### Scenario: A one-session delta still carries every global table
+#### Scenario: A one-session delta still carries the global tables its fixture seeds
 - **WHEN** `_dump_delta_sql(db_path, {"test-session-001"})` builds the SQL
   for one session on a migrated database
 - **THEN** the SQL carries an `INSERT INTO` for `study_progress`,

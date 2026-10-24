@@ -160,9 +160,13 @@ reason = "One 532-char sentence: the four entry paths and the refusal. Split at 
 old = "`apply` SHALL evaluate readiness whenever the *resulting* document would be `active` — create with `status=\"active\"` (`CreatePlan`), import of a document whose frontmatter says `active` (`ImportDocument`), replacement of an existing document with one whose frontmatter says `active` (`ReplaceDocument`), and a lifecycle transition to `active` (`TransitionLifecycle`) — and SHALL raise `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when the plan has no mission `why`, no success criteria, or no milestones."
 new = [
   "`apply` SHALL evaluate readiness whenever the *resulting* document would be `active` — create with `status=\"active\"` (`CreatePlan`), import of a document whose frontmatter says `active` (`ImportDocument`), replacement of an existing document with one whose frontmatter says `active` (`ReplaceDocument`), and a lifecycle transition to `active` (`TransitionLifecycle`).",
-  "`apply` SHALL raise `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when the plan has no mission `why`, no success criteria, or no milestones.",
+  "Whenever the *resulting* document would be `active`, `apply` SHALL raise `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when the plan has no mission `why`, no success criteria, or no milestones.",
 ]
-added_tokens = ["`apply`", "."]
+added_tokens = ["`apply`", ".", ","]
+repeated_clause = "whenever the *resulting* document would be `active`"
+# pass 10 (seat gpt-5.6-sol, reproduced by the coordinator): the clause governed both SHALLs in the
+# base sentence; without it the refusal fragment read as refusing any incomplete document, drafts
+# included. Repeated verbatim (sentence-initial capital), nothing else changed.
 
 [[test-sourced]]
 spec = "active-learning-decisions"
@@ -447,9 +451,13 @@ reason = "One 502-char sentence: the condition + `derive one first move`, then `
 old = "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive one first move on the primary's own material and carry it as `metadata[\"first_move\"]` (with `first_move_lesson_id`/`first_move_lesson_title` when a lesson resolved, exactly as on the body double)."
 new = [
   "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive one first move on the primary's own material.",
-  "`learning/decision.py::_warm_up` SHALL carry it as `metadata[\"first_move\"]` (with `first_move_lesson_id`/`first_move_lesson_title` when a lesson resolved, exactly as on the body double).",
+  "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL carry it as `metadata[\"first_move\"]` (with `first_move_lesson_id`/`first_move_lesson_title` when a lesson resolved, exactly as on the body double).",
 ]
 added_tokens = ["`learning/decision", ".", "py", ":", ":", "_warm_up`", "SHALL", "."]
+repeated_clause = "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` —"
+# pass 10 (seat gpt-5.6-sol, reproduced): the When-clause governed derive AND carry; the carrier
+# fragment without it read as unconditional. Repeated verbatim; `it` keeps its referent through the
+# heading ("the move") and the restated condition.
 
 [[split-sentence]]
 spec = "active-learning-decisions"
@@ -796,7 +804,8 @@ reason = "Rework (ruling L5): states system behaviour (which tables every sync o
 [[test-sourced]]
 spec = "data-store-and-sync"
 heading = "Cross-machine sync — global tables travel in full, session-scoped tables are filtered to the delta"
-scenario = "A one-session delta still carries every global table"
+scenario = "A one-session delta still carries the global tables its fixture seeds"
+# pass 10 (seat gpt-5.6-sol): the test seeds six of the ten global tables; the name said "every"
 test = "packages/agent-session-tools/tests/test_sync.py::TestDumpDeltaSql::test_includes_durable_metadata_tables"
 reason = "Proves the global-tables sentence: a delta built for one session still carries an INSERT for every global table the test seeds (study_progress, study_sessions, teach_back_scores, knowledge_bridges, parked_topics, scrub_log) beside the session's own session_learning_metadata and file_references rows."
 
@@ -1760,14 +1769,6 @@ scenario = "A click that beats the options fetch still starts exactly once"
 test = "packages/studyloop/tests/test_web_plan_architect_journey.py::test_click_that_beats_the_options_fetch_still_starts_exactly_once[chromium]"
 reason = "The bounded-wait fragment (council review 6); the test holds /api/session/options and asserts exactly one start POST after it resolves."
 
-[[moved-body-text]]
-spec = "web-ui"
-heading = "Plan with architect journey"
-ordinal = 14
-text = '''Navigating away is **not** the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
-scenario = "Navigating away is not the abandon path"
-reason = "Class: rationale / owner-decision note (no SHALL, 401 chars; explains why navigating away is not the abandon path — the behaviour itself is the abandon SHALL and the grace-period requirement elsewhere) between the abandon SHALL (#13, 294) and 'There is no cancel for a pending launch' (#15); with #13 it exceeds 500 and no other SHALL is adjacent. Homed as a scenario under the abandon fragment beside 'Leaving before the launch lands leaves a session like any other', which proves it."
-
 # -- Plan list rows carry readiness and the sidebar marks a husk (812) -> 3 fragments
 
 [[restates-shall]]
@@ -2062,3 +2063,14 @@ ordinal = 4
 text = '''With this, every blocker `readiness()` can name — mission `why`, success criteria, milestones — is repairable with the tool the architect already holds, so `plan repair` is a repair rather than dictation.'''
 scenario = "Why plan repair is a repair rather than dictation"
 reason = "Class: rationale (why exposing the mission fields matters; no SHALL, tells the implementer nothing to do). Follows the gate sentence in the base and is homed as a scenario on the gate fragment, verbatim."
+
+# ---- pass 10 (coordinator): web-ui 'Navigating away' returned from a scenario to a body ----
+
+[[modalise]]
+spec = "web-ui"
+heading = "Plan with architect journey"
+ordinal = 14
+old = '''Navigating away is **not** the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
+new = '''Navigating away SHALL **not** be the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
+verb = ["is", "be"]
+reason = "Pass 10 (seat gpt-5.6-sol, reproduced by the coordinator; overturns lane B's 'rationale' class): 'is **not** the abandon path', 'cannot kill a live session', 'the console reattaches', 'the End control abandons it' are a negative guarantee and lifecycle behaviour that the scenario 'Leaving before the launch lands leaves a session like any other' proves; pass 9 §4 Q2 keeps negative guarantees in bodies. Its own requirement (with the abandon SHALL it exceeds 500); the scenario lane B wrapped it in is removed and the proving scenario is homed here."

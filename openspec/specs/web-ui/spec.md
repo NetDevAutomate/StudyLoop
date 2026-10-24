@@ -738,15 +738,13 @@ There is no cancel for a pending launch.
 - **WHEN** the learner activates the control and, as soon as the `201` arrives, uses the console's End control and confirms
 - **THEN** `GET /api/session/state` has no `study_session_id` and no planning purpose, `GET /api/plans` and the plans directory are unchanged, exactly one `study-session-start` fired, at most one WebSocket was opened, and no purpose label is visible
 
-#### Scenario: Navigating away is not the abandon path
-- **WHEN** the learner leaves the console while a planning session is live or
-  its launch is still in flight
-- **THEN** navigating away is **not** the abandon path: a closed socket detaches with a
-  grace period by design, so an accidental reload cannot kill a live session —
-  and a launch that lands *after* the learner has left the console is a session
-  like any other (owner decision 2026-09-18, council review 6 F3b): it exists,
-  it created no plan, the console reattaches to it on return, and the End
-  control abandons it
+### Requirement: Plan with architect — navigating away is not the abandon path
+Navigating away SHALL **not** be the abandon path: a closed socket detaches with a
+grace period by design, so an accidental reload cannot kill a live session —
+and a launch that lands *after* the learner has left the console is a session
+like any other (owner decision 2026-09-18, council review 6 F3b): it exists,
+it created no plan, the console reattaches to it on return, and the End
+control abandons it.
 
 #### Scenario: Leaving before the launch lands leaves a session like any other
 - **WHEN** the learner clicks "Plan with architect", the start POST is held,

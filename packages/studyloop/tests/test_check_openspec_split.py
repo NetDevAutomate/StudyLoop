@@ -2089,3 +2089,90 @@ def test_a_restated_lead_in_may_be_duplicated_across_fragments(checker, tmp_path
     report = _run(checker, base, head)
     assert report.ok, [(f.code, f.detail) for f in report.findings]
     assert sum(1 for e in report.drift if e.kind == "lead-in-duplicated") == 2
+
+
+def test_pass10_a_governing_clause_may_be_repeated_verbatim_into_a_fragment(
+    checker, tmp_path: Path
+) -> None:
+    """Pass 10 (seat gpt-5.6-sol, reproduced): a condition that governs a whole sentence
+    ("Whenever the resulting document would be active, apply SHALL evaluate … and SHALL raise …")
+    was attached to the first fragment only, so the second fragment read as unconditional. The
+    repair repeats the clause; `added_tokens` refuses polarity words (`not`, `only`) by design, so a
+    clause containing them needs its own declaration: `repeated_clause`, which must be a verbatim
+    substring of the sentence (sentence-initial capitalisation aside) and lands in the drift report
+    as `clause-restated` for the reader."""
+    base, head = _pair(tmp_path)
+    _write_spec(
+        base,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Gate
+        When not ready, the seam SHALL refuse the write and SHALL report the blockers.
+        {SCENARIO_OK}
+        """,
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Gate
+        When not ready, the seam SHALL refuse the write.
+        {SCENARIO_OK}
+        ### Requirement: Gate — the blockers are reported
+        When not ready, the seam SHALL report the blockers.
+        #### Scenario: Blockers listed
+        - **WHEN** an unready plan is written
+        - **THEN** the refusal lists the blockers
+        """,
+    )
+    entry = """
+        [[split-sentence]]
+        spec = "demo"
+        heading = "Gate"
+        ordinal = 1
+        old = "When not ready, the seam SHALL refuse the write and SHALL report the blockers."
+        new = [
+          "When not ready, the seam SHALL refuse the write.",
+          "When not ready, the seam SHALL report the blockers.",
+        ]
+        added_tokens = ["the", "seam", "."]
+        {clause}
+
+        [[restates-shall]]
+        spec = "demo"
+        heading = "Gate — the blockers are reported"
+        scenario = "Blockers listed"
+        restates = "When not ready, the seam SHALL report the blockers."
+        searched_tests = "none"
+        """
+    # Declaring the polarity word as a plain added token is refused, as before.
+    _write_exceptions(
+        head,
+        entry.replace("{clause}", "").replace(
+            '"the", "seam", "."',
+            '"When", "not", "ready", ",", "the", "seam", "."',
+        ),
+    )
+    report = _run(checker, base, head)
+    assert "split-sentence-token-drift" in _codes(report)
+
+    # The same words as a verbatim repeat of the sentence's own clause pass and are reported.
+    _write_exceptions(head, entry.replace("{clause}", 'repeated_clause = "When not ready,"'))
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert any(e.kind == "clause-restated" for e in report.drift)
+
+    # A clause the sentence never contained is not a repeat.
+    _write_exceptions(
+        head, entry.replace("{clause}", 'repeated_clause = "Unless the plan is ready,"')
+    )
+    report = _run(checker, base, head)
+    assert "split-sentence-clause-not-in-sentence" in _codes(report)
