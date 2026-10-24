@@ -70,8 +70,9 @@ small fix with a test goes straight to a pull request.
    `spec-check` until it was added), so the flag is the reviewer's cue that "no delta" was a choice.
 3. Validate the structure with `openspec validate --specs --all --strict`: every warning fails, so
    the output is a gate and not a list nobody reads. The recipe resolves the CLI through `scripts/openspec-cli.sh` at the one pinned
-   release (`OPENSPEC_VERSION` in the `Justfile`; a local `openspec` at any other version is
-   refused, otherwise `npx` fetches the pinned one). Without node or the CLI the recipe prints
+   release (`OPENSPEC_VERSION` in the `Justfile`): a local `openspec` at that version is used; at
+   any other version it is never used -- `npx` validates with the pinned one and says so, or the
+   recipe refuses when `npx` cannot run. Without node or the CLI the recipe prints
    `SKIPPED` and exits 0 on your machine -- a skip is not a pass -- and the `spec-check` job in CI,
    which runs the same recipe, fails on the same absence:
 

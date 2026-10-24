@@ -267,3 +267,30 @@ def test_release_check_runs_spec_check() -> None:
         line for line in _justfile().splitlines() if line.startswith("release-check:")
     )
     assert "spec-check" in recipe_line.split()
+
+
+def test_a_mismatched_local_binary_is_bypassed_for_npx_at_the_pin_when_npx_can_run(
+    tmp_path: Path,
+) -> None:
+    """Pass 10 Q3 (seat claude-opus-5.5, adopted over the coordinator's §5 hold): the mismatched
+    binary is never USED, but the pinned contract is still validated — by npx — with one stderr
+    line naming both versions. Refusal (exit 2) is kept for the case where npx cannot run, so a
+    wrong-version tool on PATH is never reported as 'no tool here'."""
+    fake_bin = _fake_bin(
+        tmp_path,
+        "openspec",
+        'if [ "$1" = --version ]; then echo 9.9.9; exit 0; fi\necho "WRONG BINARY RAN"; exit 0\n',
+    )
+    npx_log = tmp_path / "npx-args.txt"
+    (fake_bin / "npx").write_text(
+        f'#!/bin/sh\nprintf "%s " "$@" >> "{npx_log}"\n'
+        'if [ "$3" = --version ]; then echo 1.14.1; exit 0; fi\necho "pinned ran"; exit 0\n',
+        encoding="utf-8",
+    )
+    (fake_bin / "npx").chmod(0o755)
+    env = {"PATH": f"{fake_bin}:/usr/bin:/bin", "OPENSPEC_VERSION": "1.14.1", "HOME": str(tmp_path)}
+    proc = _resolver(["validate", "--specs", "--all", "--strict"], env)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "pinned ran" in proc.stdout and "WRONG BINARY RAN" not in proc.stdout
+    assert "9.9.9" in proc.stderr and "1.14.1" in proc.stderr
+    assert "@fission-ai/openspec@1.14.1" in npx_log.read_text(encoding="utf-8")

@@ -6,8 +6,9 @@ set shell := ["bash", "-cu"]
 export PYTHONWARNINGS := "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning"
 
 # The one OpenSpec CLI release the repository validates against. `scripts/openspec-cli.sh`
-# resolves it (a matching local binary, else npx at exactly this version) and refuses any other
-# local version; `just spec-check` and the release gate both go through that script. Bumping
+# resolves it: a local binary at exactly this version, else npx at exactly this version (a local
+# binary at another version is never used — bypassed with a notice, or refused when npx cannot run);
+# `just spec-check` and the release gate both go through that script. Bumping
 # this is a deliberate commit: a new release can add validation rules (1.14 promoted the
 # >500-character requirement finding to a warning, which is how 84 of them appeared at once).
 export OPENSPEC_VERSION := "1.14.1"
