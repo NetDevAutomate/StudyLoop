@@ -449,6 +449,10 @@ experience may change before `1.0.0`.
     (`element is not visible`; deterministic locally in isolation). The helper
     now writes the matching `session-state.json` first, as the reload test
     already does, so the server reports the session the mount pretends to have.
+  - `test (3.12)`: the job's 25-minute `timeout-minutes` cancelled the default
+    suite at 98 % on the last two pushes while `(3.13)` finished in 20 and 24
+    minutes -- the suite grew past the budget, nothing hung. The job now has the
+    `e2e` job's 40 minutes.
 - The three Kiro agent files are installed as copies, not links. kiro-cli
   rewrites an agent file it loads -- the legacy `hooks` object becomes the
   array form, the `toolsSettings` denylist regexes become `permissions.rules`

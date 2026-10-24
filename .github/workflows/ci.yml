@@ -167,7 +167,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 25 cancelled `test (3.12)` at 98 % on the last two pushes (runs 40083778182,
+    # 40102382006; 3.13 took 20 and 24 min) -- suite growth, not a hang. 40 matches `e2e`.
+    timeout-minutes: 40
     strategy:
       fail-fast: false  # report every Python version independently; don't cancel siblings
       matrix:
