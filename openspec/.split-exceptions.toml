@@ -1,0 +1,24 @@
+# Plan 7 split exceptions — lane B (web-ui, voice-tts, second-brain, second-brain-launcher,
+# mcp-server). Read by scripts/check-openspec-split.py; every entry must be consumed exactly once.
+# Ordinals are 1-based positions among the original requirement's prose units (fences skipped),
+# as the checker's `unit-lost` message prints them.
+
+# ---------------------------------------------------------------------------------------------
+# voice-tts
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "voice-tts"
+heading = "load_raw_config expands dotted top-level keys before any consumer reads tts.backend"
+ordinal = 3
+text = '''This closes a defect (fixed in `a7eabb6`) where two of `doctor/voice.py`'s own repair messages were worded as a flat dotted key (`"Set tts.backend: openvox to enable this check"`) — a user following them literally would write a top-level `tts.backend: openvox` scalar key, which `raw.get("tts", {})` could not see (there was no `"tts"` key, only a literal key named `"tts.backend"`), silently keeping `backend` at its `"kokoro"` default and skipping the `openvox_api` check the hint promised to enable.'''
+scenario = "The defect behind the loader-level expansion"
+reason = "Defect history (no SHALL): a 502-char non-normative sentence that no fragment can hold under 500 and that split-sentence cannot touch (its pieces would carry no modal). Moved verbatim into a history scenario under the fragment whose SHALL it motivates."
+
+[[moved-body-text]]
+spec = "voice-tts"
+heading = "load_raw_config expands dotted top-level keys before any consumer reads tts.backend"
+ordinal = 4
+text = '''`a7eabb6` fixes this at the loader level (`_expand_dotted_keys()` in `settings.py`, benefiting all 6 `raw.get("tts", ...)`-style consumers at once) and rephrases both `doctor/voice.py` repair hints to describe the nested form (`"Set backend: openvox under the tts: section of config.yaml..."`, `doctor/voice.py:105-106`) so new users are no longer taught the broken flat form, while the loader still accepts it from existing configs.'''
+scenario = "The defect behind the loader-level expansion"
+reason = "Second sentence of the same defect history (no SHALL, 433 chars): with the 396-char SHALL it would exceed 500, and it belongs with the sentence before it. Same history scenario."
