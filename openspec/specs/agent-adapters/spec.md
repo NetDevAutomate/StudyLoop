@@ -68,13 +68,40 @@ twice.
 - **THEN** `get_adapter("claude")` returns the custom-built adapter,
   not the built-in `claude.py` adapter
 
-#### Scenario: Custom adapter entry fields
-- **WHEN** an `agents.custom` entry is read from config
-- **THEN** Each entry specifies `binary`,
-  `strategy` (`"cli-flag"` or `"cwd-file"`), `launch` template (with
-  `{binary}`, `{persona}`, `{session_dir}` placeholders), optional
-  `resume` template, optional `env` vars, optional `teardown` shell
-  command, and optional `mcp` config.
+### Requirement: Custom adapters — the fields of an agents.custom entry
+Each entry SHALL specify `binary`, `strategy` (`"cli-flag"` or
+`"cwd-file"`), `launch` template (with `{binary}`, `{persona}`,
+`{session_dir}` placeholders), optional `resume` template, optional `env`
+vars, optional `teardown` shell command, and optional `mcp` config.
+
+#### Scenario: binary, strategy and launch build a cli-flag adapter whose template is interpolated
+- **WHEN** an entry with `binary`, `strategy: cli-flag` and
+  `launch: "{binary} --read {persona}"` is built
+- **THEN** `launch_cmd` resolves `{binary}` to the binary's path and
+  `{persona}` to the persona path
+
+#### Scenario: strategy cwd-file writes the named file in the session directory
+- **WHEN** an entry with `strategy: cwd-file` and a `filename` is built and
+  set up
+- **THEN** the persona is written to `<session_dir>/<filename>`
+
+#### Scenario: resume template is used on resume
+- **WHEN** an entry carries a `resume` template and `launch_cmd` is called
+  with `resume=True`
+- **THEN** the resume template is emitted
+
+#### Scenario: env vars are prepended to the launch command
+- **WHEN** an entry carries `env` values
+- **THEN** each `NAME=value` is prepended to the launch command
+
+#### Scenario: teardown runs the configured shell command
+- **WHEN** an entry carries a `teardown` shell command
+- **THEN** `adapter.teardown` exists and running it executes the command
+
+#### Scenario: mcp config writes the generic .mcp.json
+- **WHEN** an entry carries `mcp: {format: generic}`
+- **THEN** `adapter.mcp_setup` exists and writes `.mcp.json` into the
+  session directory
 
 ### Requirement: Agent detection respects STUDYLOOP_AGENT env var and configured priority order
 `detect_agents()` in `registry.py` SHALL return agent names filtered
@@ -96,9 +123,17 @@ entries not in the priority list.
 - **THEN** `detect_agents()` returns an empty list rather than
   falling through to priority order (explicit intent honoured)
 
-#### Scenario: get_default_agent returns the first detected agent
-- **WHEN** `detect_agents()` has produced its ordered list
-- **THEN** `get_default_agent()` returns the first element or `None`.
+### Requirement: Agent detection — get_default_agent returns the first detected agent or None
+`get_default_agent()` SHALL return the first element or `None`.
+
+#### Scenario: Two detected agents, the priority-first one is the default
+- **WHEN** the registry holds `alpha` and `beta`, both resolvable on PATH,
+  with `agents.priority = ["alpha", "beta"]`
+- **THEN** `get_default_agent()` returns `"alpha"`
+
+#### Scenario: No detected agent, the default is None
+- **WHEN** the registry is empty and nothing resolves on PATH
+- **THEN** `get_default_agent()` returns `None`
 
 ### Requirement: Persona injection uses one of two strategies depending on agent capability
 Each adapter SHALL inject persona content via either `cli_flag_setup`
@@ -123,10 +158,14 @@ with crash-recovery backup/restore.
   original agent JSON is restored before proceeding, and setup
   continues normally
 
-#### Scenario: Claude and the local-LLM adapters use cli_flag_setup
-- **WHEN** the `claude`, `ollama` or `lmstudio` adapter sets up a persona
-- **THEN** Claude and
-  the local-LLM adapters (ollama, lmstudio) use `cli_flag_setup`.
+### Requirement: Persona injection — Claude and the local-LLM adapters use cli_flag_setup
+Claude and the local-LLM adapters (ollama, lmstudio) SHALL use
+`cli_flag_setup`.
+
+#### Scenario: The Claude adapter's setup writes the persona to a temp file
+- **WHEN** `studyloop.adapters.claude.ADAPTER.setup(content, session_dir)` is
+  called
+- **THEN** the returned path exists and contains the persona content
 
 ### Requirement: Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning
 The `ollama` and `lmstudio` adapters (`ollama.py`, `lmstudio.py`)
@@ -144,17 +183,25 @@ SHALL use `cli_flag_setup` for persona injection and launch the
   `ANTHROPIC_BASE_URL=http://localhost:4000` and all model tiers set
   to `qwen3-coder`, then invokes `claude --append-system-prompt-file`
 
-#### Scenario: Local-LLM config and its defaults
-- **WHEN** the `ollama` or `lmstudio` adapter resolves its base URL and model
-- **THEN** Config (base URL, model)
-  is read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with
-  defaults `http://localhost:4000` / `http://localhost:1234` and model
-  `qwen3-coder`.
+### Requirement: Local-LLM adapters — config source and defaults
+Config (base URL, model) SHALL be read from `AgentsConfig.ollama` /
+`AgentsConfig.lmstudio` with defaults `http://localhost:4000` /
+`http://localhost:1234` and model `qwen3-coder`.
 
-#### Scenario: Local-LLM detection uses the adapter's own binary
-- **WHEN** `detect_agents()` probes the `ollama` and `lmstudio` adapters
-- **THEN** Detection uses each adapter's own `binary` — `ollama`
-  and `lms` respectively — not the `claude` binary they launch.
+#### Scenario: Local-LLM defaults when nothing is configured
+- **WHEN** the `ollama` or `lmstudio` adapter resolves its base URL and model
+  with nothing configured under `AgentsConfig.ollama` / `AgentsConfig.lmstudio`
+- **THEN** the base URL is `http://localhost:4000` / `http://localhost:1234`
+  respectively and the model is `qwen3-coder`
+
+### Requirement: Local-LLM adapters — detection uses the adapter's own binary
+Detection SHALL use each adapter's own `binary` — `ollama` and `lms`
+respectively — not the `claude` binary they launch.
+
+#### Scenario: Local-LLM detection looks up ollama and lms, not claude
+- **WHEN** agent detection probes the ollama and lmstudio adapters
+- **THEN** the `ollama` binary and the `lms` binary are what is looked up on
+  PATH, not `claude`
 
 ### Requirement: The fake adapter is gated behind STUDYLOOP_TEST_AGENT and opts out of production registries
 `fake.py` SHALL set `ADAPTER = AgentAdapter(...)` only when
@@ -212,20 +259,37 @@ A shared `agents/shared` → `~/.agents/shared` link is always created.
   `agents/` tree are removed; user-owned files at the same paths
   are left untouched
 
-#### Scenario: Platform detection before linking
-- **WHEN** `install_agent_definitions()` decides which platforms to link
-- **THEN** It detects
-  available platforms via `detect_available_agent_tools()` (checks for
-  `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for CLI
-  tools).
+### Requirement: studyloop install agents — platform detection before linking
+It SHALL detect available platforms via `detect_available_agent_tools()`
+(checks for `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for
+CLI tools).
 
-#### Scenario: The CLI surface of studyloop install agents
-- **WHEN** the installer is invoked from the command line
-- **THEN** The CLI surface is `studyloop install agents`
-  (`cli/_install.py`), accepting `--tool` (repeatable, constrained to
-  `_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude,
-  pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode
-  and grok are preview) and `--uninstall`.
+#### Scenario: A platform is detected by its binary or by its home directory
+- **WHEN** `detect_available_agent_tools()` runs with the `pi` binary on PATH,
+  then with neither binary nor `~/.pi`, then with only `~/.pi` present
+- **THEN** `pi` is detected, then not detected, then detected again
+
+### Requirement: studyloop install agents — the CLI surface: --tool and --uninstall
+The CLI surface SHALL be `studyloop install agents` (`cli/_install.py`),
+accepting `--tool` (repeatable, constrained to `_AGENT_CHOICES` =
+`harnesses.RELEASE_HARNESSES`: kiro, codex, claude, pi, opencode, grok —
+the core tier is kiro, codex, claude and pi; opencode and grok are
+preview) and `--uninstall`.
+
+#### Scenario: The --tool choices are exactly the installer's choices
+- **WHEN** the `tools` option of the `install agents` click command is
+  inspected
+- **THEN** it is a `click.Choice` whose choices equal `_AGENT_CHOICES`
+
+#### Scenario: The installer's choices are the release harnesses
+- **WHEN** `installers._AGENT_CHOICES` is compared with
+  `harnesses.RELEASE_HARNESSES`
+- **THEN** they are equal
+
+#### Scenario: --tool codex dispatches to the installer with that tool
+- **WHEN** `studyloop install agents --tool codex` is invoked
+- **THEN** `install_agent_definitions` is called once with `tools=["codex"]`
+  and `uninstall=False`, and the command exits 0
 
 ### Requirement: Persona resolution by purpose
 `studyloop.agent_launcher` SHALL expose one resolver,
@@ -387,10 +451,14 @@ For Kiro, visibility and trust are two arrays: `tools` SHALL contain `@builtin`,
   `allowedTools` entries starting with `@studyloop` equals `{f"@studyloop/{name}" for name in
   PLAN_TOOL_NAMES + (LEARNING_RECORD_TOOL,)}`, with no bare `@studyloop` and no entry starting with `mcp_`
 
-#### Scenario: session-db is visible but not trusted
-- **WHEN** the Kiro architect loads `shared/session-protocol.md` and reaches its session-start step
-- **THEN** The `session-db` server is visible for the loaded `shared/session-protocol.md` session-start step and
-  is not trusted: its tools prompt.
+### Requirement: Harness architects — session-db is visible but not trusted
+The `session-db` server SHALL be visible for the loaded `shared/session-protocol.md` session-start step and
+is not trusted: its tools prompt.
+
+#### Scenario: The Kiro architect lists @session-db in tools and grants only studyloop tools
+- **WHEN** `agents/kiro/study-plan-architect.json` is parsed
+- **THEN** `tools` contains `@session-db` and `mcpServers["session-db"]["command"] == "session-db-mcp"`,
+  while the `allowedTools` grants from the `studyloop` server are exactly the ten plan tools
 
 ### Requirement: Harness architects — Claude Code: the frontmatter allow-list
 For Claude Code, the frontmatter `tools:` allow-list SHALL carry

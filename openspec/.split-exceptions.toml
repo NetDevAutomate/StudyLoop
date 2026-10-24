@@ -246,74 +246,184 @@ reason = "Starts a planning session with a whitespace-only brain_dump and assert
 # ---------------------------------------------------------------------------------------------
 # agent-adapters
 # ---------------------------------------------------------------------------------------------
-# Same pattern as live-session-orchestration: keyword-less descriptive sentences that cannot stay
-# with their SHALL (pair > 500) and cannot take a modal without a verb change move verbatim into a
-# scenario. The one note that is a pure rationale (session-db visible but not trusted) is the
-# textbook moved-body-text case.
+# Rework (ruling L5, conventions rule 4): all eight keyword-less sentences the first pass moved into
+# scenarios state system behaviour — including the two the first pass called an "inventory"
+# (entry fields) and a "rationale" (session-db visible but not trusted): each tells the implementer
+# what the system does. Each is now a body of its own through [[modalise]].
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Custom adapters from config override built-in adapters of the same name"
 ordinal = 2
-scenario = "Custom adapter entry fields"
-text = '''Each entry specifies `binary`, `strategy` (`"cli-flag"` or `"cwd-file"`), `launch` template (with `{binary}`, `{persona}`, `{session_dir}` placeholders), optional `resume` template, optional `env` vars, optional `teardown` shell command, and optional `mcp` config.'''
-reason = "Keyword-less inventory of the config entry's fields. The body keeps the SHALL, the merge/override sentence (the heading's own claim) and the shlex-quoting rule (489); with this sentence it measures 754 and with only the SHALL + merge sentence the quoting rule would have had to move instead."
+old = '''Each entry specifies `binary`, `strategy` (`"cli-flag"` or `"cwd-file"`), `launch` template (with `{binary}`, `{persona}`, `{session_dir}` placeholders), optional `resume` template, optional `env` vars, optional `teardown` shell command, and optional `mcp` config.'''
+new = '''Each entry SHALL specify `binary`, `strategy` (`"cli-flag"` or `"cwd-file"`), `launch` template (with `{binary}`, `{persona}`, `{session_dir}` placeholders), optional `resume` template, optional `env` vars, optional `teardown` shell command, and optional `mcp` config.'''
+verb = ["specifies", "specify"]
+reason = "States behaviour (the schema of an agents.custom entry: required and optional fields and their placeholders) — class: behaviour; the first pass called it an inventory, but it is the contract an implementer of the config loader must honour, not a list of examples. specifies -> specify. One test-sourced scenario per field group (six, each nodeid read)."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Agent detection respects STUDYLOOP_AGENT env var and configured priority order"
 ordinal = 3
-scenario = "get_default_agent returns the first detected agent"
-text = '''`get_default_agent()` returns the first element or `None`.'''
-reason = "Keyword-less one-line helper description; the body measured 501 — one character over — with no whitespace slack, and the SHALL + priority-order pair is 442."
+old = '''`get_default_agent()` returns the first element or `None`.'''
+new = '''`get_default_agent()` SHALL return the first element or `None`.'''
+verb = ["returns", "return"]
+reason = "States behaviour (the helper's return value) — class: behaviour. returns -> return. 'the first element' refers to detect_agents()'s ordered list, named in the fragment heading."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Persona injection uses one of two strategies depending on agent capability"
 ordinal = 2
-scenario = "Claude and the local-LLM adapters use cli_flag_setup"
-text = '''Claude and the local-LLM adapters (ollama, lmstudio) use `cli_flag_setup`.'''
-reason = "Keyword-less strategy note (74 chars); the three-sentence body measures 562 and the SHALL + per-adapter file table is 487. The base scenario 'Claude adapter setup' and the local-LLM requirement's own SHALL ('SHALL use cli_flag_setup') both already state it."
+old = '''Claude and the local-LLM adapters (ollama, lmstudio) use `cli_flag_setup`.'''
+new = '''Claude and the local-LLM adapters (ollama, lmstudio) SHALL use `cli_flag_setup`.'''
+verb = []
+reason = "States behaviour (which adapters use which strategy) — class: behaviour. Plural subject: `use` is already the base form, so the modal is inserted and no verb is de-inflected (verb = [], the checker's len(verb) != 2 path: gained = {SHALL}, lost = {})."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
 ordinal = 2
-scenario = "Local-LLM config and its defaults"
-text = '''Config (base URL, model) is read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with defaults `http://localhost:4000` / `http://localhost:1234` and model `qwen3-coder`.'''
-reason = "Keyword-less config-source note; the SHALL sentence alone is 444 so neither trailing sentence can stay (619 / 560). The base scenario 'Ollama adapter launch with default config' already asserts the defaults."
+old = '''Config (base URL, model) is read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with defaults `http://localhost:4000` / `http://localhost:1234` and model `qwen3-coder`.'''
+new = '''Config (base URL, model) SHALL be read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with defaults `http://localhost:4000` / `http://localhost:1234` and model `qwen3-coder`.'''
+verb = ["is", "be"]
+reason = "States behaviour (where config is read from and its defaults) — class: behaviour; the ruling's own example ('Config is read from …'). Passive: is -> be."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
 ordinal = 3
-scenario = "Local-LLM detection uses the adapter's own binary"
-text = '''Detection uses each adapter's own `binary` — `ollama` and `lms` respectively — not the `claude` binary they launch.'''
-reason = "Keyword-less detection note (same 444-char SHALL constraint as above)."
+old = '''Detection uses each adapter's own `binary` — `ollama` and `lms` respectively — not the `claude` binary they launch.'''
+new = '''Detection SHALL use each adapter's own `binary` — `ollama` and `lms` respectively — not the `claude` binary they launch.'''
+verb = ["uses", "use"]
+reason = "States behaviour (which binary detection probes) — class: behaviour; the ruling's own example ('Detection uses …'). uses -> use; `not` is untouched."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "`studyloop install agents` symlinks platform-specific definitions from the source checkout"
 ordinal = 3
-scenario = "Platform detection before linking"
-text = '''It detects available platforms via `detect_available_agent_tools()` (checks for `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for CLI tools).'''
-reason = "Keyword-less; the body measured 938. The SHALL sentence with the symlink-semantics sentences (relative/absolute, --uninstall, shared link — the heading's subject) is 482; adding this one gives 637. The base scenario 'Fresh install on a machine with Claude and Kiro' already exercises the detection (~/.kiro and ~/.claude present)."
+old = '''It detects available platforms via `detect_available_agent_tools()` (checks for `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for CLI tools).'''
+new = '''It SHALL detect available platforms via `detect_available_agent_tools()` (checks for `~/.kiro`, `~/.claude`, `~/.gemini` dirs or `shutil.which` for CLI tools).'''
+verb = ["detects", "detect"]
+reason = "States behaviour (how platforms are detected before linking) — class: behaviour. detects -> detect. The sentence-initial `It` (= `install_agent_definitions()` / `studyloop install agents`) cannot be expanded in the same entry; the fragment heading names the command."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "`studyloop install agents` symlinks platform-specific definitions from the source checkout"
 ordinal = 7
-scenario = "The CLI surface of studyloop install agents"
-text = '''The CLI surface is `studyloop install agents` (`cli/_install.py`), accepting `--tool` (repeatable, constrained to `_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude, pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode and grok are preview) and `--uninstall`.'''
-reason = "Keyword-less CLI-surface description (300 chars; see the previous entry for the arithmetic). The command itself is in the heading."
+old = '''The CLI surface is `studyloop install agents` (`cli/_install.py`), accepting `--tool` (repeatable, constrained to `_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude, pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode and grok are preview) and `--uninstall`.'''
+new = '''The CLI surface SHALL be `studyloop install agents` (`cli/_install.py`), accepting `--tool` (repeatable, constrained to `_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude, pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode and grok are preview) and `--uninstall`.'''
+verb = ["is", "be"]
+reason = "Lane's judgement on the entry the brief left open: states behaviour (the accepted flags, that --tool repeats, and the constraint set) — class: behaviour, not an inventory of examples. is -> be."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "agent-adapters"
 heading = "Harness-launched architects carry the plan tools"
 ordinal = 3
-scenario = "session-db is visible but not trusted"
-text = '''The `session-db` server is visible for the loaded `shared/session-protocol.md` session-start step and is not trusted: its tools prompt.'''
-reason = "Rationale for the Kiro arrays sentence (why @session-db is in `tools` but not in `allowedTools`); no modal. The Kiro arrays sentence alone is 422, so the pair (558) could not stay together."
+old = '''The `session-db` server is visible for the loaded `shared/session-protocol.md` session-start step and is not trusted: its tools prompt.'''
+new = '''The `session-db` server SHALL be visible for the loaded `shared/session-protocol.md` session-start step and is not trusted: its tools prompt.'''
+verb = ["is", "be"]
+reason = "Reclassified from the first pass's 'rationale': it states behaviour (the server is in `tools`, not in `allowedTools`, and its tools prompt) — class: behaviour. Two finite verbs (is visible / is not trusted); the modal goes on the first (is -> be), 'is not trusted' stays indicative so `not` is untouched."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "binary, strategy and launch build a cli-flag adapter whose template is interpolated"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_launch_cmd_interpolation"
+reason = "Builds an adapter from {binary, strategy: cli-flag, launch: '{binary} --read {persona}'} and asserts launch_cmd contains the resolved binary path and the persona path."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "strategy cwd-file writes the named file in the session directory"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_cwd_file_strategy"
+reason = "strategy: cwd-file with filename '.my-prompt.md'; asserts setup() returns <session_dir>/.my-prompt.md holding the persona."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "resume template is used on resume"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_resume_template"
+reason = "An entry with a resume template; launch_cmd(persona, True) contains '--resume'."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "env vars are prepended to the launch command"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_env_vars_prepended"
+reason = "An entry with env {ANTHROPIC_BASE_URL, MODEL}; asserts both NAME=value pairs appear in the launch command."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "teardown runs the configured shell command"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_teardown_cmd"
+reason = "An entry with teardown 'touch <marker>'; asserts adapter.teardown is not None and the marker exists after it runs."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "mcp config writes the generic .mcp.json"
+test = "packages/studyloop/tests/test_adapter_custom.py::TestCustomAgentFromConfig::test_mcp_generic"
+reason = "An entry with mcp {format: generic}; asserts adapter.mcp_setup is not None and .mcp.json exists in the session dir after it runs."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "Two detected agents, the priority-first one is the default"
+test = "packages/studyloop/tests/test_adapter_registry.py::TestRegistry::test_get_default_agent_returns_first_available"
+reason = "Registry {alpha, beta}, shutil.which resolves, priority [alpha, beta]; asserts get_default_agent() == 'alpha'."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "No detected agent, the default is None"
+test = "packages/studyloop/tests/test_adapter_registry.py::TestRegistry::test_get_default_agent_returns_none_when_empty"
+reason = "Empty registry, shutil.which returns None; asserts get_default_agent() is None."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The Claude adapter's setup writes the persona to a temp file"
+test = "packages/studyloop/tests/test_adapter_builtins.py::TestBuiltinAdapters::test_cli_flag_setup_creates_temp_file[claude]"
+reason = "Imports studyloop.adapters.claude and asserts ADAPTER.setup() returns an existing path containing the content — the cli-flag strategy for Claude. The ollama/lmstudio half of the sentence has no test (grep '_local_llm|adapters.ollama|adapters.lmstudio|lmstudio' packages/studyloop/tests: no adapter test); their own SHALL ('SHALL use cli_flag_setup') is stated by the Local-LLM requirement."
+
+[[restates-shall]]
+spec = "agent-adapters"
+heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
+ordinal = 2
+scenario = "Local-LLM defaults when nothing is configured"
+restates = "Config (base URL, model) SHALL be read from `AgentsConfig.ollama` / `AgentsConfig.lmstudio` with defaults `http://localhost:4000` / `http://localhost:1234` and model `qwen3-coder`."
+searched_tests = "grep -rn '_local_llm|adapters.ollama|adapters.lmstudio|AgentsConfig.ollama|AgentsConfig.lmstudio|qwen3-coder|localhost:1234' packages/studyloop/tests: no adapter test (test_adapter_custom.py uses localhost:4000 only as a custom env value; test_extractor_product_boundary.py names the modules without exercising them). collected-nodeids: no test_adapter_builtins parametrisation for ollama/lmstudio. The base scenario 'Ollama adapter launch with default config' asserts the ollama defaults in the launch command but stays with the SHALL fragment (its only scenario)."
+reason = "Scaffolding scenario; every literal it uses (`ollama`, `lmstudio`, the two URLs, `qwen3-coder`, `AgentsConfig.*`) is in the body."
+
+[[restates-shall]]
+spec = "agent-adapters"
+heading = "Local-LLM adapters reuse Claude Code as the frontend with env-var tier-pinning"
+ordinal = 3
+scenario = "Local-LLM detection looks up ollama and lms, not claude"
+restates = "Detection SHALL use each adapter's own `binary` — `ollama` and `lms` respectively — not the `claude` binary they launch."
+searched_tests = "grep -rn 'lms\\b|adapters.ollama|adapters.lmstudio|_local_llm' packages/studyloop/tests: no hit; test_adapter_registry.py's detection tests use fake adapters, none probes the ollama/lmstudio binaries. No test proves the detection binary."
+reason = "Scaffolding scenario; literals used (`ollama`, `lms`, `claude`) are in the body; the WHEN names detection in plain words so no `detect_agents()` literal is introduced."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "A platform is detected by its binary or by its home directory"
+test = "packages/studyloop/tests/test_installers_pi_omp.py::test_pi_detection_accepts_binary_or_home"
+reason = "Three probes of installers.detect_available_agent_tools(): shutil.which resolves 'pi' -> detected; nothing -> not detected; only ~/.pi present -> detected. Proves the dirs-or-which mechanism the body states, through the pi harness (no test enumerates ~/.kiro, ~/.claude, ~/.gemini specifically; grep 'detect_available_agent_tools' packages/studyloop/tests: pi here, grok in test_harness_export.py, the rest patch it)."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The --tool choices are exactly the installer's choices"
+test = "packages/studyloop/tests/test_cli_install.py::TestInstallAgents::test_install_agents_click_choices_match_installer_choices"
+reason = "Finds the single 'tools' param of the install_agents click command, asserts it is a click.Choice and that its choices equal installers._AGENT_CHOICES."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The installer's choices are the release harnesses"
+test = "packages/studyloop/tests/test_installers_pi_omp.py::test_agent_choices_match_release_harnesses"
+reason = "Asserts installers._AGENT_CHOICES == harnesses.RELEASE_HARNESSES."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "--tool codex dispatches to the installer with that tool"
+test = "packages/studyloop/tests/test_cli_install.py::TestInstallAgents::test_install_agents_dispatches"
+reason = "CliRunner invokes 'install agents --repo-root <tmp> --tool codex'; asserts exit 0 and install_agent_definitions called once with tools=['codex'], uninstall=False."
+
+[[test-sourced]]
+spec = "agent-adapters"
+scenario = "The Kiro architect lists @session-db in tools and grants only studyloop tools"
+test = "packages/studyloop/tests/test_install_agent_contracts.py::test_kiro_architect_carries_the_studyloop_server_and_exactly_the_plan_tools"
+reason = "Asserts mcpServers['session-db']['command'] == 'session-db-mcp', {'@builtin', '@studyloop', '@session-db'} <= tools (the 'visible' half), and that the @studyloop grants equal exactly the ten plan tools. It does NOT assert the absence of @session-db grants (the 'not trusted' half); agents/kiro/study-plan-architect.json carries none today (read 2026-10-24). Same nodeid as 'Kiro architect grants exactly the ten plan tools', declared separately so each scenario carries its own source."
 
 [[split-sentence]]
 spec = "agent-adapters"
