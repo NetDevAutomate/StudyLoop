@@ -106,3 +106,207 @@ heading = "Study-plan check: the provenance sentence never claims hand edit or n
 scenario = "A husk created after the gate date is not accused of a hand edit"
 test = "packages/studyloop/tests/test_cli_doctor.py::TestStudyPlansCheck::test_doctor_names_each_active_but_unready_plan_with_its_blockers"
 reason = "Same test: asserts 'hand edit' not in the post-gate husk's message and 'cannot tell how it got that way' is."
+
+# ---------------------------------------------------------------------------------------------
+# cli-surface
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "cli-surface"
+heading = "Two workspace packages install distinct console_scripts entry points"
+ordinal = 3
+text = "The two packages are independent installables joined by a `uv` workspace; the `sessions` optional extra on `studyloop` declares `agent-session-tools` as a workspace dependency so a single `uv tool install studyloop[sessions]` pulls both."
+scenario = "The uv workspace joins the two packages through the sessions extra"
+reason = "Keyword-less rationale for how the two packages install together; the two SHALL sentences (one per package) stay under the original heading (469). Content not corrected: test_extras_contract.py says the sessions extra is no longer advertised - a MODIFIED delta for another change, noted in the lane log."
+
+[[moved-body-text]]
+spec = "cli-surface"
+heading = "Shared output uses a Rich console singleton and click.echo for JSON"
+ordinal = 3
+text = "Commands offering `--json` include: `now`, `recap today`, `doctor`, `self-test`, `update`, `chat-note`, `practice verify`, `progress`, and several `content` subcommands (`discover`, `ingest`, `import-review`)."
+scenario = "Commands that offer --json"
+reason = "Non-normative inventory ('include:'); the three SHALL sentences stay together under the original heading (326)."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The CLI maps every seam refusal through one shared mapping and exit 1"
+ordinal = 1
+new = [
+  "Every `studyloop plan` command that reads or writes through `PlanApplication` SHALL catch `PlanError` and map it in one place (`_fail_for`): `PlanNotFound` → `No study plan with id '<id>'. Try: studyloop plan list`; `PlanNotReady` → `Cannot activate '<id>' — the plan is incomplete.` followed by the blockers and nudges (several lines — this is the one mapping that prints more than one).",
+  "`_fail_for` SHALL map `PlanConflict` → `A study plan with id '<id>' already exists. Choose another id.`; `InvalidPlanId` → `Invalid plan id '<id>': <reason>`; `InvalidField` → `Invalid value: <reason>`; `InvalidMilestone` → `No such milestone on '<id>': <reason>`, where `<reason>` is the seam's own text (`No milestone at index <i> (plan has <n>)`).",
+]
+added_tokens = ["`_fail_for`", "SHALL", "map", "."]
+reason = "717-char single-SHALL sentence whose six mappings are a semicolon list after a colon. Sentence 2 repeats the subject `_fail_for` (named in the source) with SHALL and the source's own verb 'map' - the one addition outside the closed list (a second grammatical sentence needs a predicate; the source has one). Mapping order unchanged; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+ordinal = 4
+new = [
+  "`studyloop plan repair <id>` SHALL be the architect launch and never a second path: it SHALL `_inspect(id)` (unknown id → the seam's not-found through `_fail_for`, exit `1`), SHALL exit `0` with `Nothing to repair on '<id>'` and no launch for a ready plan.",
+  "It SHALL exit `0` with no launch and a pointer to `studyloop plan architect` for a plan that is not active (a draft or a paused plan is unready by nature, not a husk), and for a husk SHALL `ctx.invoke(study, …, mode=\"plan-architect\", topic=<the plan's title>, brief=…, brief_intro=…)`.",
+]
+added_tokens = ["It", "."]
+reason = "539-char sentence with four SHALL clauses; split at the third SHALL. Only the subject 'It' and a full stop are added; one ',' dropped; clause order unchanged."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+ordinal = 6
+new = [
+  "The brief's first section SHALL be `### Repair: what this plan is missing` listing exactly `readiness.blockers` as `- ` lines and nothing else, followed by the plan as it stands (title, id, status, topics, milestones done/total, created) and one provenance sentence: `creation stamp predates the readiness gate` (and `cannot tell when it became incomplete`) only when `created` parses as a date before `READINESS_GATE_DATE`; otherwise `cannot tell how it got that way`.",
+  "The provenance sentence SHALL never `never judged` (council review 6 F4).",
+]
+added_tokens = ["The", "provenance", "sentence", "SHALL", "."]
+reason = "513-char single-SHALL sentence. The trailing 'never `never judged`' clause becomes its own sentence with only the repeated subject noun phrase 'the provenance sentence' and SHALL added (elliptical like the source); both 'never' tokens stay with `never judged`; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 2
+new = [
+  "It SHALL `_inspect(id)` (unknown id → the seam's not-found through `_fail_for`, exit `1`).",
+  "It SHALL exit `1` with `'<id>' still has N open milestone(s)` and no launch while any milestone is open; SHALL exit `1` with a pointer to `studyloop plan architect` for a plan with no milestones; SHALL exit `0` with no launch for a plan that is already `complete`; and for a fully-checked plan of any other status SHALL run the end assessment as a **preview** (`AssessPlan(phase=\"end\", record=False)`) and launch once.",
+]
+added_tokens = ["It", "."]
+reason = "506-char sentence with five SHALL clauses; split after the first so the inspect clause can join the launch-chain sentence under the original heading. Only 'It' and a full stop added; one ';' dropped."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 3
+new = [
+  "A fully-checked `draft`, `paused` or `abandoned` plan is reviewed like an active one (owner decision 2026-09-18, council review 6 open item 2): the learner may close it or delete it, and the architect asks which — the brief's closing section SHALL end with a `Status: <status> — not active; ask the learner whether to close it (…) or delete it (…)` line naming both doors, `set_study_plan_status(plan_id, \"complete\")` and `delete_study_plan(plan_id, confirmed=True)`.",
+  "the status line SHALL name the status.",
+]
+added_tokens = ["."]
+reason = "510-char sentence with two SHALL clauses; split at the second ('and the status line SHALL name the status'). Only a full stop added; one ',' and one 'and' dropped. The sentence keeps the source's lowercase 'the': the checker's token model is case-sensitive, so capitalising it registers as a lost 'the' (split-sentence-token-drift). Cosmetic; pass 10 may capitalise."
+
+[[list-split]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+fragments = "'Plan close — the brief opens with the closing review's four count lines and its evidence' carries the 'first four lines ... followed by evidence lines' part; 'Plan close — the review is the now engine's CompletionReview, then the status line, then the plan one value per line' carries the 'then the Status: line, then the plan as it stands' part, in document order."
+reason = "order-marker-split fired on 'first four `- ` lines ... then, for a non-active plan ... then the plan' inside the 788-char sentence - a content-order description of the brief, not a numbered rule list. Declared so the drift report records that the two fission fragments keep the source order (first lines, then status line, then plan)."
+
+[[split-sentence]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+ordinal = 5
+new = [
+  "The brief's first section SHALL be `### Closing review`, whose first four `- ` lines are `Due reviews on plan concepts: N`, `Struggles on plan concepts: N`, `Unverified milestones: N` and `Proposal: extend|close` — or `Proposal: unassessed — the review is partial` when a reader was unavailable (council review 6 F1) — followed by one `- ` evidence line per counted item and one `Not read: …` line per unavailable reader.",
+  "The brief's first section SHALL be the same `CompletionReview` the `now` engine puts on its completion action, so the two never disagree on a count (new-topic rows excluded) — then, for a non-active plan, the `Status:` line above, then the plan as it stands (title, id, status, topics, milestones done/total, created), every learner-authored value one line (`planning.one_line`, council review 6 F2).",
+]
+added_tokens = ["The", "brief's", "first", "section", "SHALL", "be", "."]
+reason = "788-char single-SHALL sentence (one copula). Sentence 2 repeats the subject noun phrase 'The brief's first section' with SHALL and the source's own copula 'be' - the one addition outside the closed list (the dash-chained content description has no second verb). Nothing dropped; 'never' stays with 'disagree'."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Optional extras gate command bodies, not command registration"
+scenario = "A bare install with no extras still imports the CLI"
+test = "packages/studyloop/tests/test_wheel_extras_smoke.py::test_bare_wheel_with_no_extras_still_works"
+reason = "Both base scenarios exercise the missing-extra behaviour sentence (now its own fragment); this test proves commands register and the CLI imports with no extra installed."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The CLI maps every seam refusal through one shared mapping and exit 1"
+scenario = "A PlanNotReady refusal on create prints the seam's own text"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_new_refusal_text_comes_from_the_seam_exception"
+reason = "The base scenario 'Each refusal has its own line' names four of the second fission sentence's mappings and re-homes there; this test proves the first sentence's PlanNotReady mapping through _fail_for."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Refusal mapping — an already-active PlanNotReady adds the pause-or-repair line"
+scenario = "evaluate --record on an active-but-unready plan is refused with the repair hint"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_evaluate_record_on_unready_active_plan_is_refused_with_a_repair_hint"
+reason = "No base scenario exercises the already_active line."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Every plan command reads and writes through the seam"
+scenario = "The architecture guard scans the CLI adapter"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_adapters_import_plans_only_through_the_seam"
+reason = "Both base scenarios exercise plan new (now its own fragment); the body itself names this guard as its proof."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan seam — interview, reindex and the other plan readers go through the seam"
+scenario = "plan interview is prepare_planning with the unchanged payload"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_interview_is_prepare_planning"
+reason = "No base scenario covers interview/reindex/other readers."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Recorded checkpoints report a complete, partial or absent recording"
+scenario = "Both sinks save"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_evaluate_is_an_assessment_and_reports_a_complete_recording"
+reason = "Both base scenarios exercise the failed-sink sentence (now its own fragment); this test proves 'Checkpoint recorded.' when every sink saved."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Learning records are one revision through the seam"
+scenario = "Each record command applies one RevisePlan carrying the record"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_record_is_revise_plan_with_a_learning_record"
+reason = "The two base scenarios exercise the created-outcome and retry sentences (now their own fragments)."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The plan CLI discovers husks and repairs them through the one launch chain"
+scenario = "A husk is visible in plan list before any write trips over it"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_list_marks_husks"
+reason = "The lead sentence ('the CLI SHALL let the learner find one') cannot join the plan-list sentence (504 > 500); the plan-list test is the proof that a husk is findable."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — a non-active plan gets a pointer, a husk gets one study launch with brief keywords"
+scenario = "plan repair on an unready draft points at the architect without launching"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_nonactive_unready_is_noop_with_pointer"
+reason = "The base launch scenario re-homes to the brief-content fragment; this test proves the not-active pointer clause."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the brief_intro says PLAN REPAIR and the default intro keeps the planning sentence"
+scenario = "The repair intro asks only for what is missing"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing"
+reason = "Asserts PLAN REPAIR / ask the learner only for what is missing / not build a study plan on the captured intro."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the command itself writes nothing"
+scenario = "plan repair leaves the documents and the checkpoint log untouched"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing"
+reason = "Same test: asserts the documents are byte-identical and checkpoint_history('husk') is empty after the command."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Husk repair — the refusal a husk write meets names both exits"
+scenario = "A write refused on a husk names pause and repair"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_husk_refusal_names_both_pause_and_repair"
+reason = "The base scenario naming both exits re-homes to the repair-launch fragment (two of its three clauses); this test is the direct proof."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "The plan CLI closes a fully-checked plan through the one launch chain, consensually"
+scenario = "plan close on an unknown id is the seam's not-found"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_unknown_id_is_the_seams_not_found"
+reason = "The three base scenarios exercise the refusal, non-active and review fragments; the inspect clause joined the heading fragment and this test proves it."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the status line names the status and the command itself writes nothing"
+scenario = "plan close on a paused plan names paused and leaves it paused"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_on_a_checked_non_active_plan_launches_and_names_both_doors[paused]"
+reason = "Asserts the status appears in the output, one launch, documents unchanged and status still paused."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the review is the now engine's CompletionReview, then the status line, then the plan one value per line"
+scenario = "Multi-line learner values are rendered one line each in both briefs"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_repair_and_closing_briefs_contain_multiline_plan_fields"
+reason = "Proves the planning.one_line clause of the second fission sentence; the four-count-lines base scenario re-homes to the first."
+
+[[test-sourced]]
+spec = "cli-surface"
+heading = "Plan close — the brief_intro says CLOSING REVIEW and only when the learner agrees"
+scenario = "The closing intro asks for consent and does not restart planning"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_launches_the_architect_with_the_assessment_in_the_brief"
+reason = "Asserts CLOSING REVIEW / only when the learner agrees / not build a study plan on the captured intro."
