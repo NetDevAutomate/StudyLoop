@@ -1,7 +1,9 @@
 # Split exceptions — lane D (agent-adapters, live-session-orchestration, body-double-session).
-# Plan 7 (reviews/2026-10-21-full-repo-review/REMEDIATION-PLAN-7.md; ARBITRATION-pass9.md §3, §8.2).
+# Plan 7 (reviews/2026-10-21-full-repo-review/REMEDIATION-PLAN-7.md; ARBITRATION-pass9.md §3, §8.2, §9).
 # Every entry is consumed exactly once by scripts/check-openspec-split.py; the coordinator merges the
 # five lane files (keys never collide because `spec` differs).
+# Rework 2026-10-24 (ruling L5): the 14 moved-body-text entries that carried behaviour sentences are
+# now [[modalise]] entries; the two that remain are a parenthetical note (class stated in the reason).
 
 # ---------------------------------------------------------------------------------------------
 # body-double-session
@@ -21,7 +23,7 @@ heading = "Body Double has its own start picker"
 ordinal = 4
 scenario = "As-shipped picker markup"
 text = "(As shipped, the picker uses the Body Double view's own `bd-`-prefixed markup — `#bd-activity-input`, `#bd-agent-select`, `#bd-transport-select`, `#bd-start-session` — sharing `.picker-select` / `.picker-hint` / `.picker-error` atoms with the Study picker rather than the full `.session-start-picker` block originally proposed."
-reason = "Non-normative as-shipped implementation note (no SHALL, not a governed list item). It illustrates that the picker is Body Double's own markup rather than the Study picker's `.session-start-picker` block, so it hosts the fragment stating the study-target cascade and session-type selector are not rendered."
+reason = "Class (rule 4, rework): PARENTHETICAL NOTE — the whole two-sentence unit is wrapped in parentheses and opens 'As shipped, …', recording what the implementation turned out to be against what was 'originally proposed'; it illustrates the SHALL NOT fragment (the picker is Body Double's own markup, not the Study picker's `.session-start-picker` block) rather than telling the implementer what to build. Stays moved-body-text (coordinator's reading agrees). No SHALL, not a governed list item."
 
 [[moved-body-text]]
 spec = "body-double-session"
@@ -29,7 +31,7 @@ heading = "Body Double has its own start picker"
 ordinal = 5
 scenario = "As-shipped picker markup"
 text = "The `ttyd` transport option was removed by ADR-0008 before this spec was synced.)"
-reason = "Second sentence of the same parenthetical as-shipped note; travels with it into the same scenario."
+reason = "Class: PARENTHETICAL NOTE — the closing sentence of the same parenthesis, a history note (an option removed by an ADR before the spec was synced), not behaviour. Travels with the first sentence into the same scenario. Stays moved-body-text."
 
 [[restates-shall]]
 spec = "body-double-session"
