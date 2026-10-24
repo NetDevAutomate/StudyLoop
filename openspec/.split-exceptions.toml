@@ -1,0 +1,23 @@
+# Split exceptions — lane E (plan 7): the module-contract-v1 deltas and e2e-representative-journey.
+# Read by scripts/check-openspec-split.py. Every entry is consumed exactly once; `spec` is the
+# capability id for a living spec or `changes/module-contract-v1/<capability>` for a delta.
+# Lane E rule (ARBITRATION-pass9 §8.2 R6): no `restates-shall` in the deltas — a fragment with no
+# scenario gets one from a test (`test-sourced`) or from moved non-normative prose only.
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/content-generation
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/content-generation"
+heading = "PracticeDeck `timeoutSeconds` is per phase and `solution` is not coupled to `scaffolding`"
+scenario = "a task's timeout bounds each phase on its own"
+test = "packages/studyloop/tests/test_module_runner.py::test_runner_timeout_is_error_and_child_is_terminated"
+reason = "Fragment holds the schema's per-phase `timeoutSeconds` SHALL; the runner test's docstring states `timeoutSeconds` applies per phase and asserts a 1 s check phase is stopped on its own timeout as an error. No schema-level test exercises the per-phase application (searched test_module_schema.py, test_content_schemas.py for timeoutSeconds: only parse/round-trip assertions)."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/content-generation"
+heading = "PracticeDeck `timeoutSeconds` is per phase and `solution` is not coupled to `scaffolding`"
+scenario = "a solution without a scaffolding level is accepted by the schema"
+test = "packages/studyloop/tests/test_module_schema.py::test_solution_without_scaffolding_is_accepted_by_the_schema"
+reason = "Fragment holds the SHALL NOT couple `solution` to `scaffolding`; the test validates a task with `solution` and no `scaffolding` and asserts acceptance, naming MC010 as the owner of the coupling."
