@@ -272,7 +272,7 @@ heading = "record_plan_learning writes through the plan seam"
 ordinal = 5
 text = '''The six read/write plan tools are the requirement "Study-plan discovery and authoring tools"; the three progression tools (`set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and deletion tools".'''
 scenario = "Where the nine plan tools and the inventory pin are specified"
-reason = "A pointer to two other requirement headings (no SHALL). Together with #6 it has no modal to stand on, and #4 (the success-shape sentence) plus this one plus the second refusal sentence exceed 500. Both headings it names survive verbatim on their keeper fragments. Conserved verbatim in a pointer scenario."
+reason = "Class: pointer (cross-reference to two other requirement headings; no SHALL, states no behaviour). Together with #6 it has no modal to stand on, and #4 (the success-shape sentence) plus this one plus the second refusal sentence exceed 500. Both headings it names survive verbatim on their keeper fragments. Conserved verbatim in a pointer scenario."
 
 [[moved-body-text]]
 spec = "mcp-server"
@@ -280,10 +280,123 @@ heading = "record_plan_learning writes through the plan seam"
 ordinal = 6
 text = '''The stdio smoke test pins the exact production inventory (32 unique names), the nine plan tools and the core names.'''
 scenario = "Where the nine plan tools and the inventory pin are specified"
-reason = "Test-scope note (no SHALL) restating the inventory pin that 'Study-plan progression and deletion tools' states normatively; same pointer scenario."
+reason = "Class: test-coverage note (no SHALL) restating the inventory pin that 'Study-plan progression and deletion tools' states normatively; same pointer scenario."
+
+# -- Study-plan discovery and authoring tools (3031) -> 13 fragments (rework; rulings L6-L8)
+
+[[context-restated]]
+spec = "mcp-server"
+heading = "Study-plan discovery and authoring tools"
+ordinal = 1
+old = '''`register_tools(mcp)` SHALL register six study-plan tools in the production inventory, each a thin adapter that makes exactly one `studyloop.planning.PlanApplication` call and imports no storage, index, authoring or evaluation module (D-6):'''
+new = '''`register_tools(mcp)` SHALL register this tool in the production inventory as a thin adapter that makes exactly one `PlanApplication` call and imports no storage, index, authoring or evaluation module (D-6):'''
+reason = "Ruling L8: the verbatim 240-char lead-in does not fit beside `update_study_plan`'s 256-char row (528 > 500), so one restated lead-in (207 chars) is carried by every one of the six per-tool fragments (the checker consumes this entry only when the verbatim lead-in is absent from the head, so no fragment keeps the verbatim form). Kept: the SHALL, 'production inventory', 'thin adapter', 'exactly one PlanApplication call', the four forbidden module kinds and (D-6). Changed: 'six study-plan tools … each' -> 'this tool … as' (one row per fragment); the module path `studyloop.planning.` dropped from the class name (the seam is named `PlanApplication` throughout this file)."
+
+[[split-sentence]]
+spec = "mcp-server"
+heading = "Study-plan discovery and authoring tools"
+ordinal = 16
+new = [
+  '''Every seam refusal SHALL be one `ToolError` whose message is `<kind>: <the seam's message>`, where `kind` is machine-readable: `PlanNotFound` → `not_found`, `InvalidPlanId` → `invalid_id`, `PlanConflict` → `conflict`, `InvalidField` → `invalid`, `PlanNotReady` → `not_ready`, `InvalidMilestone` → `invalid_milestone`, and `plan_error` for any `PlanError` subclass this mapping has not met.''',
+  '''`PlanNotReady` → `not_ready` SHALL be rendered `not_ready: plan is not ready to activate: <blocker>; <blocker>…` (with the suffix `— the plan is already active; pause it or repair the blockers before writing` when the plan was already active).''',
+]
+added_tokens = ["`PlanNotReady`", "`not_ready`", "SHALL", "be", "."]
+reason = "595-char sentence: the kind table plus a 190-char parenthetical on the `not_ready` rendering. Fission at the parenthetical: the first sentence keeps the whole kind list (so its fragment names every kind), the second repeats the list entry `PlanNotReady` → `not_ready` as its subject (a noun phrase of the old sentence, as RULING CORRECTION 1 / ruling L9 allow) with the modal and the old sentence's own verb `be` ('SHALL be one ToolError'); the parentheses move to wrap the suffix clause so no bracket token is lost. One ',' dropped, one full stop added."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "get_study_plan is one inspect call carrying its options"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_get_study_plan_delegates_to_inspect_with_its_options"
+reason = "Per-tool row fragment (`get_study_plan`); the delegation test asserts one inspect call with the given options and the PlanDetail payload."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "get_planning_interview is one prepare_planning call"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_get_planning_interview_delegates_to_prepare_planning"
+reason = "Per-tool row fragment (`get_planning_interview`); the test asserts one argument-less prepare_planning call and the PlanningBrief keys."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "create_study_plan is one CreatePlan with overwrite False"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_create_study_plan_applies_one_create_plan_without_overwrite"
+reason = "Per-tool row fragment (`create_study_plan`); the test asserts one apply with a CreatePlan whose overwrite is False (D-4). The existing scenario 'No overwrite through the MCP door' is homed under the schema fragment it proves."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "update_study_plan is one RevisePlan carrying the explicit fields"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_update_study_plan_applies_one_revise_plan_with_explicit_fields"
+reason = "Per-tool row fragment (`update_study_plan`); the test asserts one apply with a RevisePlan carrying exactly the explicit fields."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "set_study_plan_status is one TransitionLifecycle"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_set_study_plan_status_applies_one_transition"
+reason = "Per-tool row fragment (`set_study_plan_status`); the test asserts one apply with TransitionLifecycle(plan_id, status) and the PlanDetail payload. The existing 'A retried status transition is not refused' is homed under the no-plan-policy fragment (the adapter adds no already-paused check)."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The update schema has no learning_record property"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_no_learning_record_on_update_study_plan"
+reason = "The `update_study_plan` SHALL NOT expose `learning_record` sentence stands alone (its neighbours are about create_study_plan's schema); the test reads the registered schema's properties."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "An already-active plan's not_ready refusal says pause or repair"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_not_ready_on_an_already_active_plan_says_pause_or_repair"
+reason = "The second fission piece (the `not_ready` rendering with the already-active suffix) plus the chained-cause SHALL; the test raises PlanNotReady(already_active=True) through update_study_plan and matches `^not_ready: .*already active.*pause`. 'Every refusal is one prefixed ToolError' stays with the kind table."
+
+# -- Study-plan progression and deletion tools (3680) -> 11 fragments (rework; rulings L6-L8)
+
+[[context-restated]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+ordinal = 1
+old = '''`register_tools(mcp)` SHALL register three further study-plan tools in the production inventory — completing the nine plan lifecycle tools — each a thin adapter that makes exactly one `studyloop.planning.PlanApplication` call, imports no storage, index, authoring or evaluation module (D-6), and maps every seam refusal through the same `<kind>: <message>` `ToolError` mapping as the six above (the domain error chained as `__cause__` — an in-process requirement on the adapter, checked by the delegation tests; the stdio transport carries the prefixed refusal text only, since JSON-RPC does not serialise an exception chain):'''
+new = '''`register_tools(mcp)` SHALL register this tool in the production inventory as a thin adapter that makes exactly one `PlanApplication` call, imports no storage, index, authoring or evaluation module (D-6), and maps every seam refusal through the `<kind>: <message>` `ToolError` mapping of the six above:'''
+reason = "Ruling L8: the verbatim lead-in is 626 chars on its own, so no fragment can carry it; the restated one (301 chars) is carried by every one of the three per-tool fragments (the longest row, `delete_study_plan` at 164, gives 497). Kept: the SHALL, 'production inventory', 'thin adapter', 'exactly one PlanApplication call', the four forbidden module kinds, (D-6) and the 'same mapping as the six above' obligation. Changed: 'three further study-plan tools … each' -> 'this tool … as'; the module path dropped as in the discovery entry; 'the same … mapping as the six above' -> 'the … mapping of the six above' (6 chars, needed for the delete row). Dropped from the lead-in: the aside '— completing the nine plan lifecycle tools —' (the count is pinned normatively by the inventory sentence of this requirement and its scenario) and the explanatory parenthetical on `__cause__` (the chaining SHALL is 'The `ToolError` SHALL chain the domain error as its cause' in the discovery requirement, which 'the mapping of the six above' imports; the explanation itself is conserved verbatim in the scenario 'Why the exception chain is checked in-process' — see the moved-body-text entry)."
+
+[[moved-body-text]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+text = '''the domain error chained as `__cause__` — an in-process requirement on the adapter, checked by the delegation tests; the stdio transport carries the prefixed refusal text only, since JSON-RPC does not serialise an exception chain'''
+scenario = "Why the exception chain is checked in-process"
+reason = "Class: rationale / test-coverage note. This is the parenthetical of unit #1 (the lead-in restated above, so it has no ordinal of its own and the checker consumes this entry through the scenario, not the lost-unit path): it explains WHERE the `__cause__` chain is asserted and WHY the stdio transport cannot show it; the chaining obligation itself lives in the discovery requirement's 'The `ToolError` SHALL chain the domain error as its cause' and in the two 'Every refusal …' scenarios. Conserved verbatim as a scenario on the fragment that keeps the original heading."
+
+[[modalise]]
+spec = "mcp-server"
+heading = "Study-plan progression and deletion tools"
+ordinal = 8
+old = '''An index the plan does not have (past the end or negative) is the seam's `InvalidMilestone`, rendered `invalid_milestone: …`; a set on an active-but-unready document is the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already active; pause it or repair the blockers before writing`, and nothing is written in either case.'''
+new = '''An index the plan does not have (past the end or negative) SHALL be the seam's `InvalidMilestone`, rendered `invalid_milestone: …`; a set on an active-but-unready document is the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already active; pause it or repair the blockers before writing`, and nothing is written in either case.'''
+verb = ["is", "be"]
+reason = "Ruling L5: states system behaviour (which refusal each bad set yields and that nothing is written) and cannot share a fragment with its SHALL sibling (#7 + #8 = 614). One modal added on the first clause, `is` -> `be`; the semicolon-joined second clause and the 'nothing is written' close are unchanged. Proven by the existing scenario 'Milestone set on an active-but-unready document is refused', re-homed under it."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "evaluate_study_plan is one assess call and never an apply"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_evaluate_study_plan_calls_assess_never_apply"
+reason = "Per-tool row fragment (`evaluate_study_plan` -> assess(AssessPlan(...)) -> AssessmentResult); the test asserts one assess call, zero apply calls and the AssessmentResult payload with its sink fields."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "delete_study_plan is one DeletePlan with confirmed forwarded"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_delete_study_plan_applies_one_delete_plan_with_confirmed_forwarded"
+reason = "Per-tool row fragment (`delete_study_plan`); the test asserts one apply with DeletePlan(plan_id, confirmed=True) and the DeleteResult payload."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "done=false is forwarded as a set, not computed as a toggle"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_set_study_plan_milestone_forwards_done_false_as_a_set_not_a_toggle"
+reason = "The set-not-toggle SHALL (#7) lost its scenario to the row fragment that keeps the original heading ('A retried milestone set is a no-op', cited by test_mcp_plan_tools.py:1292 with that heading); this test asserts SetMilestone(done=False) forwarded as given with no preliminary inspect."
+
+[[test-sourced]]
+spec = "mcp-server"
+scenario = "The default call is a preview"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_evaluate_study_plan_default_is_a_preview"
+reason = "The `evaluate_study_plan` SHALL call assess / SHALL default record to False / SHALL NOT expose append_to_plan sentence (#9) cannot join the response sentence (#9 + #10 = 513); the test asserts record=False, study_id='' and the seam's own append_to_plan=True on the AssessPlan."
+
 
 # -- The studyloop-mcp inventory is published where the harness registration is (856) -> 3 fragments
-
 [[reference-expansion]]
 spec = "mcp-server"
 heading = "The studyloop-mcp inventory is published where the harness registration is"
@@ -317,18 +430,19 @@ new = [
 added_tokens = ["`update_study_plan`", ":", "."]
 reason = "534-char sentence with two SHALL clauses joined by ', and'. Split there; the second sentence is prefixed with the repeated subject `update_study_plan` and a colon (a capitalised 'An' would change a token), one ',' and one 'and' dropped, one full stop added."
 
-[[moved-body-text]]
+[[modalise]]
 spec = "mcp-server"
 heading = "update_study_plan revises the mission through the one gate"
 ordinal = 3
-text = '''The resulting document is judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
-scenario = "Judged by the one gate like every other field"
-reason = "Keyword-less restatement of the seam's readiness gate ('exactly as for every other field'; the gate itself is active-learning-decisions' requirement). The two fission pieces cannot share a fragment (551), the second piece plus the seam sentence is 305, and adding this sentence exceeds 500; it has no modal to stand on. Its behaviour is already the existing scenario 'Partial mission repair on a husk is refused; the whole repair lands once', homed in the same fragment."
+old = '''The resulting document is judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
+new = '''The resulting document SHALL be judged by the single readiness gate exactly as for every other field: on an active plan a write that leaves any blocker standing is `not_ready: …` and nothing is saved; a write that clears every blocker in one call is saved once.'''
+verb = ["is", "be"]
+reason = "Rework (ruling L5): states system behaviour (the gate judges the resulting document; nothing is saved while a blocker stands) — a requirement without the keyword, so `modalise`, not a scenario. One modal added, `is` → `be`. It cannot share a fragment with either fission piece (U2 + #2 + this = 561), so it is its own fragment; the existing scenario 'Partial mission repair on a husk is refused; the whole repair lands once' is its proof and is re-homed under it."
 
 [[moved-body-text]]
 spec = "mcp-server"
 heading = "update_study_plan revises the mission through the one gate"
 ordinal = 4
 text = '''With this, every blocker `readiness()` can name — mission `why`, success criteria, milestones — is repairable with the tool the architect already holds, so `plan repair` is a repair rather than dictation.'''
-scenario = "Judged by the one gate like every other field"
-reason = "Rationale (no SHALL) that follows the gate restatement; same scenario, verbatim."
+scenario = "Why plan repair is a repair rather than dictation"
+reason = "Class: rationale (why exposing the mission fields matters; no SHALL, tells the implementer nothing to do). Follows the gate sentence in the base and is homed as a scenario on the gate fragment, verbatim."

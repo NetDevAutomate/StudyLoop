@@ -228,49 +228,13 @@ success shape is unchanged by the fold.
   unique names), the nine plan tools and the core names
 
 ### Requirement: Study-plan discovery and authoring tools
-`register_tools(mcp)` SHALL register six study-plan tools in the production
-inventory, each a thin adapter that makes exactly one
-`studyloop.planning.PlanApplication` call and imports no storage, index,
-authoring or evaluation module (D-6):
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
 
 | Tool | Seam call |
 |---|---|
 | `list_study_plans(status=None)` | `browse(status=)` → `{"plans": [PlanSummary.to_json_dict()…], "count": N}` |
-| `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | `inspect(...)` → `PlanDetail.to_json_dict()` (the `GET /api/plans/{id}` body) |
-| `get_planning_interview()` | `prepare_planning()` → `PlanningBrief.to_json_dict()` (`questions`, `seed`, `existing_plans`) |
-| `create_study_plan(title, answers, plan_id=None, status="draft")` | `apply(CreatePlan(...))` with `overwrite` always `False` → `PlanDetail.to_json_dict()` |
-| `update_study_plan(plan_id, title=None, topics=None, target_date=None, energy_floor=None, review_cadence_days=None, notes=None, milestones=None, status=None)` | `apply(RevisePlan(...))` — one intent, judged as one document → `PlanDetail.to_json_dict()` |
-| `set_study_plan_status(plan_id, status)` | `apply(TransitionLifecycle(...))` → `PlanDetail.to_json_dict()` |
-
-Every response SHALL be the seam view's `to_json_dict()` built on that call —
-fresh containers, never a cached or shared dict. The adapter SHALL carry no
-plan policy: the readiness gate, the lifecycle status list, the id rules and
-the conflict check are the seam's, and the adapter forwards its arguments
-unchanged (an omitted `update_study_plan` field SHALL reach the seam as `None`,
-"leave as is", never as `""` or `[]`).
-
-The `create_study_plan` schema SHALL NOT expose `overwrite` (D-4); an agent
-cannot replace an existing plan by picking its id, and a taken id is a
-conflict. One argument is normalised rather than forwarded unchanged: an
-empty `plan_id` string is treated as omitted, so the seam allocates the
-unique title slug instead of refusing `""` as a malformed id (council review
-3). `update_study_plan` SHALL NOT expose `learning_record`:
-`record_plan_learning` remains the one record writer (D-9).
-
-`get_study_plan` SHALL refuse a `history_limit` outside `1..200` — the range
-the Web history route accepts — with `invalid: history_limit must be between 1
-and 200, got <n>` **before** calling the seam, so a refused limit performs no
-database query.
-
-Every seam refusal SHALL be one `ToolError` whose message is
-`<kind>: <the seam's message>`, where `kind` is machine-readable:
-`PlanNotFound` → `not_found`, `InvalidPlanId` → `invalid_id`, `PlanConflict` →
-`conflict`, `InvalidField` → `invalid`, `PlanNotReady` → `not_ready` (rendered
-`not_ready: plan is not ready to activate: <blocker>; <blocker>…`, with the
-suffix `— the plan is already active; pause it or repair the blockers before
-writing` when the plan was already active), `InvalidMilestone` →
-`invalid_milestone`, and `plan_error` for any `PlanError` subclass this mapping
-has not met. The `ToolError` SHALL chain the domain error as its cause.
 
 #### Scenario: Discover, inspect, create, revise, activate
 - **WHEN** an agent calls `get_planning_interview()` (no plans exist), then
@@ -288,6 +252,100 @@ has not met. The `ToolError` SHALL chain the domain error as its cause.
   and `list_study_plans(status="active")` counts it while
   `list_study_plans(status="draft")` does not
 
+### Requirement: Study-plan tools — `get_study_plan`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
+
+| Tool | Seam call |
+|---|---|
+| `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | `inspect(...)` → `PlanDetail.to_json_dict()` (the `GET /api/plans/{id}` body) |
+
+#### Scenario: get_study_plan is one inspect call carrying its options
+- **WHEN** `get_study_plan(<id>, include_markdown=True, include_history=True,
+  history_limit=5)` is called
+- **THEN** `PlanApplication.inspect` is called exactly once with those
+  options and the response is its `PlanDetail.to_json_dict()`, `markdown`
+  and `history` included
+
+### Requirement: Study-plan tools — `get_planning_interview`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
+
+| Tool | Seam call |
+|---|---|
+| `get_planning_interview()` | `prepare_planning()` → `PlanningBrief.to_json_dict()` (`questions`, `seed`, `existing_plans`) |
+
+#### Scenario: get_planning_interview is one prepare_planning call
+- **WHEN** `get_planning_interview()` is called
+- **THEN** `PlanApplication.prepare_planning` is called exactly once with no
+  arguments and the response is its `PlanningBrief.to_json_dict()` with
+  exactly the keys `questions`, `seed` and `existing_plans`
+
+### Requirement: Study-plan tools — `create_study_plan`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
+
+| Tool | Seam call |
+|---|---|
+| `create_study_plan(title, answers, plan_id=None, status="draft")` | `apply(CreatePlan(...))` with `overwrite` always `False` → `PlanDetail.to_json_dict()` |
+
+#### Scenario: create_study_plan is one CreatePlan with overwrite False
+- **WHEN** `create_study_plan("Python Decorators", <answers>,
+  plan_id="decorators")` is called
+- **THEN** `PlanApplication.apply` is called exactly once with a `CreatePlan`
+  carrying that title, those answers, that id, status `draft` and
+  `overwrite=False`, and the response is the seam's `PlanDetail.to_json_dict()`
+
+### Requirement: Study-plan tools — `update_study_plan`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
+
+| Tool | Seam call |
+|---|---|
+| `update_study_plan(plan_id, title=None, topics=None, target_date=None, energy_floor=None, review_cadence_days=None, notes=None, milestones=None, status=None)` | `apply(RevisePlan(...))` — one intent, judged as one document → `PlanDetail.to_json_dict()` |
+
+#### Scenario: update_study_plan is one RevisePlan carrying the explicit fields
+- **WHEN** `update_study_plan("decorators", title=…, topics=[…],
+  target_date=…, energy_floor=…)` is called
+- **THEN** `PlanApplication.apply` is called exactly once with a `RevisePlan`
+  carrying exactly those values and the response is the seam's
+  `PlanDetail.to_json_dict()`
+
+### Requirement: Study-plan tools — `set_study_plan_status`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call and imports no
+storage, index, authoring or evaluation module (D-6):
+
+| Tool | Seam call |
+|---|---|
+| `set_study_plan_status(plan_id, status)` | `apply(TransitionLifecycle(...))` → `PlanDetail.to_json_dict()` |
+
+#### Scenario: set_study_plan_status is one TransitionLifecycle
+- **WHEN** `set_study_plan_status("decorators", "active")` is called
+- **THEN** `PlanApplication.apply` is called exactly once with
+  `TransitionLifecycle(plan_id="decorators", status="active")` and the
+  response is the seam's `PlanDetail.to_json_dict()` with status `active`
+
+### Requirement: Study-plan tools — every response is a fresh seam view
+Every response SHALL be the seam view's `to_json_dict()` built on that call —
+fresh containers, never a cached or shared dict.
+
+#### Scenario: Responses are fresh containers
+- **WHEN** a response from any of the six tools is mutated by the caller and
+  the same call is repeated
+- **THEN** the second response is equal to an untouched first response and is
+  not the same object
+
+### Requirement: Study-plan tools — the adapter carries no plan policy
+The adapter SHALL carry no plan policy: the readiness gate, the lifecycle status list, the id rules and
+the conflict check are the seam's, and the adapter forwards its arguments
+unchanged (an omitted `update_study_plan` field SHALL reach the seam as `None`,
+"leave as is", never as `""` or `[]`).
+
 #### Scenario: Refused activation carries the blockers and writes nothing
 - **WHEN** `set_study_plan_status("husk", "active")` — or
   `create_study_plan("Husk", {}, plan_id="husk", status="active")`, or an
@@ -298,11 +356,53 @@ has not met. The `ToolError` SHALL chain the domain error as its cause.
   `readiness` reports, the existing document is byte-identical afterwards
   (still `draft`), and no document is created for the refused create
 
+#### Scenario: A retried status transition is not refused
+- **WHEN** `set_study_plan_status("decorators", "paused")` is called twice
+- **THEN** both calls apply the same `TransitionLifecycle`, both return the
+  plan with status `paused`, and neither raises
+
+### Requirement: Study-plan tools — `create_study_plan` exposes no `overwrite` and treats an empty `plan_id` as omitted
+The `create_study_plan` schema SHALL NOT expose `overwrite` (D-4); an agent
+cannot replace an existing plan by picking its id, and a taken id is a
+conflict. One argument is normalised rather than forwarded unchanged: an
+empty `plan_id` string is treated as omitted, so the seam allocates the
+unique title slug instead of refusing `""` as a malformed id (council review
+3).
+
 #### Scenario: No overwrite through the MCP door
 - **WHEN** `create_study_plan` is called with a `plan_id` that already exists
 - **THEN** a `ToolError` starting `conflict: ` is raised, the existing
   document is byte-identical afterwards, and the tool's input schema has no
   `overwrite` property to ask for otherwise
+
+### Requirement: Study-plan tools — `update_study_plan` exposes no `learning_record`
+`update_study_plan` SHALL NOT expose `learning_record`:
+`record_plan_learning` remains the one record writer (D-9).
+
+#### Scenario: The update schema has no learning_record property
+- **WHEN** the input schema of `update_study_plan` is read from the registry
+- **THEN** its `properties` carry no `learning_record` key
+
+### Requirement: Study-plan tools — `get_study_plan` bounds `history_limit` before the seam is called
+`get_study_plan` SHALL refuse a `history_limit` outside `1..200` — the range
+the Web history route accepts — with `invalid: history_limit must be between 1
+and 200, got <n>` **before** calling the seam, so a refused limit performs no
+database query.
+
+#### Scenario: history_limit is bounded before any read
+- **WHEN** `get_study_plan("decorators", include_history=True,
+  history_limit=0)` (or `-1`, `201`, `10000`) is called
+- **THEN** a `ToolError` reading `invalid: history_limit must be between 1 and
+  200, got <n>` is raised and `PlanApplication.inspect` is never called; `1`
+  and `200` are accepted and forwarded unchanged
+
+### Requirement: Study-plan tools — every seam refusal is one `ToolError` with a machine-readable kind
+Every seam refusal SHALL be one `ToolError` whose message is
+`<kind>: <the seam's message>`, where `kind` is machine-readable:
+`PlanNotFound` → `not_found`, `InvalidPlanId` → `invalid_id`, `PlanConflict` →
+`conflict`, `InvalidField` → `invalid`, `PlanNotReady` → `not_ready`,
+`InvalidMilestone` → `invalid_milestone`, and `plan_error` for any `PlanError`
+subclass this mapping has not met.
 
 #### Scenario: Every refusal is one prefixed ToolError
 - **WHEN** the seam raises `PlanNotFound`, `InvalidPlanId`, `PlanConflict`,
@@ -313,81 +413,27 @@ has not met. The `ToolError` SHALL chain the domain error as its cause.
   `plan_error: …` respectively, followed by the seam's message, with the
   domain error chained as `__cause__`
 
-#### Scenario: A retried status transition is not refused
-- **WHEN** `set_study_plan_status("decorators", "paused")` is called twice
-- **THEN** both calls apply the same `TransitionLifecycle`, both return the
-  plan with status `paused`, and neither raises
+### Requirement: Study-plan tools — the `not_ready` rendering and the chained cause
+`PlanNotReady` → `not_ready` SHALL be rendered `not_ready: plan is not ready to
+activate: <blocker>; <blocker>…` (with the suffix `— the plan is already
+active; pause it or repair the blockers before writing` when the plan was
+already active). The `ToolError` SHALL chain the domain error as its cause.
 
-#### Scenario: history_limit is bounded before any read
-- **WHEN** `get_study_plan("decorators", include_history=True,
-  history_limit=0)` (or `-1`, `201`, `10000`) is called
-- **THEN** a `ToolError` reading `invalid: history_limit must be between 1 and
-  200, got <n>` is raised and `PlanApplication.inspect` is never called; `1`
-  and `200` are accepted and forwarded unchanged
-
-#### Scenario: Responses are fresh containers
-- **WHEN** a response from any of the six tools is mutated by the caller and
-  the same call is repeated
-- **THEN** the second response is equal to an untouched first response and is
-  not the same object
+#### Scenario: An already-active plan's not_ready refusal says pause or repair
+- **WHEN** the seam raises `PlanNotReady` for a plan that is already active
+  during `update_study_plan("husk", notes="x")`
+- **THEN** the `ToolError` starts `not_ready: `, names the activation
+  blockers and carries `already active` and `pause` in its message
 
 ### Requirement: Study-plan progression and deletion tools
-`register_tools(mcp)` SHALL register three further study-plan tools in the
-production inventory — completing the nine plan lifecycle tools — each a thin adapter
-that makes exactly one `studyloop.planning.PlanApplication` call, imports no
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call, imports no
 storage, index, authoring or evaluation module (D-6), and maps every seam
-refusal through the same `<kind>: <message>` `ToolError` mapping as the six
-above (the domain error chained as `__cause__` — an in-process requirement on
-the adapter, checked by the delegation tests; the stdio transport carries the
-prefixed refusal text only, since JSON-RPC does not serialise an exception
-chain):
+refusal through the `<kind>: <message>` `ToolError` mapping of the six above:
 
 | Tool | Seam call |
 |---|---|
 | `set_study_plan_milestone(plan_id, index, done)` | `apply(SetMilestone(plan_id, index, done))` → `PlanDetail.to_json_dict()` |
-| `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `assess(AssessPlan(plan_id, phase, study_id, record))` → `AssessmentResult.to_json_dict()` |
-| `delete_study_plan(plan_id, confirmed=False)` | `apply(DeletePlan(plan_id, confirmed))` → `DeleteResult.to_json_dict()` (`{"deleted": true, "plan_id": "<id>"}`) |
-
-`set_study_plan_milestone` SHALL take `done` as a required boolean with no
-default and forward it as given — set, not toggle: the tool SHALL make no
-preliminary read and compute no opposite, so a second identical call returns
-the same plan, raises nothing and rewrites nothing. An index the plan does
-not have (past the end or negative) is the seam's `InvalidMilestone`,
-rendered `invalid_milestone: …`; a set on an active-but-unready document is
-the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already
-active; pause it or repair the blockers before writing`, and nothing is
-written in either case.
-
-`evaluate_study_plan` SHALL call `assess`, never `apply` (`AssessPlan` is not
-a `PlanIntent`), SHALL default `record` to `False`, and SHALL NOT expose
-`append_to_plan` (the seam's default, `True`, applies when recording). The
-response SHALL be the `AssessmentResult` view — `evaluation`, `markdown`,
-`db_write`, `document_write`, `recording_complete`, `warnings` — with each
-sink reported **as the seam reports it** (`not_requested`, `saved`, `failed`),
-never flattened to a boolean and never an invented `saved`. A preview
-(`record=False`) SHALL write to neither sink: the document is byte-identical
-afterwards and the checkpoint log is unchanged. With `record=True` a failed
-sink SHALL surface as `failed` with `recording_complete: false` and the seam's
-warning string in `warnings` — a reported outcome, never an exception and
-never a bare success. Recording on an active plan that is unready SHALL be
-refused (`not_ready: …`) before either sink is touched; an unknown `phase`
-is the seam's `invalid: phase must be one of …`, judged after the plan
-exists (`not_found:` first).
-
-`delete_study_plan` SHALL keep `confirmed` as an ordinary boolean defaulting
-to `False` in its schema — not required, not constrained to a literal `true`
-— and SHALL forward it unchanged: an unconfirmed call is the seam's
-`InvalidField`, rendered `invalid: deleting '<id>' requires confirmed=True`,
-and the plan still exists byte-identical afterwards. A confirmed delete
-removes the document and its derived index row and SHALL leave the plan's
-checkpoint history in the sessions database readable. A missing plan is
-`not_found:` before the confirmation is judged.
-
-The production inventory SHALL be exactly 32 unique tool names — 23 at
-`0a20a796` plus the nine design-§4 plan tools, `record_plan_learning` being
-one of the 23 — and the stdio smoke test SHALL assert that exact count, the
-nine plan names, `record_plan_learning` and the core names over the real
-transport.
 
 #### Scenario: A retried milestone set is a no-op
 - **WHEN** `set_study_plan_milestone(<id>, 0, true)` is called twice on a
@@ -398,6 +444,76 @@ transport.
   nothing and leaves the document byte-identical; the third reopens the
   milestone (`done: false`, `milestone_done: 0`)
 
+#### Scenario: Every refusal of the three is one prefixed ToolError
+- **WHEN** the seam raises `PlanNotFound`, `InvalidPlanId`, `PlanConflict`,
+  `InvalidField`, `InvalidMilestone`, or an unmapped `PlanError` from
+  `apply` (milestone, delete) or `assess` (evaluate)
+- **THEN** the tool raises exactly one `ToolError` reading `not_found: …`,
+  `invalid_id: …`, `conflict: …`, `invalid: …`, `invalid_milestone: …` or
+  `plan_error: …` followed by the seam's message, with the domain error
+  chained as `__cause__`; responses of the three are fresh containers on
+  every call
+
+#### Scenario: Why the exception chain is checked in-process
+- **WHEN** a reader asks where the `__cause__` of a refusal is asserted
+- **THEN** the domain error chained as `__cause__` — an in-process
+  requirement on the adapter, checked by the delegation tests; the stdio
+  transport carries the prefixed refusal text only, since JSON-RPC does not
+  serialise an exception chain
+
+### Requirement: Study-plan tools — `evaluate_study_plan`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call, imports no
+storage, index, authoring or evaluation module (D-6), and maps every seam
+refusal through the `<kind>: <message>` `ToolError` mapping of the six above:
+
+| Tool | Seam call |
+|---|---|
+| `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `assess(AssessPlan(plan_id, phase, study_id, record))` → `AssessmentResult.to_json_dict()` |
+
+#### Scenario: evaluate_study_plan is one assess call and never an apply
+- **WHEN** `evaluate_study_plan("decorators", "mid")` is called
+- **THEN** `PlanApplication.assess` is called exactly once with an
+  `AssessPlan`, `PlanApplication.apply` is not called, and the response is
+  the seam's `AssessmentResult.to_json_dict()` with its sink fields as the
+  seam reported them
+
+### Requirement: Study-plan tools — `delete_study_plan`
+`register_tools(mcp)` SHALL register this tool in the production inventory as
+a thin adapter that makes exactly one `PlanApplication` call, imports no
+storage, index, authoring or evaluation module (D-6), and maps every seam
+refusal through the `<kind>: <message>` `ToolError` mapping of the six above:
+
+| Tool | Seam call |
+|---|---|
+| `delete_study_plan(plan_id, confirmed=False)` | `apply(DeletePlan(plan_id, confirmed))` → `DeleteResult.to_json_dict()` (`{"deleted": true, "plan_id": "<id>"}`) |
+
+#### Scenario: delete_study_plan is one DeletePlan with confirmed forwarded
+- **WHEN** `delete_study_plan("decorators", confirmed=True)` is called
+- **THEN** `PlanApplication.apply` is called exactly once with
+  `DeletePlan(plan_id="decorators", confirmed=True)` and the response is the
+  seam's `DeleteResult.to_json_dict()`, `{"deleted": true, "plan_id":
+  "decorators"}`
+
+### Requirement: Study-plan tools — `set_study_plan_milestone` sets, never toggles
+`set_study_plan_milestone` SHALL take `done` as a required boolean with no
+default and forward it as given — set, not toggle: the tool SHALL make no
+preliminary read and compute no opposite, so a second identical call returns
+the same plan, raises nothing and rewrites nothing.
+
+#### Scenario: done=false is forwarded as a set, not computed as a toggle
+- **WHEN** `set_study_plan_milestone("decorators", 0, False)` is called
+- **THEN** `PlanApplication.apply` receives exactly
+  `SetMilestone(plan_id="decorators", index=0, done=False)` and
+  `PlanApplication.inspect` is never called to read the current state first
+
+### Requirement: Study-plan tools — a milestone set outside the plan or on an unready active document writes nothing
+An index the plan does not have (past the end or negative) SHALL be the seam's `InvalidMilestone`,
+rendered `invalid_milestone: …`; a set on an active-but-unready document is
+the seam's `PlanNotReady`, rendered `not_ready: … — the plan is already
+active; pause it or repair the blockers before writing`, and nothing is
+written in either case.
+
 #### Scenario: Milestone set on an active-but-unready document is refused
 - **WHEN** `set_study_plan_milestone("husk", 0, true)` is called for an active
   document with a milestone but no mission or success criteria
@@ -406,6 +522,26 @@ transport.
   `pause it or repair`, and the document is byte-identical afterwards; an
   index the plan does not have (`2`, `9`, `-1`) is `invalid_milestone: No
   milestone at index …` with nothing written
+
+### Requirement: Study-plan tools — `evaluate_study_plan` calls `assess` and defaults to a preview
+`evaluate_study_plan` SHALL call `assess`, never `apply` (`AssessPlan` is not
+a `PlanIntent`), SHALL default `record` to `False`, and SHALL NOT expose
+`append_to_plan` (the seam's default, `True`, applies when recording).
+
+#### Scenario: The default call is a preview
+- **WHEN** `evaluate_study_plan("decorators", "start")` is called with no
+  `record` argument
+- **THEN** the `AssessPlan` handed to the seam has `record=False`,
+  `study_id=""` and the seam's own `append_to_plan=True`, which the tool's
+  schema does not expose
+
+### Requirement: Study-plan tools — the evaluation response is the `AssessmentResult` view and a preview writes nothing
+The response SHALL be the `AssessmentResult` view — `evaluation`, `markdown`,
+`db_write`, `document_write`, `recording_complete`, `warnings` — with each
+sink reported **as the seam reports it** (`not_requested`, `saved`, `failed`),
+never flattened to a boolean and never an invented `saved`. A preview
+(`record=False`) SHALL write to neither sink: the document is byte-identical
+afterwards and the checkpoint log is unchanged.
 
 #### Scenario: Evaluate preview writes nothing
 - **WHEN** `evaluate_study_plan(<id>, "mid")` is called (the default
@@ -424,6 +560,14 @@ transport.
   (visible through `get_study_plan(include_history=True)`), and the
   document's `checkpoints` table holds one `end` row
 
+### Requirement: Study-plan tools — a failed sink is reported, not raised, and an unready active plan is refused before either sink
+With `record=True` a failed sink SHALL surface as `failed` with `recording_complete: false` and the seam's
+warning string in `warnings` — a reported outcome, never an exception and
+never a bare success. Recording on an active plan that is unready SHALL be
+refused (`not_ready: …`) before either sink is touched; an unknown `phase`
+is the seam's `invalid: phase must be one of …`, judged after the plan
+exists (`not_found:` first).
+
 #### Scenario: A failed sink is a warning, not a success and not an error
 - **WHEN** the checkpoint log write fails during
   `evaluate_study_plan(<id>, "start", record=True)`
@@ -439,6 +583,13 @@ transport.
   hint is raised, the document is byte-identical and the log unchanged; the
   same call with `record=False` succeeds with both sinks `not_requested`
 
+### Requirement: Study-plan tools — `delete_study_plan` keeps `confirmed` an ordinary boolean and forwards it unchanged
+`delete_study_plan` SHALL keep `confirmed` as an ordinary boolean defaulting
+to `False` in its schema — not required, not constrained to a literal `true`
+— and SHALL forward it unchanged: an unconfirmed call is the seam's
+`InvalidField`, rendered `invalid: deleting '<id>' requires confirmed=True`,
+and the plan still exists byte-identical afterwards.
+
 #### Scenario: Delete requires confirmation
 - **WHEN** `delete_study_plan(<id>)` or `delete_study_plan(<id>,
   confirmed=False)` is called
@@ -446,6 +597,11 @@ transport.
   confirmed=True` is raised, the document exists byte-identical afterwards
   and `list_study_plans()` still counts it; the tool's schema has
   `confirmed` as a boolean defaulting to `false`
+
+### Requirement: Study-plan tools — a confirmed delete keeps the checkpoint history and a missing plan is `not_found` first
+A confirmed delete removes the document and its derived index row and SHALL leave the plan's
+checkpoint history in the sessions database readable. A missing plan is
+`not_found:` before the confirmation is judged.
 
 #### Scenario: Confirmed delete keeps the checkpoint history
 - **WHEN** a checkpoint has been recorded for `<id>` and
@@ -456,15 +612,12 @@ transport.
   recorded row; `delete_study_plan("ghost")` is `not_found:` whether or not
   confirmed, and a traversal id is `invalid_id:`
 
-#### Scenario: Every refusal of the three is one prefixed ToolError
-- **WHEN** the seam raises `PlanNotFound`, `InvalidPlanId`, `PlanConflict`,
-  `InvalidField`, `InvalidMilestone`, or an unmapped `PlanError` from
-  `apply` (milestone, delete) or `assess` (evaluate)
-- **THEN** the tool raises exactly one `ToolError` reading `not_found: …`,
-  `invalid_id: …`, `conflict: …`, `invalid: …`, `invalid_milestone: …` or
-  `plan_error: …` followed by the seam's message, with the domain error
-  chained as `__cause__`; responses of the three are fresh containers on
-  every call
+### Requirement: Study-plan tools — the production inventory is exactly 32 unique names
+The production inventory SHALL be exactly 32 unique tool names — 23 at
+`0a20a796` plus the nine design-§4 plan tools, `record_plan_learning` being
+one of the 23 — and the stdio smoke test SHALL assert that exact count, the
+nine plan names, `record_plan_learning` and the core names over the real
+transport.
 
 #### Scenario: The production inventory is exactly 32 with the nine plan tools
 - **WHEN** a stdio client performs the handshake and `tools/list` against
@@ -541,6 +694,12 @@ before any write.
 - **THEN** the applied intent's `why`, `success`, `constraints` and
   `out_of_scope` are all `None`
 
+### Requirement: update_study_plan — the resulting document is judged by the one gate like every other field
+The resulting document SHALL be judged by the single readiness gate exactly as
+for every other field: on an active plan a write that leaves any blocker
+standing is `not_ready: …` and nothing is saved; a write that clears every
+blocker in one call is saved once.
+
 #### Scenario: Partial mission repair on a husk is refused; the whole repair lands once
 - **WHEN** `update_study_plan("husk", why="…")` is called on an active plan with
   no mission, and then `update_study_plan("husk", why="…", success=["…"])`
@@ -548,13 +707,9 @@ before any write.
   document unchanged, and the second saves once, leaves the plan `active`
   and `ready`, and `list_study_plans` no longer reports it as a husk
 
-#### Scenario: Judged by the one gate like every other field
-- **WHEN** a mission write reaches the seam
-- **THEN** the resulting document is judged by the single readiness
-  gate exactly as for every other field: on an active plan a write that leaves
-  any blocker standing is `not_ready: …` and nothing is saved; a write that
-  clears every blocker in one call is saved once
-- **AND** with this, every blocker
+#### Scenario: Why plan repair is a repair rather than dictation
+- **WHEN** the mission fields are exposed on `update_study_plan`
+- **THEN** with this, every blocker
   `readiness()` can name — mission `why`, success criteria, milestones — is
   repairable with the tool the architect already holds, so `plan repair` is a
   repair rather than dictation
