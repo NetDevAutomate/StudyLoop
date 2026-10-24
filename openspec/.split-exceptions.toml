@@ -334,11 +334,13 @@ heading = "The body-double proposal carries one passive first move"
 ordinal = 5
 reason = "One 506-char sentence: the resolved-lesson sentence shape, then after the colon its rubric grounding (`a deliberate lesson whenever the vault holds one`, the evidence rule). Split at the colon; the governing conditional and the subject+modal+verb `When a concept resolved the move SHALL be` are repeated so the second half keeps its condition (convention rule 2) and its modal; the colon moves with the second half (punctuation count unchanged)."
 old = "When a concept resolved the move SHALL be `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and read for ten minutes, nothing more.` (`phrase` for a multi-word concept): rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c (d2), owner 2026-09-21 — a named lesson carries implied authority and would be opened despite a doubt, so the sentence states the evidence the naming rests on and a lexical match into the wrong course is judgeable from the sentence."
-new = [
-  "When a concept resolved the move SHALL be `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and read for ten minutes, nothing more.` (`phrase` for a multi-word concept).",
-  "When a concept resolved the move SHALL be: rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c (d2), owner 2026-09-21 — a named lesson carries implied authority and would be opened despite a doubt, so the sentence states the evidence the naming rests on and a lexical match into the wrong course is judgeable from the sentence.",
-]
-added_tokens = ["When", "a", "concept", "resolved", "the", "move", "SHALL", "be", "."]
+new = ['''When a concept resolved the move SHALL be `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and read for ten minutes, nothing more.` (`phrase` for a multi-word concept).''']
+added_tokens = ["."]
+tail_to_scenario = '''rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c (d2), owner 2026-09-21 — a named lesson carries implied authority and would be opened despite a doubt, so the sentence states the evidence the naming rests on and a lexical match into the wrong course is judgeable from the sentence'''
+tail_scenario = "Why the sentence names the course and the matched word"
+# pass 10 (seat claude-opus-5.5 F3, reproduced): the colon's right-hand side is citation and rationale;
+# under rule 4(a) it had become the value of a manufactured 'SHALL be'. It is now a scenario under the
+# template fragment, verbatim; the lexical-match scenario moves with it (same original requirement).
 
 [[modalise]]
 spec = "active-learning-decisions"
@@ -1571,10 +1573,13 @@ ordinal = 1
 old = '''The `study-plan-architect` definitions for Kiro CLI (`agents/kiro/study-plan-architect.json`) and Claude Code (`agents/claude/study-plan-architect.md`) SHALL attach the `studyloop` MCP server and allow exactly the nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full shell permissions; receipt `docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`).'''
 new = [
   '''The `study-plan-architect` definitions for Kiro CLI (`agents/kiro/study-plan-architect.json`) and Claude Code (`agents/claude/study-plan-architect.md`) SHALL attach the `studyloop` MCP server.''',
-  '''The `study-plan-architect` definitions SHALL allow exactly the nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full shell permissions; receipt `docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`).'''
+  '''The Kiro CLI and Claude Code `study-plan-architect` definitions SHALL allow exactly the nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full shell permissions; receipt `docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`).'''
 ]
-added_tokens = [".", "The", "`study-plan-architect`", "definitions", "SHALL"]
+added_tokens = [".", "The", "`study-plan-architect`", "definitions", "SHALL", "Kiro", "CLI", "and", "Claude", "Code"]
 reason = "622-char SHALL sentence (evidence line 17). Cut at 'and allow'; the second sentence repeats the subject noun phrase 'The `study-plan-architect` definitions' and the modal; 'and' dropped at the cut, one '.' added. Both 'no' tokens stay in the second sentence where they were."
+# pass 10 (seat claude-opus-5.5 F1, reproduced): the repeated subject had dropped its qualifier, so the
+# fragment covered every harness's architect (opencode's grants no MCP tool). The subject is recomposed
+# from the sentence's own words: 'The Kiro CLI and Claude Code `study-plan-architect` definitions'.
 
 [[test-sourced]]
 spec = "agent-adapters"
@@ -2086,3 +2091,12 @@ old = '''Navigating away is **not** the abandon path: a closed socket detaches w
 new = '''Navigating away SHALL **not** be the abandon path: a closed socket detaches with a grace period by design, so an accidental reload cannot kill a live session — and a launch that lands *after* the learner has left the console is a session like any other (owner decision 2026-09-18, council review 6 F3b): it exists, it created no plan, the console reattaches to it on return, and the End control abandons it.'''
 verb = ["is", "be"]
 reason = "Pass 10 (seat gpt-5.6-sol, reproduced by the coordinator; overturns lane B's 'rationale' class): 'is **not** the abandon path', 'cannot kill a live session', 'the console reattaches', 'the End control abandons it' are a negative guarantee and lifecycle behaviour that the scenario 'Leaving before the launch lands leaves a session like any other' proves; pass 9 §4 Q2 keeps negative guarantees in bodies. Its own requirement (with the abandon SHALL it exceeds 500); the scenario lane B wrapped it in is removed and the proving scenario is homed here."
+
+# ---- pass 10 (coordinator, seat claude-opus-5.5 S1): the chained-cause sentence gets its own fragment ----
+
+[[test-sourced]]
+spec = "mcp-server"
+heading = "Study-plan tools — every refusal's `ToolError` chains the domain error as its cause"
+scenario = "A refusal's ToolError chains the seam's own exception as its cause"
+test = "packages/studyloop/tests/test_mcp_plan_tools.py::test_every_seam_refusal_maps_to_one_prefixed_tool_error[inspect-not_found]"
+reason = "In the base the sentence closed the whole mapping paragraph (every kind); homed in the not_ready fragment, 'The ToolError' read as the not_ready one only. Own fragment, body verbatim, order kept (after the mapping and rendering pieces). The scenario states exactly the parametrised case it cites."

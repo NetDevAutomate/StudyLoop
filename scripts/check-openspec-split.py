@@ -543,6 +543,8 @@ def compare_spec(
     head_count = Counter(head_units)
     head_scenario_text = " ".join(s.body for r in head.requirements for s in r.scenarios)
     base_scenario_text = " ".join(s.body for r in base.requirements for s in r.scenarios)
+    # scenarios that hold the keyword-less tail of a fissioned sentence (declared on the entry)
+    fission_tail_homes: set[str] = set()
 
     addressed = _addressed(base)
     addr_by_text: dict[str, list[tuple[str, str, int]]] = {}
@@ -615,12 +617,48 @@ def compare_spec(
                         for v in [v for v in found if v is not None][1:]:
                             clause_tok += _tokens(v)
                         report.note("clause-restated", spec, heading, f"[{ordinal}] {clause}")
+                    # A keyword-less tail of the sentence (citation, rationale) may be homed in a
+                    # declared scenario instead of being forced under a manufactured modal: it must
+                    # be a verbatim part of the sentence, carry no SHALL/MUST, sit in the named head
+                    # scenario and in no base scenario. Its tokens then leave the body legitimately.
+                    tail = _norm(exc.data.get("tail_to_scenario", ""))
+                    tail_tok: Counter[str] = Counter()
+                    if tail:
+                        sentence = _norm(exc.data.get("old", unit))
+                        tail_home = _norm(exc.data.get("tail_scenario", ""))
+                        tail_in_head = tail.casefold() in head_scenario_text.casefold()
+                        tail_in_base = tail.casefold() in base_scenario_text.casefold()
+                        if (
+                            tail not in sentence
+                            or KEYWORD_RE.search(tail)
+                            or not tail_home
+                            or not tail_in_head
+                            or tail_in_base
+                        ):
+                            report.fail(
+                                "split-sentence-tail-not-eligible",
+                                spec,
+                                f"[{heading} #{ordinal}] tail_to_scenario must be a keyword-less "
+                                f"part of the sentence held by the named head scenario: {tail}",
+                            )
+                        else:
+                            tail_tok = _tokens(tail)
+                            fission_tail_homes.add(tail_home)
+                            report.note(
+                                "fission-tail-to-scenario",
+                                spec,
+                                heading,
+                                f"[{ordinal}] -> scenario '{tail_home}': {tail}",
+                            )
                     drift = (new_tok - old_tok) - allowed - clause_tok
-                    missing = old_tok - new_tok
-                    # connective words may be dropped by a fission (and/, /;) — nothing else
+                    missing = old_tok - new_tok - tail_tok
+                    # connective words may be dropped by a fission (and/, /;) — nothing else; the
+                    # colon or dash that introduced a departed tail goes with it
                     missing -= Counter(
                         {"and": missing["and"], ",": missing[","], ";": missing[";"]}
                     )
+                    if tail_tok:
+                        missing -= Counter({":": missing[":"], "—": missing["—"]})
                     polarity = {"not", "never", "only", "no", "unless"}
                     if drift or missing or (allowed & Counter(polarity)):
                         report.fail(
@@ -944,6 +982,8 @@ def compare_spec(
         host = head_home.get(name, "?")
         host_req = next((r for r in head.requirements if r.heading == host), None)
         host_body = " ".join(u for u in host_req.units) if host_req else ""
+        if name in fission_tail_homes:
+            continue  # declared and verified on its split-sentence entry
         moved = _take(exceptions, "moved-body-text", spec, scenario=name) or _take(
             exceptions, "moved-body-text", spec, _peek=True, scenario=name
         )

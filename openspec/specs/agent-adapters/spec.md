@@ -422,8 +422,8 @@ Code (`agents/claude/study-plan-architect.md`) SHALL attach the `studyloop` MCP 
 - **THEN** `~/.kiro/agents/study-plan-architect.json` is a symlink whose `prompt` `file://` URI resolves to a
   file, whose `mcpServers` names `studyloop`, and whose stop hook is `session-export --kiro-only`
 
-### Requirement: Harness architects — exactly the ten plan tools are allowed, in the harness's spelling
-The `study-plan-architect` definitions SHALL allow exactly the
+### Requirement: Harness architects — the Kiro CLI and Claude Code definitions allow exactly the ten plan tools, in the harness's spelling
+The Kiro CLI and Claude Code `study-plan-architect` definitions SHALL allow exactly the
 nine plan lifecycle tools named by `studyloop.mcp.inventory.PLAN_TOOL_NAMES` plus
 `studyloop.mcp.inventory.LEARNING_RECORD_TOOL` — and no other tool of that server — in the spelling the
 harness honours (owner decision D-A, 2026-09-16: no harness-launched architect falls back to the CLI with full

@@ -1154,12 +1154,12 @@ read for ten minutes, nothing more.` (`phrase` for a multi-word concept).
   "Window Frames and Ranges"`, and the resolver was asked exactly once, with
   `("window frame",)` — the milestone's own concepts and nothing else
 
-### Requirement: Body double — a named lesson states the evidence it rests on
-When a concept resolved the move SHALL be:
-rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c
-(d2), owner 2026-09-21 — a named lesson carries implied authority and would be
-opened despite a doubt, so the sentence states the evidence the naming rests
-on and a lexical match into the wrong course is judgeable from the sentence.
+#### Scenario: Why the sentence names the course and the matched word
+- **WHEN** a concept resolved and the move names a lesson
+- **THEN** rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c
+  (d2), owner 2026-09-21 — a named lesson carries implied authority and would be
+  opened despite a doubt, so the sentence states the evidence the naming rests
+  on and a lexical match into the wrong course is judgeable from the sentence
 
 #### Scenario: A lexical match into another course is judgeable from the sentence
 - **WHEN** a Python plan's deferred milestone `Decorators` `[decorators]` is

@@ -2176,3 +2176,83 @@ def test_pass10_a_governing_clause_may_be_repeated_verbatim_into_a_fragment(
     )
     report = _run(checker, base, head)
     assert "split-sentence-clause-not-in-sentence" in _codes(report)
+
+
+def test_pass10_a_keyword_less_tail_of_a_fission_may_be_homed_in_a_scenario(
+    checker, tmp_path: Path
+) -> None:
+    """Pass 10 (seat claude-opus-5.5 F3, reproduced): rule 4(a) — every fission piece carries a
+    modal — forced a rationale tail ("…: rubric 3c (b), a deliberate lesson whenever …") to become
+    the value of a manufactured `SHALL be`. A split-sentence entry may now declare
+    `tail_to_scenario` (verbatim, keyword-less, a suffix of the sentence) and `tail_scenario` (the
+    scenario that holds it); the tail's tokens leave the body legitimately and the move is listed in
+    the drift report as `fission-tail-to-scenario`. A tail that carries SHALL/MUST is refused."""
+    base, head = _pair(tmp_path)
+    _write_spec(
+        base,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Move
+        The move SHALL be `Open it`: rubric 3c, a deliberate lesson when one exists.
+        {SCENARIO_OK}
+        """,
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Move
+        The move SHALL be `Open it`.
+        {SCENARIO_OK}
+        #### Scenario: Why the move names a lesson
+        - **WHEN** a lesson resolved
+        - **THEN** rubric 3c, a deliberate lesson when one exists
+        """,
+    )
+    entry = """
+        [[split-sentence]]
+        spec = "demo"
+        heading = "Move"
+        ordinal = 1
+        old = "The move SHALL be `Open it`: rubric 3c, a deliberate lesson when one exists."
+        new = ["The move SHALL be `Open it`."]
+        added_tokens = ["."]
+        {tail}
+        """
+    # Undeclared, the tail is lost tokens.
+    _write_exceptions(head, entry.replace("{tail}", ""))
+    report = _run(checker, base, head)
+    assert "split-sentence-token-drift" in _codes(report)
+
+    # Declared, verbatim and keyword-less: the body sheds it and the scenario holds it.
+    _write_exceptions(
+        head,
+        entry.replace(
+            "{tail}",
+            'tail_to_scenario = "rubric 3c, a deliberate lesson when one exists"\n'
+            '        tail_scenario = "Why the move names a lesson"',
+        ),
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert any(e.kind == "fission-tail-to-scenario" for e in report.drift)
+
+    # A tail that carries an obligation may not leave the body this way.
+    _write_exceptions(
+        head,
+        entry.replace(
+            "{tail}",
+            'tail_to_scenario = "a deliberate lesson SHALL exist"\n'
+            '        tail_scenario = "Why the move names a lesson"',
+        ),
+    )
+    report = _run(checker, base, head)
+    assert "split-sentence-tail-not-eligible" in _codes(report)

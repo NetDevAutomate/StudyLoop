@@ -413,17 +413,25 @@ subclass this mapping has not met.
   `plan_error: …` respectively, followed by the seam's message, with the
   domain error chained as `__cause__`
 
-### Requirement: Study-plan tools — the `not_ready` rendering and the chained cause
+### Requirement: Study-plan tools — the `not_ready` rendering
 `PlanNotReady` → `not_ready` SHALL be rendered `not_ready: plan is not ready to
 activate: <blocker>; <blocker>…` (with the suffix `— the plan is already
 active; pause it or repair the blockers before writing` when the plan was
-already active). The `ToolError` SHALL chain the domain error as its cause.
+already active).
 
 #### Scenario: An already-active plan's not_ready refusal says pause or repair
 - **WHEN** the seam raises `PlanNotReady` for a plan that is already active
   during `update_study_plan("husk", notes="x")`
 - **THEN** the `ToolError` starts `not_ready: `, names the activation
   blockers and carries `already active` and `pause` in its message
+
+### Requirement: Study-plan tools — every refusal's `ToolError` chains the domain error as its cause
+The `ToolError` SHALL chain the domain error as its cause.
+
+#### Scenario: A refusal's ToolError chains the seam's own exception as its cause
+- **WHEN** `inspect` raises `PlanNotFound` during `get_study_plan`
+- **THEN** the `ToolError` reads `not_found: …` and its `__cause__` is that
+  `PlanNotFound` instance
 
 ### Requirement: Study-plan progression and deletion tools
 `register_tools(mcp)` SHALL register this tool in the production inventory as
