@@ -33,6 +33,7 @@ run_local() {
     local found
     found="$(openspec --version 2>/dev/null | tr -d '[:space:]' || true)"
     if [[ -z "$found" ]]; then
+        echo "openspec-cli: a local openspec is on PATH but printed no version; ignoring it" >&2
         return 1
     fi
     if [[ "$found" != "$OPENSPEC_VERSION" ]]; then
@@ -58,7 +59,7 @@ run_npx() {
 }
 
 if command -v openspec >/dev/null 2>&1; then
-    run_local "$@"
+    run_local "$@" || true   # a matching binary execs; a mismatch exits 2; a silent one falls through
 fi
 
 run_npx "$@" || true

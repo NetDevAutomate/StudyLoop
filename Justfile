@@ -291,7 +291,7 @@ xtiles-auth:
 
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-uv-tool-install smoke-extras smoke-web
+release-check: test test-js lint typecheck shellcheck docs spec-check audit audit-full release-consistency-shipped smoke-installed smoke-uv-tool-install smoke-extras smoke-web
 
 # "Would GitHub Actions pass?" locally, before pushing. `check` runs the
 # host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`

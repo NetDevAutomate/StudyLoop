@@ -190,3 +190,80 @@ def test_contributor_conventions_describe_the_strict_gate_and_the_length_rule() 
 def test_resolver_is_executable_bash() -> None:
     assert RESOLVER.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash")
     assert RESOLVER.stat().st_mode & 0o111
+
+
+# Pass 10 (seat claude-opus-5.5, Q4 G4/G6): the paths the first ten tests left dark.
+
+
+def _fake_bin(tmp_path: Path, name: str, body: str) -> Path:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir(exist_ok=True)
+    exe = fake_bin / name
+    exe.write_text(f"#!/bin/sh\n{body}", encoding="utf-8")
+    exe.chmod(0o755)
+    return fake_bin
+
+
+def _resolver(args: list[str], env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", str(RESOLVER), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+
+
+def test_a_matching_local_binary_passes_its_validate_exit_code_through(tmp_path: Path) -> None:
+    """The gate is the validator's own exit status; the resolver must not launder it."""
+    fake_bin = _fake_bin(
+        tmp_path,
+        "openspec",
+        'if [ "$1" = --version ]; then echo 1.14.1; exit 0; fi\necho "validation failed"; exit 3\n',
+    )
+    proc = _resolver(
+        ["validate", "--specs", "--all", "--strict"],
+        {"PATH": f"{fake_bin}:/usr/bin:/bin", "OPENSPEC_VERSION": "1.14.1", "HOME": str(tmp_path)},
+    )
+    assert proc.returncode == 3
+    assert "validation failed" in proc.stdout
+
+
+def test_a_local_binary_that_prints_no_version_is_ignored_loudly_not_fatally(
+    tmp_path: Path,
+) -> None:
+    """A broken `openspec` on PATH (prints nothing for --version) used to end the script with
+    exit 1 and no message under `set -e`. It is treated as absent, and the reader is told."""
+    fake_bin = _fake_bin(tmp_path, "openspec", "exit 0\n")
+    env = {
+        "PATH": f"{fake_bin}:/usr/bin:/bin",
+        "OPENSPEC_VERSION": "1.14.1",
+        "OPENSPEC_NO_NPX": "1",
+        "HOME": str(tmp_path),
+    }
+    local = _resolver(["--version"], env)
+    assert local.returncode == 0
+    assert "SKIPPED" in local.stdout
+    assert "printed no version" in local.stderr
+    under_ci = _resolver(["--version"], {**env, "CI": "true"})
+    assert under_ci.returncode == 1
+
+
+def test_an_npx_that_cannot_fetch_the_pin_fails_under_ci(tmp_path: Path) -> None:
+    """No local binary and an `npx` that cannot resolve the package: SKIPPED locally, exit 1
+    under CI — the fetch failure is environmental and must not read as a pass."""
+    fake_bin = _fake_bin(tmp_path, "npx", 'echo "npm ERR! 404" >&2; exit 1\n')
+    env = {"PATH": f"{fake_bin}:/usr/bin:/bin", "OPENSPEC_VERSION": "1.14.1", "HOME": str(tmp_path)}
+    assert _resolver(["--version"], env).returncode == 0
+    assert "SKIPPED" in _resolver(["--version"], env).stdout
+    assert _resolver(["--version"], {**env, "CI": "true"}).returncode == 1
+
+
+def test_release_check_runs_spec_check() -> None:
+    """A release is validated against its specs too; `release-check` lists `spec-check`
+    (pass 10, seat claude-opus-5.5 G1)."""
+    recipe_line = next(
+        line for line in _justfile().splitlines() if line.startswith("release-check:")
+    )
+    assert "spec-check" in recipe_line.split()

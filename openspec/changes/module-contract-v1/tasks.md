@@ -203,6 +203,14 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       once M2 holds; verify `CHANGELOG.md` names the contract version and the deferrals
       (browser Check progress → v1.1; view-only credential + grants → v2).
 
+## 4b. At archive time
+
+- [ ] Write real `## Purpose` sections for `openspec/specs/drill-runner/spec.md` and
+      `openspec/specs/optional-modules/spec.md` in the archive commit. `openspec archive` creates these
+      two living specs from the deltas with a placeholder Purpose, and `just spec-check` is strict
+      (`--strict`: a placeholder Purpose is a WARNING, so the first archive would turn the CI
+      `spec-check` job red). Found by plan 7 lane E (F3), confirmed by council pass 10.
+
 ## 5. Deferred (not tasks here)
 
 v1.1 browser **Check progress** (HTTP consent endpoint, one-use challenge, CSRF/same-origin,
