@@ -80,7 +80,8 @@ DEICTIC_RE = re.compile(
 COMPOUND_HEADING_RE = re.compile(r"\b(and|never|not|but)\b", re.I)
 LITERAL_RE = re.compile(r"`([^`]+)`|\b(\d+(?:\.\d+)?)\b")
 POSITIONAL_CITATION_RE = re.compile(r"\bscenarios?\s+\d+(?:\s*[-\u2013,]\s*\d+)?\b", re.I)
-CODE_SPAN_RE = re.compile(r"`[^`]*`")
+# a run of N backticks closes only on the same run, so `` ` `` (a literal backtick) is one span
+CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[^\n])*?\1")
 WORD_RE = re.compile(r"[A-Za-z0-9_`'\-/]+|[.,;:()\[\]{}\"]")
 
 
@@ -356,6 +357,7 @@ EXCEPTION_KINDS = (
     "deleted",
     "split-sentence",
     "inherit-shall",
+    "modalise",
     "reference-expansion",
     "context-restated",
     "list-split",
@@ -610,6 +612,41 @@ def compare_spec(
                     report.note("inherit-shall", spec, heading, f"[{ordinal}] {unit} -> {new}")
                     handled = True
                     break
+                exc = _take(exceptions, "modalise", spec, heading=heading, ordinal=ordinal)
+                if exc is not None:
+                    new = _norm(exc.data.get("new", ""))
+                    if new in added:
+                        added[new] -= 1
+                        if added[new] <= 0:
+                            del added[new]
+                    else:
+                        report.fail(
+                            "modalise-new-missing", spec, f"declared unit not in head: {new}"
+                        )
+                    verb = exc.data.get("verb") or []
+                    old_tok = _tokens(unit)
+                    new_tok = _tokens(new)
+                    gained = new_tok - old_tok
+                    lost_tok = old_tok - new_tok
+                    modal = Counter({m: 1 for m in ("SHALL", "MUST") if gained.get(m)})
+                    expected_gain = modal + (Counter({verb[1]: 1}) if len(verb) == 2 else Counter())
+                    expected_loss = Counter({verb[0]: 1}) if len(verb) == 2 else Counter()
+                    if (
+                        sum(modal.values()) != 1
+                        or gained != expected_gain
+                        or lost_tok != expected_loss
+                        or not KEYWORD_RE.search(new)
+                    ):
+                        report.fail(
+                            "modalise-token-drift",
+                            spec,
+                            f"[{heading} #{ordinal}] gained={dict(gained)} lost={dict(lost_tok)}; "
+                            "a modalise entry may add one modal and de-inflect one declared "
+                            "verb only",
+                        )
+                    report.note("modalise", spec, heading, f"[{ordinal}] {unit} -> {new}")
+                    handled = True
+                    break
                 exc = _take(
                     exceptions, "reference-expansion", spec, heading=heading, ordinal=ordinal
                 )
@@ -780,6 +817,16 @@ def compare_spec(
         for breq in base.requirements
         if len({r.heading for u in breq.units for r in head_unit_locations.get(u, [])}) > 1
     }
+    # a requirement whose sentence was rewritten through a consumed entry is split too, even
+    # when its surviving units all sit in one fragment (lane D finding 3: the compound-heading
+    # check was silent after a fission)
+    for exc in exceptions:
+        if (
+            exc.consumed
+            and exc.kind in ("split-sentence", "modalise", "inherit-shall")
+            and exc.data.get("spec") == spec
+        ):
+            split_headings.add(_norm(str(exc.data.get("heading", ""))))
     head_units_by_heading = {r.heading: set(r.units) for r in head.requirements}
     changed_headings = split_headings | {
         breq.heading
@@ -912,6 +959,7 @@ def compare_spec(
         if exc.kind in (
             "split-sentence",
             "inherit-shall",
+            "modalise",
             "reference-expansion",
             "context-restated",
         ):

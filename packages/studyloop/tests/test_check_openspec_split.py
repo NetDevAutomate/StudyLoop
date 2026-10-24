@@ -1661,3 +1661,204 @@ def test_scenario_moved_to_a_different_original_requirement_needs_a_declared_reh
     report = _run(checker, base, head)
     assert report.ok, [(f.code, f.detail) for f in report.findings]
     assert any(e.kind == "scenario-rehome" for e in report.drift)
+
+
+# --------------------------------------------------------------------------------------------
+# Lane D ruling: an indicative keyword-less sentence that cannot share a fragment with its SHALL
+# may become a body of its own by inserting the modal and de-inflecting exactly one finite verb
+# --------------------------------------------------------------------------------------------
+
+
+def test_modalise_inserts_the_modal_and_changes_exactly_one_verb(checker, tmp_path: Path) -> None:
+    base, head = _pair(tmp_path)
+    _write_spec(
+        base,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Orphan cleanup
+        `auto_clean_zombies()` SHALL run at the start of every invocation.
+        It delegates the decision to `plan_clean()` and executes the plan.
+        {SCENARIO_OK}
+        """,
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Orphan cleanup
+        `auto_clean_zombies()` SHALL run at the start of every invocation.
+        {SCENARIO_OK}
+        ### Requirement: Orphan cleanup — the plan is delegated and executed
+        It SHALL delegate the decision to `plan_clean()` and executes the plan.
+        #### Scenario: Plan executed
+        - **WHEN** zombies are identified
+        - **THEN** the plan from `plan_clean()` is executed
+        """,
+    )
+    # without an entry the rewritten sentence is a lost unit plus an added one
+    report = _run(checker, base, head)
+    assert not report.ok
+    assert "unit-lost" in _codes(report)
+
+    _write_exceptions(
+        head,
+        """
+        [[modalise]]
+        spec = "demo"
+        heading = "Orphan cleanup"
+        ordinal = 2
+        old = "It delegates the decision to `plan_clean()` and executes the plan."
+        new = "It SHALL delegate the decision to `plan_clean()` and executes the plan."
+        verb = ["delegates", "delegate"]
+        reason = "cannot share a fragment with its SHALL sibling (585 together); not an example"
+
+        [[restates-shall]]
+        spec = "demo"
+        heading = "Orphan cleanup — the plan is delegated and executed"
+        scenario = "Plan executed"
+        restates = "It SHALL delegate the decision to `plan_clean()` and executes the plan."
+        searched_tests = "none"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert any(e.kind == "modalise" for e in report.drift)
+
+    # changing a second word (here `executes` -> `never executes`) is drift, whatever the entry says
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Orphan cleanup
+        `auto_clean_zombies()` SHALL run at the start of every invocation.
+        {SCENARIO_OK}
+        ### Requirement: Orphan cleanup — the plan is delegated and executed
+        It SHALL delegate the decision to `plan_clean()` and never executes the plan.
+        #### Scenario: Plan executed
+        - **WHEN** zombies are identified
+        - **THEN** the plan from `plan_clean()` is executed
+        """,
+    )
+    _write_exceptions(
+        head,
+        """
+        [[modalise]]
+        spec = "demo"
+        heading = "Orphan cleanup"
+        ordinal = 2
+        old = "It delegates the decision to `plan_clean()` and executes the plan."
+        new = "It SHALL delegate the decision to `plan_clean()` and never executes the plan."
+        verb = ["delegates", "delegate"]
+        reason = "smuggling a negation"
+
+        [[restates-shall]]
+        spec = "demo"
+        heading = "Orphan cleanup — the plan is delegated and executed"
+        scenario = "Plan executed"
+        restates = "It SHALL delegate the decision to `plan_clean()` and never executes the plan."
+        searched_tests = "none"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert not report.ok
+    assert "modalise-token-drift" in _codes(report)
+
+
+# --------------------------------------------------------------------------------------------
+# Lane D checker findings: double-backtick code spans; compound-heading WARN after a fission
+# --------------------------------------------------------------------------------------------
+
+
+def test_double_backtick_code_span_does_not_swallow_the_rest_of_the_paragraph(checker) -> None:
+    """A `` `` ` `` `` span (a literal backtick in a code span) must close on the same run of
+    backticks, otherwise every sentence after it is fused into one unit and the ordinals that
+    exception entries address are wrong (lane D found the real case in "Session purpose")."""
+    text = (
+        "On a start the dump SHALL be rendered as a fourth section whose lines keep a leading "
+        "block marker (`#`, `-`, `*`, `+`, `>`, `` ` ``, `~`) out of column one. "
+        "Z SHALL stop. "
+        "Y SHALL go. "
+        "The topic string SHALL never determine the purpose."
+    )
+    units = checker._sentences(text)
+    assert len(units) == 4, units
+    assert units[1:] == [
+        "Z SHALL stop.",
+        "Y SHALL go.",
+        "The topic string SHALL never determine the purpose.",
+    ]
+
+
+def test_compound_heading_split_is_reported_even_when_the_first_sentence_was_fissioned(
+    checker, tmp_path: Path
+) -> None:
+    base, head = _pair(tmp_path)
+    long_first = "Session end SHALL flush the summary and SHALL clear the IPC files."
+    _write_spec(
+        base,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Session end flushes summary to DB and clears IPC files
+        {long_first}
+        {SCENARIO_OK}
+        """,
+    )
+    _write_spec(
+        head,
+        "demo",
+        f"""
+        # demo Specification
+        ## Purpose
+        A purpose someone wrote, long enough to clear the tool's minimum length for a purpose.
+        ## Requirements
+        ### Requirement: Session end flushes summary to DB and clears IPC files
+        Session end SHALL flush the summary.
+        {SCENARIO_OK}
+        ### Requirement: Session end — IPC files are cleared
+        Session end SHALL clear the IPC files.
+        #### Scenario: IPC cleared
+        - **WHEN** the session ends
+        - **THEN** no IPC file remains
+        """,
+    )
+    _write_exceptions(
+        head,
+        f"""
+        [[split-sentence]]
+        spec = "demo"
+        heading = "Session end flushes summary to DB and clears IPC files"
+        ordinal = 1
+        old = "{long_first}"
+        new = [
+            "Session end SHALL flush the summary.",
+            "Session end SHALL clear the IPC files.",
+        ]
+        added_tokens = ["Session", "end", "."]
+
+        [[restates-shall]]
+        spec = "demo"
+        heading = "Session end — IPC files are cleared"
+        scenario = "IPC cleared"
+        restates = "Session end SHALL clear the IPC files."
+        searched_tests = "none"
+        """,
+    )
+    report = _run(checker, base, head)
+    assert report.ok, [(f.code, f.detail) for f in report.findings]
+    assert [f.code for f in report.findings if f.level == "WARN"] == ["compound-heading-split"]
