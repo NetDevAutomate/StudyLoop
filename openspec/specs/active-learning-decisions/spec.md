@@ -17,14 +17,17 @@ progress items (`_due_progress_candidates`), struggling/low-score concepts
 (`_struggle_candidates`), last-session continuity (`_continuity_candidates`),
 and practice-task files (`_practice_candidates`) — then optionally add
 transfer/weak-link candidates when `interleave="adaptive"` and energy is
-not `"low"`.  It SHALL return a `NowPlan` containing one `primary`
-recommendation plus up to two `alternates`, deduped by
-`(topic, concept, action_type)`.
+not `"low"`.
 
 #### Scenario: Fresh database with no learning evidence
 - **WHEN** all candidate sources return empty lists
 - **THEN** `build_now_plan()` returns a `NowPlan` with `starter=True` and
   a single fallback recommendation sourced from the first configured topic
+
+### Requirement: Decision engine — the plan is one primary plus up to two deduped alternates
+It SHALL return a `NowPlan` containing one `primary`
+recommendation plus up to two `alternates`, deduped by
+`(topic, concept, action_type)`.
 
 #### Scenario: Multiple candidate sources produce overlapping entries
 - **WHEN** the same `(topic, concept, action_type)` tuple appears from both
@@ -104,9 +107,7 @@ verification requires the `--run-command` flag; without it, a
 `build_daily_recap()` (`learning/recap.py`) SHALL assemble a `DailyRecap`
 with fields `win`, `repair_target`, `due_item`, and `next_action` sourced
 from `get_wins(days=1)`, `get_struggling_topics(days=7)`,
-`spaced_repetition_due()`, and `build_now_plan()` respectively.  The CLI
-(`cli/_recap.py`) SHALL accept `--speak` (live TTS via `speak_text()`),
-`--audio-file PATH` (export via `synthesize_text_to_file()`), and `--json`.
+`spaced_repetition_due()`, and `build_now_plan()` respectively.
 When all data sources are empty, `has_data` is `False` and the recap
 provides safe fallback strings.
 
@@ -115,6 +116,11 @@ provides safe fallback strings.
 - **THEN** the recap panel shows a fallback win ("You kept the loop alive
   by checking in"), `has_data` is `False`, and `next_action` is
   `build_now_plan().primary.evidence_command`
+
+### Requirement: recap today — the CLI accepts speak, audio-file and json flags
+The CLI
+(`cli/_recap.py`) SHALL accept `--speak` (live TTS via `speak_text()`),
+`--audio-file PATH` (export via `synthesize_text_to_file()`), and `--json`.
 
 #### Scenario: Audio file export
 - **WHEN** `studyloop recap today --audio-file recap.wav` is invoked
@@ -168,27 +174,25 @@ returns `False`.
   output was unavailable; continuing without speech.[/yellow]", and the
   recommendation is still displayed normally
 
-### Requirement: Activation is readiness-gated on every entry path
+### Requirement: Readiness gate — one application seam is the only writer
 The study-plan domain SHALL expose one application seam,
 `studyloop.planning.PlanApplication`, and it SHALL be the only writer any
-adapter (Web routes, CLI commands, MCP tools) uses for study plans. `apply`
+adapter (Web routes, CLI commands, MCP tools) uses for study plans.
+
+#### Scenario: Every adapter writes plans through the seam
+- **WHEN** every module under `studyloop/cli`, `studyloop/web/routes` and
+  `studyloop/mcp` (more than thirty, among them `cli/_plan.py`,
+  `web/routes/plans.py` and `mcp/tools.py`) is parsed for study-plan imports
+- **THEN** none reaches a plan writer other than
+  `studyloop.planning.PlanApplication` and the guard reports zero violations
+
+### Requirement: Activation is readiness-gated on every entry path
+`apply`
 SHALL evaluate readiness whenever the *resulting* document would be `active` —
 create with `status="active"` (`CreatePlan`), import of a document whose
 frontmatter says `active` (`ImportDocument`), replacement of an existing
 document with one whose frontmatter says `active` (`ReplaceDocument`), and a
-lifecycle transition to `active` (`TransitionLifecycle`) — and SHALL raise
-`PlanNotReady` carrying a `ReadinessView` **before any canonical write** when
-the plan has no mission `why`, no success criteria, or no milestones. Readiness
-SHALL be computed by exactly one function (`authoring.readiness`), reached only
-through the seam; no adapter SHALL carry a readiness check of its own.
-
-The seam's read side (`browse`, `inspect`, `prepare_planning`) SHALL return
-frozen, tuple-only views whose `to_json_dict()` returns a fresh container on
-every call and serialises `PlanSummary` and `ReadinessView` to exactly the
-`StudyPlan.summary()` and `authoring.readiness()` key sets. Domain failures
-SHALL be exceptions with no CLI, HTTP or MCP vocabulary: `PlanNotFound`,
-`InvalidPlanId`, `PlanConflict`, `InvalidField`, `PlanNotReady`,
-`InvalidMilestone`.
+lifecycle transition to `active` (`TransitionLifecycle`).
 
 #### Scenario: Create with status active on an unready plan
 - **WHEN** `apply(CreatePlan(title="Vague", answers={}, status="active"))` is
@@ -208,12 +212,6 @@ SHALL be exceptions with no CLI, HTTP or MCP vocabulary: `PlanNotFound`,
 - **THEN** `PlanNotReady` is raised and `inspect(plan_id).summary.status` is
   still `draft`
 
-#### Scenario: Every door raises the same refusal
-- **WHEN** the same unready document is refused via `CreatePlan`,
-  `TransitionLifecycle`, `ReplaceDocument` and `ImportDocument`
-- **THEN** the four `ReadinessView` payloads are equal apart from `plan_id`,
-  and `str(exc)` is `plan is not ready to activate` for each
-
 #### Scenario: Replacement keeps identity
 - **WHEN** `apply(ReplaceDocument(plan_id, markdown))` is called with a
   document whose frontmatter names a different `id` and `created`
@@ -225,16 +223,41 @@ SHALL be exceptions with no CLI, HTTP or MCP vocabulary: `PlanNotFound`,
   ready plan is transitioned to `active`
 - **THEN** all three succeed and `browse(status="active")` returns all three
 
-#### Scenario: Duplicate id without overwrite
-- **WHEN** `apply(CreatePlan(..., plan_id="demo"))` is called and `demo`
-  already exists with `overwrite=False`
-- **THEN** `PlanConflict` is raised and the existing plan is unchanged; with
-  `overwrite=True` the plan is replaced
+### Requirement: Readiness gate — the refusal is PlanNotReady from one readiness function, before any write
+`apply` SHALL raise
+`PlanNotReady` carrying a `ReadinessView` **before any canonical write** when
+the plan has no mission `why`, no success criteria, or no milestones. Readiness
+SHALL be computed by exactly one function (`authoring.readiness`), reached only
+through the seam; no adapter SHALL carry a readiness check of its own.
+
+#### Scenario: Every door raises the same refusal
+- **WHEN** the same unready document is refused via `CreatePlan`,
+  `TransitionLifecycle`, `ReplaceDocument` and `ImportDocument`
+- **THEN** the four `ReadinessView` payloads are equal apart from `plan_id`,
+  and `str(exc)` is `plan is not ready to activate` for each
+
+### Requirement: Readiness gate — the read side returns frozen views
+The seam's read side (`browse`, `inspect`, `prepare_planning`) SHALL return
+frozen, tuple-only views whose `to_json_dict()` returns a fresh container on
+every call and serialises `PlanSummary` and `ReadinessView` to exactly the
+`StudyPlan.summary()` and `authoring.readiness()` key sets.
 
 #### Scenario: Browse order is the store's and is deterministic
 - **WHEN** `browse()` is called over active and draft plans
 - **THEN** active plans come first, then ascending `updated`, ties broken by
   plan id, and repeated calls return equal tuples
+
+### Requirement: Readiness gate — domain failures are exceptions with no transport vocabulary
+Domain failures
+SHALL be exceptions with no CLI, HTTP or MCP vocabulary: `PlanNotFound`,
+`InvalidPlanId`, `PlanConflict`, `InvalidField`, `PlanNotReady`,
+`InvalidMilestone`.
+
+#### Scenario: Duplicate id without overwrite
+- **WHEN** `apply(CreatePlan(..., plan_id="demo"))` is called and `demo`
+  already exists with `overwrite=False`
+- **THEN** `PlanConflict` is raised and the existing plan is unchanged; with
+  `overwrite=True` the plan is replaced
 
 ### Requirement: Partial checkpoint recording is reported, never silent
 `evaluate_and_record` SHALL treat a `False` return from
@@ -260,9 +283,6 @@ save once when the state changed. Applying the same intent twice SHALL leave
 the same document *byte for byte*: a retry that asks for the state the
 milestone already has writes nothing and leaves `updated` untouched (the
 gate still runs first).
-`index` is a 0-based position: an index past the end **or negative** SHALL
-raise `InvalidMilestone` before any write. A plan that does not exist SHALL
-raise `PlanNotFound` before the index is judged.
 
 #### Scenario: Set is idempotent
 - **WHEN** `SetMilestone(plan_id, 0, done=True)` is applied twice
@@ -270,28 +290,36 @@ raise `PlanNotFound` before the index is judged.
   nothing (document bytes and `updated` unchanged), the milestone is done
   after both, and `SetMilestone(plan_id, 0, done=False)` undoes it
 
-#### Scenario: Negative index
-- **WHEN** `SetMilestone(plan_id, -1, done=True)` is applied
-- **THEN** `InvalidMilestone` is raised and the document is byte-identical
-
 #### Scenario: Ticking a milestone on an unready active document
 - **WHEN** `SetMilestone` is applied to a hand-edited active plan that has no
   mission
 - **THEN** `PlanNotReady` is raised — the resulting document would be
   active-but-unready — and nothing is written
 
-### Requirement: Deletion is confirmed and retains the checkpoint log
+### Requirement: Milestone set — an index the plan lacks or an unknown plan is refused before any write
+`index` is a 0-based position: an index past the end **or negative** SHALL
+raise `InvalidMilestone` before any write. A plan that does not exist SHALL
+raise `PlanNotFound` before the index is judged.
+
+#### Scenario: Negative index
+- **WHEN** `SetMilestone(plan_id, -1, done=True)` is applied
+- **THEN** `InvalidMilestone` is raised and the document is byte-identical
+
+### Requirement: Deletion — an unconfirmed delete is refused after the not-found check
 `apply(DeletePlan(plan_id, confirmed))` SHALL raise `InvalidField` unless
-`confirmed` is `True` (after `PlanNotFound` for an unknown id), remove the
+`confirmed` is `True` (after `PlanNotFound` for an unknown id).
+
+#### Scenario: Unconfirmed delete
+- **WHEN** `DeletePlan(plan_id)` is applied with `confirmed` left `False`
+- **THEN** `InvalidField` is raised and the document is unchanged
+
+### Requirement: Deletion is confirmed and retains the checkpoint log
+`apply(DeletePlan(plan_id, confirmed))` SHALL remove the
 canonical document and its derived index row, retain every row of the durable
 checkpoint log for that id, and return a frozen `DeleteResult(plan_id)` whose
 `to_json_dict()` is `{"deleted": true, "plan_id": "<id>"}` — `apply` returns a
 `DeleteResult` for this intent and a `PlanDetail` for every other, because a
 detail cannot describe a plan that no longer exists.
-
-#### Scenario: Unconfirmed delete
-- **WHEN** `DeletePlan(plan_id)` is applied with `confirmed` left `False`
-- **THEN** `InvalidField` is raised and the document is unchanged
 
 #### Scenario: Confirmed delete keeps history
 - **WHEN** a plan with one recorded checkpoint is deleted with `confirmed=True`
@@ -305,25 +333,6 @@ return a frozen `AssessmentResult` carrying a `PlanEvaluationView` (whose
 `to_json_dict()` equals `PlanEvaluation.to_dict()` key for key and whose
 `markdown` is the rendered checkpoint block), `db_write` and `document_write`
 each in `not_requested | saved | failed`, and the evaluation's `warnings`.
-`record=False` SHALL call `evaluate_plan` and write to neither sink;
-`record=True` SHALL call the existing `evaluate_and_record` (the Bug-B fix's
-single checkpoint writer) — the seam adds no
-second checkpoint writer — and read its two recording warnings back into the
-sink fields. A failed sink SHALL be a reported outcome on the result, never an
-exception (no `PartialRecording`), because the evaluation succeeded.
-`recording_complete` is `True` when no requested sink failed — vacuously true
-for a preview. The plan SHALL be found before the phase is judged (`PlanNotFound`
-before `InvalidField`). Because appending the checkpoint re-saves the plan
-document, `record=True, append_to_plan=True` on an *active* plan SHALL run the
-same readiness gate every other write runs — before either sink is touched —
-and raise `PlanNotReady` (with `already_active=True`) for an active-but-unready
-document; a preview or a database-only recording persists no document and is
-not gated.
-
-#### Scenario: Preview writes neither sink
-- **WHEN** `assess(AssessPlan(id, "mid", record=False))` is called
-- **THEN** both sink fields are `not_requested`, no checkpoint row exists in
-  the log or the document, and `recording_complete` is `True`
 
 #### Scenario: Both sinks saved
 - **WHEN** `assess(AssessPlan(id, "end", study_id="s1"))` is called and both
@@ -331,11 +340,43 @@ not gated.
 - **THEN** both sink fields are `saved`, `recording_complete` is `True`, and
   the row is present in the log (with `study_id == "s1"`) and in the document
 
+### Requirement: Assessment — a preview only evaluates and a recording reuses the single checkpoint writer
+`record=False` SHALL call `evaluate_plan` and write to neither sink;
+`record=True` SHALL call the existing `evaluate_and_record` (the Bug-B fix's
+single checkpoint writer) — the seam adds no
+second checkpoint writer — and read its two recording warnings back into the
+sink fields.
+
+#### Scenario: Preview writes neither sink
+- **WHEN** `assess(AssessPlan(id, "mid", record=False))` is called
+- **THEN** both sink fields are `not_requested`, no checkpoint row exists in
+  the log or the document, and `recording_complete` is `True`
+
+### Requirement: Assessment — a failed sink is a reported outcome, never an exception
+A failed sink SHALL be a reported outcome on the result, never an
+exception (no `PartialRecording`), because the evaluation succeeded.
+`recording_complete` is `True` when no requested sink failed — vacuously true
+for a preview.
+
 #### Scenario: Database failure reported, document still written
 - **WHEN** the log write returns `False` or raises
 - **THEN** `db_write == "failed"`, `document_write == "saved"`,
   `recording_complete` is `False`, `warnings` contains `checkpoint not saved
   to the database`, and the evaluation carries a valid verdict
+
+#### Scenario: Document failure reported independently
+- **WHEN** the document save raises
+- **THEN** `document_write == "failed"`, `db_write == "saved"`, the log holds
+  the row, and the document is unchanged
+
+### Requirement: Assessment — the plan is found before the phase is judged, and an active plan's readiness gate runs before either sink
+The plan SHALL be found before the phase is judged (`PlanNotFound`
+before `InvalidField`). Because appending the checkpoint re-saves the plan
+document, `record=True, append_to_plan=True` on an *active* plan SHALL run the
+same readiness gate every other write runs — before either sink is touched —
+and raise `PlanNotReady` (with `already_active=True`) for an active-but-unready
+document; a preview or a database-only recording persists no document and is
+not gated.
 
 #### Scenario: Recording onto an unready active document is refused first
 - **WHEN** `assess(AssessPlan(id, "start"))` is called for a hand-edited active
@@ -344,50 +385,51 @@ not gated.
   document is byte-identical, and the same call with `record=False` or
   `append_to_plan=False` succeeds
 
-#### Scenario: Document failure reported independently
-- **WHEN** the document save raises
-- **THEN** `document_write == "failed"`, `db_write == "saved"`, the log holds
-  the row, and the document is unchanged
-
 ### Requirement: Active-plan guidance is a deterministic read
 `get_active_guidance(*, today=None)` SHALL return a frozen `ActiveGuidance`
 holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by
-`plan_id`, with: the `PlanSummary`; the plan's `ReadinessView` (`readiness`) —
-the same view every write is judged by, so an active-but-unready document (a
-hand edit or pre-gate import with no mission) is still listed but its entry
-says that every `SetMilestone`, `RevisePlan` or document-appending recorded
-assessment on it will be `PlanNotReady` until it is paused or repaired (a
-preview, or a recording with `append_to_plan=False`, touches no document and
-is not gated — see "Assessment reports each recording sink independently"),
-with no second `inspect` per
-plan; `next_milestone` (the first unchecked
-milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of
-`normalise_match_key`
-over the topics and every milestone's concepts (casefold, punctuation replaced
-by spaces, whitespace collapsed — matching is equality on the key, never a
-substring test; a tuple, not a `frozenset`, because D-3 binds every view to
-tuples and a consumer that wants a set builds one); `target_urgency` in `overdue` (days until target `< 0`),
-`soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a
-`completion_action` string only when the plan has milestones and every one is
-done; and per-plan `warnings` for defects worked around (no milestones, a
-target date that is not a date). Every document SHALL be enumerated by its
-storage id and loaded through the identity-pinning seam path, so an entry's
-id is the file's, never an untrusted frontmatter `id`; documents that cannot
-be read or parsed SHALL be named in the collection's `warnings`, in id order.
-Non-active plans are skipped. `today`
-pins the urgency computation and the nested summary's `days_until_target` —
-one effective date for the whole payload — for frozen-clock callers and
-defaults to the UTC
-date.
-
-This view is the one plan-static read the `now` decision engine consumes
-(see "The now engine is plan-aware with tested ranking rules").
+`plan_id`, with: the `PlanSummary`.
 
 #### Scenario: One entry per active plan, ordered, others skipped
 - **WHEN** plans `zeta` (active), `alpha` (active), `mid` (active) and one
   plan in each of `draft`, `paused`, `complete`, `abandoned` exist
 - **THEN** `get_active_guidance().plans` has three entries in the order
   `alpha`, `mid`, `zeta`, and repeated calls return equal views
+
+### Requirement: Active-plan guidance — each entry carries the readiness view every write is judged by
+Each `ActivePlanGuidance` SHALL carry the plan's `ReadinessView` (`readiness`) —
+the same view every write is judged by, so an active-but-unready document (a
+hand edit or pre-gate import with no mission) is still listed but its entry
+says that every `SetMilestone`, `RevisePlan` or document-appending recorded
+assessment on it will be `PlanNotReady` until it is paused or repaired.
+
+#### Scenario: An unready active plan is listed with its blockers
+- **WHEN** an active document has topics and milestones but no mission `why`
+  and no success criteria, beside a ready active plan
+- **THEN** both appear in `.plans`; the husk's `readiness.ready` is `false`
+  and its `readiness.blockers` name the missing why and success criteria; the
+  ready plan's `readiness.ready` is `true`; `load_plan` ran once per document;
+  and `to_json_dict()` carries the `readiness` block per entry
+
+### Requirement: Active-plan guidance — readiness rides on one parse per document
+Each `ActivePlanGuidance` SHALL carry it with no second `inspect` per plan (a
+preview, or a recording with `append_to_plan=False`, touches no document and
+is not gated — see "Assessment reports each recording sink independently").
+
+#### Scenario: One load per document, blockers on the entry itself
+- **WHEN** an active husk with no mission sits beside a healthy active plan and
+  `store.load_plan` is counted while `get_active_guidance()` runs
+- **THEN** each document is loaded exactly once, both are listed, and the
+  husk's `readiness` names its blockers on its own entry
+
+### Requirement: Active-plan guidance — next milestone and exact match keys
+Each `ActivePlanGuidance` SHALL carry `next_milestone` (the first unchecked
+milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of
+`normalise_match_key`
+over the topics and every milestone's concepts (casefold, punctuation replaced
+by spaces, whitespace collapsed — matching is equality on the key, never a
+substring test; a tuple, not a `frozenset`, because D-3 binds every view to
+tuples and a consumer that wants a set builds one).
 
 #### Scenario: Match keys and next milestone
 - **WHEN** an active plan has topics `["SQL", "Data-Engineering"]` and
@@ -396,6 +438,13 @@ This view is the one plan-static read the `now` decision engine consumes
 - **THEN** `match_keys == ("data engineering", "dense rank", "rank vs dense
   rank", "sql", "window frame", "window function")` — sorted, de-duplicated —
   and `next_milestone` is index `1`
+
+### Requirement: Active-plan guidance — target urgency, energy floor, completion action and per-plan warnings
+Each `ActivePlanGuidance` SHALL carry `target_urgency` in `overdue` (days until target `< 0`),
+`soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a
+`completion_action` string only when the plan has milestones and every one is
+done; and per-plan `warnings` for defects worked around (no milestones, a
+target date that is not a date).
 
 #### Scenario: Urgency buckets
 - **WHEN** the target date is 30 or 1 day(s) ago, today, 1, 7, 8 or 90 days
@@ -407,6 +456,13 @@ This view is the one plan-static read the `now` decision engine consumes
 - **WHEN** an active plan's milestones are all `done`
 - **THEN** `next_milestone` is `None` and `completion_action` is a non-empty
   string naming the plan
+
+### Requirement: Active-plan guidance — identity is the storage id and unreadable documents become warnings
+Every document SHALL be enumerated by its
+storage id and loaded through the identity-pinning seam path, so an entry's
+id is the file's, never an untrusted frontmatter `id`; documents that cannot
+be read or parsed SHALL be named in the collection's `warnings`, in id order.
+Non-active plans are skipped.
 
 #### Scenario: Malformed documents become warnings
 - **WHEN** an active plan has no milestones and `target_date: someday`, and an
@@ -425,19 +481,37 @@ This view is the one plan-static read the `now` decision engine consumes
   in id order and never the readable mismatched one; `inspect(<entry id>)`
   resolves to the same document
 
-#### Scenario: An unready active plan is listed with its blockers
-- **WHEN** an active document has topics and milestones but no mission `why`
-  and no success criteria, beside a ready active plan
-- **THEN** both appear in `.plans`; the husk's `readiness.ready` is `false`
-  and its `readiness.blockers` name the missing why and success criteria; the
-  ready plan's `readiness.ready` is `true`; `load_plan` ran once per document;
-  and `to_json_dict()` carries the `readiness` block per entry
+### Requirement: Active-plan guidance — one effective date for the read the now engine consumes
+`today`
+pins the urgency computation and the nested summary's `days_until_target` —
+one effective date for the whole payload — for frozen-clock callers and
+defaults to the UTC
+date.
+
+This view SHALL be the one plan-static read the `now` decision engine consumes
+(see "The now engine is plan-aware with tested ranking rules").
+
+#### Scenario: One clock for urgency and the nested day count
+- **WHEN** an active plan carries a target date and `get_active_guidance` is
+  read with a frozen `today`
+- **THEN** `target_urgency` and the nested summary's `days_until_target` are
+  both computed from that `today`, so the payload is a function of the
+  documents and the supplied date alone
 
 ### Requirement: The now engine is plan-aware with tested ranking rules
 `studyloop.learning.decision.build_now_plan` SHALL remain the only ranker of
 study actions and SHALL consume active plans through exactly one call to
 `PlanApplication().get_active_guidance(today=…)`, where `today` is the date
-of the same instant `generated_at` records. It SHALL apply these rules, in
+of the same instant `generated_at` records.
+
+#### Scenario: One plan-static read per ranking, on the engine's own date
+- **WHEN** `build_now_plan()` runs with two active plans and the guidance read
+  is counted while `checkpoint_history` is patched to fail
+- **THEN** `get_active_guidance` was called exactly once, with the engine's
+  own `today`, and no checkpoint history was read on the plans' account
+
+### Requirement: Now-engine rule 1: the ordered rules apply, and a failed plan read degrades to a warning
+It SHALL apply these rules, in
 this order (the plan-application-seam design, §3; decision D-5 of its
 council plan; item 5 / D-F of the follow-ons for rule 2's repair half and
 the body-doubling floor):
@@ -446,133 +520,33 @@ the body-doubling floor):
    degrade to a `warnings` entry, never a failed recommendation, and SHALL be
    logged with its traceback on `studyloop.learning.decision` so a
    programming error cannot hide behind the learner-facing warning.
+
+#### Scenario: A failed plan read warns and logs without failing the recommendation
+- **WHEN** `get_active_guidance` raises `RuntimeError("plans directory
+  unreadable")` while an unrelated due item is collected
+- **THEN** the due item is primary, `warnings` is exactly `("study plans could
+  not be read; recommending without them",)`, `active_plans` is empty, and one
+  WARNING record with `exc_info` is logged on `studyloop.learning.decision`
+
+### Requirement: Now-engine rule 2: a milestone above the energy floor is deferred, due recall stays eligible
 2. The energy capability is `low|medium|high → 3|6|10`. For an active plan
    whose `energy_floor` exceeds it, the next milestone SHALL be listed in
    `energy_deferred` and SHALL NOT become a candidate. Plan-related due recall
-   stays eligible and plan-related whatever its recorded confidence. A
-   struggle **repair** carries an energy demand of its own, derived once in
-   the struggle collector from its own row classes and carried in the
-   candidate's `metadata["energy_demand"]`: `struggling` seen within 14 days →
-   `high` (asks for 6/10); `struggling` older than that, or a row whose only
-   signal is a weak teach-back → `medium` (4/10); `learning` → `low` (0/10).
-   A repair whose demand exceeds the capability SHALL be deferred exactly
-   like new milestone work — listed in `energy_deferred_repairs` as a
-   `DeferredRepair` (`plan_id`/`plan_title` when plan-related, else `None`,
-   `concept`, `topic`, `confidence`, `energy_demand`, `required_capability`,
-   `energy_capability`, `reason` naming the struggle) and never ranked; the
-   deferral does not depend on a plan existing. A `low`-demand repair is
-   always carried. `energy_deferred` stays milestone-shaped; a repair is never
-   folded into it.
-3. A candidate is plan-related when `normalise_match_key` of its concept,
-   topic or course **equals** one of the plan's `match_keys`; no substring
-   test. It names the plan's next milestone (`milestone_index`) only when the
-   key equals one of that milestone's concepts **and** the plan is eligible —
-   ready and within the energy capability; a topic or finished-milestone
-   match, or any match on an energy-deferred or active-but-unready plan,
-   carries `milestone_index = None` (plan-related repair), so a payload never
-   names a milestone it also reports as deferred or that the seam would
-   refuse to tick.
-4. Scoring is today's scoring plus one bounded bias for plan-related
-   candidates: within one urgency class plan-related beats unrelated, and a
-   globally more-urgent unrelated candidate still wins — a bias, not a filter.
-5. When no collected candidate represents an eligible (ready, energy-permitted)
-   plan's next milestone, one `conversation` candidate SHALL be synthesised
-   for it (source `study_plan:<plan_id>:<index>`, concept = the milestone's
-   first concept or its title, topic = the plan's first topic), scored below
-   every due and repair class. A learner with an active plan and no evidence
-   is therefore sent to the plan, and `starter` is `false`. A deferred repair
-   (rule 2) does not "represent" a milestone. When, after rules 2 and 5, **no
-   candidate is plan-related** and at least one matchable active plan exists,
-   one **body-double** candidate SHALL be synthesised instead of leaving the
-   plan to the least-bad task: `source = "body_double"`, `action_type =
-   "conversation"`, base score below every real candidate's base and then
-   scored like any other candidate — so every due and conversation candidate
-   outranks it at every energy while a hands-on task the low-energy rule
-   penalises may not; a proposal, never a filter: nothing is removed from the
-   ranking — `plan_refs` `(plan_id, None)` for every **ready** matchable plan
-   (rule 7 may add a reference to an unready plan whose topic the proposal
-   shares; the proposal itself names ready plans only), a reason that opens with
-   the progress the plan records (`N of M milestones of <plan> done.`, omitted when
-   none is done — never invented) before naming the deferred milestones and
-   repairs it stands in for, and describes the door by what the co-study persona
-   guarantees (the learner drives; the companion stays quiet unless asked), and
-   `evidence_command` the
-   co-study session door — `studyloop study "<plan title>" --mode co-study` —
-   set explicitly, never a progress write. No active plan (a draft is not
-   one) → no body-double candidate; when every real candidate was deferred
-   and no plan exists, the starter stands in and its reason says the energy
-   deferred the repair work, not that no evidence exists.
-6. After de-duplication every matching `PlanRef(plan_id, milestone_index)`
-   SHALL be attached to each ranked action, ordered by target urgency
-   (`overdue`, `soon`, `later`, `undated`) → most recent `updated` → `plan_id`,
-   keeping the most specific milestone per plan.
-7. When primary + alternates hold no plan-backed action and an eligible one
-   whose estimate fits the requested time exists further down, it SHALL
-   replace the last alternate only; the primary is never re-ranked by plans.
-   Below a plan's floor that plan-backed action is the body-double proposal
-   (it advertises no work the energy cannot carry), never the deferred
-   milestone.
-8. A fully-checked active plan SHALL appear in `completion_actions` and SHALL
-   be neither matched nor synthesised. An active-but-unready plan SHALL be
-   listed and matched (bias and a `milestone_index = None` reference) but
-   never synthesised and never named as a milestone, with a warning naming
-   its blockers.
+   stays eligible and plan-related whatever its recorded confidence.
 
-`NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`,
-`energy_deferred_repairs`, `completion_actions` and `warnings`;
-`LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`.
-`to_json_dict()` SHALL omit each of these when empty, so a learner with no
-active plan, no struggle candidate and nothing deferred receives the pre-#10
-payload **byte for byte** — the golden world, pinned by
-`tests/golden/now_plan_no_active.json`, captured before any of this shipped.
-Exactly two changes are plan-independent (rule 2's repair half): every
-struggle-collector candidate's `metadata` carries `energy_demand` at every
-energy, and repair above the day's capability — a live struggle, an older
-struggle or a weak teach-back at low energy — is deferred into
-`energy_deferred_repairs` (with the starter, if nothing else was collected)
-where the learner used to receive the repair itself. `medium` and `high`
-demand both need at least medium self-reported energy today; the class is
-carried so the payload says why.
-Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in
-its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy
-deferral — one line per deferred milestone **and** one per deferred repair —
-and the engine's warnings from these fields, SHALL label a body-double
-primary's command as the session door it is ("Sit with the plan", and the
-Today card starts it in the Body Double view) rather than as evidence to
-record, SHALL escape learner-authored text before any markup (Rich or HTML),
-and SHALL NOT re-rank. Ranking tests prove ranking compliance, not learner
-benefit (D-16); a five-scenario human rubric receipt accompanies the change,
-with row 3b re-run after this requirement's repair half.
+#### Scenario: Due recall is never deferred
+- **WHEN** energy is `low`, a due `recall` item on a plan concept is collected
+  (whatever its metadata says about confidence) and a live struggle repair is
+  also collected
+- **THEN** the due item is primary with `PlanRef(plan, None)`, the repair is
+  in `energy_deferred_repairs`, and no `body_double` candidate exists
 
-#### Scenario: No active plan is byte-identical to the golden
-- **WHEN** no active plan exists (an empty plans directory, or only a draft)
-  and `build_now_plan()` runs with a frozen clock in an empty world
-- **THEN** the serialised `to_json_dict()` equals
-  `tests/golden/now_plan_no_active.json` byte for byte, and no
-  `active_plans`, `energy_deferred`, `energy_deferred_repairs`,
-  `completion_actions`, `warnings` or `plan_refs` key is present
-
-#### Scenario: Matching due concept outranks unrelated of the same urgency
-- **WHEN** an active plan's milestone names `window function` and two due
-  items are two points apart, `decorators` (unrelated) ahead
-- **THEN** `window function` is primary with `plan_refs == (PlanRef(plan, 0),)`
-  and `decorators` is the first alternate with no refs
-
-#### Scenario: A more-urgent unrelated item still wins
-- **WHEN** the only collected candidate is an unrelated due item and the
-  plan's next milestone is unrepresented
-- **THEN** the due item is primary and the synthesised milestone
-  (`study_plan:<id>:0`) is an alternate with a lower score
-
-#### Scenario: Energy below the floor defers the milestone, keeps repair
-- **WHEN** energy is `low` (3/10), the plan's `energy_floor` is 5, its next
-  milestone is `Frames` and a `learning` row on a finished milestone's
-  concept is collected by the struggle collector (gentle repair)
-- **THEN** that repair is primary (`teachback`, `energy_demand == "low"`) with
-  `PlanRef(plan, None)`, `energy_deferred` names `(plan, 1, 5, 3)`,
-  `energy_deferred_repairs` is empty, and no `study_plan:` or `body_double`
-  candidate exists; at `medium` energy nothing is deferred and the milestone
-  is synthesised
+### Requirement: Now-engine rule 2: a struggle repair carries its own energy demand
+A struggle **repair** carries an energy demand of its own, which SHALL be derived once in
+the struggle collector from its own row classes and carried in the
+candidate's `metadata["energy_demand"]`: `struggling` seen within 14 days →
+`high` (asks for 6/10); `struggling` older than that, or a row whose only
+signal is a weak teach-back → `medium` (4/10); `learning` → `low` (0/10).
 
 #### Scenario: A live struggle's repair defers at low energy like new work
 - **WHEN** energy is `low` and the struggle collector holds a `struggling` row
@@ -586,12 +560,13 @@ with row 3b re-run after this requirement's repair half.
   still names the milestone alone, and at `medium` energy the key is absent
   and the live repair is ranked again
 
-#### Scenario: Due recall is never deferred
-- **WHEN** energy is `low`, a due `recall` item on a plan concept is collected
-  (whatever its metadata says about confidence) and a live struggle repair is
-  also collected
-- **THEN** the due item is primary with `PlanRef(plan, None)`, the repair is
-  in `energy_deferred_repairs`, and no `body_double` candidate exists
+### Requirement: Now-engine rule 2: a repair above the capability is deferred like new milestone work, never ranked
+A repair whose demand exceeds the capability SHALL be deferred exactly
+like new milestone work — listed in `energy_deferred_repairs` as a
+`DeferredRepair` (`plan_id`/`plan_title` when plan-related, else `None`,
+`concept`, `topic`, `confidence`, `energy_demand`, `required_capability`,
+`energy_capability`, `reason` naming the struggle) and never ranked; the
+deferral does not depend on a plan existing.
 
 #### Scenario: A struggling row's due item is the repair, collected twice
 - **WHEN** energy is `low` and one `struggling` row seen 3 days ago on a
@@ -603,6 +578,82 @@ with row 3b re-run after this requirement's repair half.
   `body_double` proposal (the starter when no plan exists); at `medium` energy
   the due copy is primary as before and the key is absent
 
+### Requirement: Now-engine rule 2: a low-demand repair is always carried and never folded into energy_deferred
+A `low`-demand repair is
+always carried. `energy_deferred` stays milestone-shaped; a repair SHALL never be
+folded into it.
+
+#### Scenario: Energy below the floor defers the milestone, keeps repair
+- **WHEN** energy is `low` (3/10), the plan's `energy_floor` is 5, its next
+  milestone is `Frames` and a `learning` row on a finished milestone's
+  concept is collected by the struggle collector (gentle repair)
+- **THEN** that repair is primary (`teachback`, `energy_demand == "low"`) with
+  `PlanRef(plan, None)`, `energy_deferred` names `(plan, 1, 5, 3)`,
+  `energy_deferred_repairs` is empty, and no `study_plan:` or `body_double`
+  candidate exists; at `medium` energy nothing is deferred and the milestone
+  is synthesised
+
+### Requirement: Now-engine rule 3: plan-relatedness is exact key equality
+3. A candidate is plan-related when `normalise_match_key` of its concept,
+   topic or course **equals** one of the plan's `match_keys`; there SHALL be no substring
+   test.
+
+#### Scenario: No substring matching
+- **WHEN** a milestone titled `Window functions deep dive` has no concepts
+  and candidates `window functions deep dive tutorial`, `window` and
+  `joins`/`SQL` are collected
+- **THEN** only `joins` is plan-related (`PlanRef(plan, None)` via the topic
+  `sql`, casefolded); the other two carry no refs
+
+### Requirement: Now-engine rule 3: a plan-related candidate names the next milestone only on an eligible plan
+Rule 3 SHALL be: It names the plan's next milestone (`milestone_index`) only when the
+key equals one of that milestone's concepts **and** the plan is eligible —
+ready and within the energy capability; a topic or finished-milestone
+match, or any match on an energy-deferred or active-but-unready plan,
+carries `milestone_index = None` (plan-related repair), so a payload never
+names a milestone it also reports as deferred or that the seam would
+refuse to tick.
+
+#### Scenario: A deferred milestone is never named by a reference
+- **WHEN** energy is `low`, the plan's `energy_floor` is 5 and the only
+  collected candidate's concept equals the next milestone's concept
+- **THEN** the candidate is primary with `PlanRef(plan, None)` while
+  `energy_deferred` names that milestone; at `medium` energy the same
+  candidate carries `PlanRef(plan, 0)` and nothing is deferred
+
+### Requirement: Now-engine rule 4: one bounded bias for plan-related candidates
+4. Scoring SHALL be today's scoring plus one bounded bias for plan-related
+   candidates: within one urgency class plan-related beats unrelated, and a
+   globally more-urgent unrelated candidate still wins — a bias, not a filter.
+
+#### Scenario: Matching due concept outranks unrelated of the same urgency
+- **WHEN** an active plan's milestone names `window function` and two due
+  items are two points apart, `decorators` (unrelated) ahead
+- **THEN** `window function` is primary with `plan_refs == (PlanRef(plan, 0),)`
+  and `decorators` is the first alternate with no refs
+
+### Requirement: Now-engine rule 5: an unrepresented eligible milestone is synthesised as a conversation
+5. When no collected candidate represents an eligible (ready, energy-permitted)
+   plan's next milestone, one `conversation` candidate SHALL be synthesised
+   for it (source `study_plan:<plan_id>:<index>`, concept = the milestone's
+   first concept or its title, topic = the plan's first topic), scored below
+   every due and repair class. A learner with an active plan and no evidence
+   is therefore sent to the plan, and `starter` is `false`. A deferred repair
+   (rule 2) does not "represent" a milestone.
+
+#### Scenario: A more-urgent unrelated item still wins
+- **WHEN** the only collected candidate is an unrelated due item and the
+  plan's next milestone is unrepresented
+- **THEN** the due item is primary and the synthesised milestone
+  (`study_plan:<id>:0`) is an alternate with a lower score
+
+### Requirement: Now-engine rule 5: when nothing is plan-related, a body-double candidate is synthesised
+When, after rules 2 and 5, **no
+candidate is plan-related** and at least one matchable active plan exists,
+one **body-double** candidate SHALL be synthesised instead of leaving the
+plan to the least-bad task: `source = "body_double"`, `action_type =
+"conversation"`.
+
 #### Scenario: Nothing plan-related fits, so the engine proposes sitting with the plan
 - **WHEN** energy is `low`, the plan's `energy_floor` is 5 (milestone
   deferred) and its only repair is a live struggle (deferred)
@@ -613,10 +664,54 @@ with row 3b re-run after this requirement's repair half.
   JSON keys are the golden's then `active_plans`, `energy_deferred`,
   `energy_deferred_repairs`
 
+### Requirement: Now-engine rule 5: the body double is scored below every real candidate — a proposal, never a filter
+The **body-double** candidate SHALL be synthesised: base score below every
+real candidate's base and then
+scored like any other candidate — so every due and conversation candidate
+outranks it at every energy while a hands-on task the low-energy rule
+penalises may not; a proposal, never a filter: nothing is removed from the
+ranking.
+
 #### Scenario: The body-double candidate is a proposal, not a filter
 - **WHEN** the same world also collects an unrelated due item
 - **THEN** the due item is primary with no refs and the body-double
   candidate is the only alternate, with a lower score
+
+### Requirement: Now-engine rule 5: the body double references every ready matchable plan
+The **body-double** candidate SHALL carry `plan_refs` `(plan_id, None)` for every **ready** matchable plan
+(rule 7 may add a reference to an unready plan whose topic the proposal
+shares; the proposal itself names ready plans only).
+
+#### Scenario: Two ready plans below the floor share one proposal
+- **WHEN** two ready active plans with `energy_floor` 5 and live struggles are
+  ranked at `low` energy
+- **THEN** the only candidate is one `body_double` whose `plan_refs` are
+  `(PlanRef("sql-windows", None), PlanRef("py-decorators", None))` in most
+  recent `updated` order, whose door is the first plan's `--mode co-study`
+  command, and whose reason names both deferred milestones and both repairs
+
+### Requirement: Now-engine rule 5: the body double's reason opens with recorded progress and describes the door truthfully
+The **body-double** candidate SHALL carry a reason that opens with
+the progress the plan records (`N of M milestones of <plan> done.`, omitted when
+none is done — never invented) before naming the deferred milestones and
+repairs it stands in for, and describes the door by what the co-study persona
+guarantees (the learner drives; the companion stays quiet unless asked).
+
+#### Scenario: The reason leads with recorded progress and names the door by the persona's promise
+- **WHEN** rubric row 3's world (one of two milestones done, a live struggle)
+  is ranked at `low` energy
+- **THEN** the body double's reason starts `1 of 2 milestones of SQL Windows
+  done.`, names the struggle only after that progress, contains `you drive;
+  the companion stays quiet unless you ask`, and promises neither `no new
+  material` nor `no repair`
+
+### Requirement: Now-engine rule 5: the body double's door is the co-study session; no active plan, no body double
+The **body-double** candidate SHALL carry `evidence_command` the
+co-study session door — `studyloop study "<plan title>" --mode co-study` —
+set explicitly, never a progress write. No active plan (a draft is not
+one) → no body-double candidate; when every real candidate was deferred
+and no plan exists, the starter stands in and its reason says the energy
+deferred the repair work, not that no evidence exists.
 
 #### Scenario: No active plan, no body double
 - **WHEN** no plan document exists (or only a draft) and a live unrelated
@@ -625,33 +720,25 @@ with row 3b re-run after this requirement's repair half.
   the struggle with `plan_id None`, `starter` is `true` and the starter's
   reason says the energy deferred the repair work
 
-#### Scenario: A deferred milestone is never named by a reference
-- **WHEN** energy is `low`, the plan's `energy_floor` is 5 and the only
-  collected candidate's concept equals the next milestone's concept
-- **THEN** the candidate is primary with `PlanRef(plan, None)` while
-  `energy_deferred` names that milestone; at `medium` energy the same
-  candidate carries `PlanRef(plan, 0)` and nothing is deferred
-
-#### Scenario: An unready active plan is matched but never named
-- **WHEN** an active plan has no mission and no success criteria (unready)
-  and a collected candidate equals its next milestone's concept
-- **THEN** the candidate is primary with `PlanRef(plan, None)`, no
-  `study_plan:` candidate exists, the plan's `active_plans` entry has
-  `ready == False` and `eligible == False`, and one warning names the plan,
-  its blockers and "pause or repair"
-
-#### Scenario: No substring matching
-- **WHEN** a milestone titled `Window functions deep dive` has no concepts
-  and candidates `window functions deep dive tutorial`, `window` and
-  `joins`/`SQL` are collected
-- **THEN** only `joins` is plan-related (`PlanRef(plan, None)` via the topic
-  `sql`, casefolded); the other two carry no refs
+### Requirement: Now-engine rule 6: every matching PlanRef is attached, ordered by urgency, then updated, then plan id
+6. After de-duplication every matching `PlanRef(plan_id, milestone_index)`
+   SHALL be attached to each ranked action, ordered by target urgency
+   (`overdue`, `soon`, `later`, `undated`) → most recent `updated` → `plan_id`,
+   keeping the most specific milestone per plan.
 
 #### Scenario: Every matching plan is referenced, in order
 - **WHEN** six active plans (overdue, soon, later, three undated with
   distinct and tied `updated`) all name the primary's concept
 - **THEN** `plan_refs` lists all six ordered overdue → soon → later → undated
   by latest `updated` then `plan_id`, and `active_plans` is in the same order
+
+### Requirement: Now-engine rule 7: a plan-backed action replaces the last alternate only
+7. When primary + alternates hold no plan-backed action and an eligible one
+   whose estimate fits the requested time exists further down, it SHALL
+   replace the last alternate only; the primary is never re-ranked by plans.
+   Below a plan's floor that plan-backed action is the body-double proposal
+   (it advertises no work the energy cannot carry), never the deferred
+   milestone.
 
 #### Scenario: A plan-backed action is preserved when energy allows
 - **WHEN** four unrelated due items outrank everything and the plan's
@@ -662,12 +749,76 @@ with row 3b re-run after this requirement's repair half.
   second alternate is the body-double proposal with `PlanRef(plan, None)`,
   no `study_plan:` candidate exists and `energy_deferred` names the milestone
 
+### Requirement: Now-engine rule 8: a fully-checked plan is a completion action; an unready plan is matched but never synthesised
+8. A fully-checked active plan SHALL appear in `completion_actions` and SHALL
+   be neither matched nor synthesised. An active-but-unready plan SHALL be
+   listed and matched (bias and a `milestone_index = None` reference) but
+   never synthesised and never named as a milestone, with a warning naming
+   its blockers.
+
 #### Scenario: Fully-checked plan emits a completion action
 - **WHEN** an active plan's every milestone is done and an unrelated due item
   is collected
 - **THEN** `completion_actions` names the plan, the due item is primary with
   no refs, no `study_plan:` candidate exists, and the plan's `active_plans`
   entry has `next_milestone_index == None`
+
+#### Scenario: An unready active plan is matched but never named
+- **WHEN** an active plan has no mission and no success criteria (unready)
+  and a collected candidate equals its next milestone's concept
+- **THEN** the candidate is primary with `PlanRef(plan, None)`, no
+  `study_plan:` candidate exists, the plan's `active_plans` entry has
+  `ready == False` and `eligible == False`, and one warning names the plan,
+  its blockers and "pause or repair"
+
+### Requirement: Now-engine payload: NowPlan gains the plan fields, ordered as rule 6, and omits them when empty
+`NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`,
+`energy_deferred_repairs`, `completion_actions` and `warnings`;
+`LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`.
+`to_json_dict()` SHALL omit each of these when empty, so a learner with no
+active plan, no struggle candidate and nothing deferred receives the pre-#10
+payload **byte for byte** — the golden world, pinned by
+`tests/golden/now_plan_no_active.json`, captured before any of this shipped.
+
+#### Scenario: No active plan is byte-identical to the golden
+- **WHEN** no active plan exists (an empty plans directory, or only a draft)
+  and `build_now_plan()` runs with a frozen clock in an empty world
+- **THEN** the serialised `to_json_dict()` equals
+  `tests/golden/now_plan_no_active.json` byte for byte, and no
+  `active_plans`, `energy_deferred`, `energy_deferred_repairs`,
+  `completion_actions`, `warnings` or `plan_refs` key is present
+
+### Requirement: Now-engine rule 2's repair half: exactly two changes are plan-independent
+Exactly two changes SHALL be plan-independent (rule 2's repair half): every
+struggle-collector candidate's `metadata` carries `energy_demand` at every
+energy, and repair above the day's capability — a live struggle, an older
+struggle or a weak teach-back at low energy — is deferred into
+`energy_deferred_repairs` (with the starter, if nothing else was collected)
+where the learner used to receive the repair itself.
+
+#### Scenario: With no plan, the live struggle is deferred once and the starter stands in
+- **WHEN** no plan exists, energy is `low`, and one `struggling` row seen 3 days
+  ago is read by both the due-progress and the struggle collector
+- **THEN** the primary is the starter, the concept is ranked nowhere, and
+  `energy_deferred_repairs` names it once with `plan_id None` and demand `high`
+
+### Requirement: Now-engine rule 2's repair half: medium and high demand need medium energy
+`medium` and `high`
+demand both SHALL need at least medium self-reported energy today; the class is
+carried so the payload says why.
+
+#### Scenario: Low energy defers medium and high demand and carries low
+- **WHEN** a live struggle (`high`), a 30-day-old struggle (`medium`) and a
+  `learning` row (`low`) are collected at `low` energy
+- **THEN** `energy_deferred_repairs` names the live and the stale concept, the
+  `learning` concept is ranked, and the deferred set is disjoint from the
+  ranked set
+
+### Requirement: Now-engine renderers show plan relevance, energy deferral and warnings
+Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in
+its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy
+deferral — one line per deferred milestone **and** one per deferred repair —
+and the engine's warnings from these fields.
 
 #### Scenario: Renderers show, never re-rank
 - **WHEN** `studyloop now --energy low`, `GET /api/now?energy=low` and the
@@ -682,6 +833,15 @@ with row 3b re-run after this requirement's repair half.
   recap's `plan_context` is absent from its JSON, its spoken text and the
   `recap today` panel
 
+### Requirement: Now-engine renderers label the body-double door, escape learner text and never re-rank
+Renderers SHALL label a body-double
+primary's command as the session door it is ("Sit with the plan", and the
+Today card starts it in the Body Double view) rather than as evidence to
+record, SHALL escape learner-authored text before any markup (Rich or HTML),
+and SHALL NOT re-rank. Ranking tests prove ranking compliance, not learner
+benefit (D-16); a five-scenario human rubric receipt accompanies the change,
+with row 3b re-run after the now engine's repair half.
+
 #### Scenario: Learner-authored text is data to every renderer
 - **WHEN** an active plan's title, topic or milestone text contains Rich
   markup, HTML or shell punctuation (`Plan [/bold]`, `<script>…`, `"; rm -rf ~`)
@@ -694,10 +854,29 @@ No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`
 SHALL import `studyloop.planning.store`, `.index`, `.authoring` or
 `.evaluation` (directly, relatively, as a whole-package handle, by wildcard
 `from studyloop.planning import *`, by a literal string naming a forbidden
-module or the whole package, by name through `from studyloop.planning import …`
+module or the whole package).
+
+#### Scenario: A direct store import planted in an adapter is a violation
+- **WHEN** `from studyloop.planning.store import save_plan` is appended to a
+  copy of `web/routes/plans.py` and the guard runs on the copy
+- **THEN** the guard reports a violation naming the forbidden module, while the
+  unmodified fixture module reports none
+
+### Requirement: Adapters — the seam's re-exported names and its own modules are not a side door
+No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`
+SHALL import them by name through `from studyloop.planning import …`
 for the names those modules contribute, or transitively through one of the
 four allowed seam modules — `from studyloop.planning.application import
-store`). `tests/test_architecture_plan_seam.py` SHALL enforce this by
+store`.
+
+#### Scenario: A transitive import through an allowed seam module is a violation
+- **WHEN** `from studyloop.planning.application import store` is appended to a
+  copy of `web/routes/plans.py` and the guard runs on the copy
+- **THEN** the guard reports a violation for the transitive reach, while the
+  unmodified fixture module reports none
+
+### Requirement: Adapters — the architecture test enforces the seam on every adapter module
+`tests/test_architecture_plan_seam.py` SHALL enforce this by
 parsing every adapter module, SHALL reject each planted bypass in a temp copy
 of an adapter, and SHALL check its explicit name list against what
 `studyloop.planning` actually re-exports from the four modules.
@@ -714,15 +893,7 @@ of an adapter, and SHALL check its explicit name list against what
 Learning-record validation (non-empty title; no H1–H3 lines in the body) and
 idempotent numbering SHALL live in one function,
 `studyloop.planning.store.append_learning_record(plan, title, body=, status=)`,
-applied to an in-memory plan. The store's `record_learning` SHALL wrap it
-(load → append → save only when created, so a duplicate leaves the file's
-bytes untouched) and the seam's `RevisePlan(learning_record=…)` SHALL call it
-on the revision candidate, translating its `ValueError` to `InvalidField`.
-A revision whose only content is a learning record that already exists SHALL
-write nothing (no save, bytes and `updated` untouched — the guarantee the
-store's `record_learning` always gave); a duplicate record beside another
-field change SHALL still be one save, and an empty revision remains a
-"touch" (one save, `updated` bumped, nothing else changed).
+applied to an in-memory plan.
 
 #### Scenario: The seam follows the store's rule
 - **WHEN** `store.append_learning_record` is replaced by a function that
@@ -731,58 +902,67 @@ field change SHALL still be one save, and an empty revision remains a
 - **THEN** `InvalidField` carrying that message is raised and no record is
   added
 
+### Requirement: Learning record — the store wraps the one function and the seam calls it on the revision candidate
+The store's `record_learning` SHALL wrap it
+(load → append → save only when created, so a duplicate leaves the file's
+bytes untouched) and the seam's `RevisePlan(learning_record=…)` SHALL call it
+on the revision candidate, translating its `ValueError` to `InvalidField`.
+
+#### Scenario: Appending through the seam numbers once and refuses a blank title
+- **WHEN** `RevisePlan(learning_record=…)` is applied twice with the same title
+  and body, then once with a blank title
+- **THEN** the plan holds one record numbered `1`, exactly one save happened
+  across the two applications, and the blank title raises `InvalidField`
+
+### Requirement: Learning record — a revision whose only content is a duplicate record writes nothing
+A revision whose only content is a learning record that already exists SHALL
+write nothing (no save, bytes and `updated` untouched — the guarantee the
+store's `record_learning` always gave); a duplicate record beside another
+field change SHALL still be one save, and an empty revision remains a
+"touch" (one save, `updated` bumped, nothing else changed).
+
+#### Scenario: A duplicate-only revision leaves the file untouched
+- **WHEN** a record is appended through `RevisePlan`, the clock is moved
+  forward, and the same record is applied again with nothing else changed
+- **THEN** the second application saves nothing, the document's text is
+  byte-identical to before it, and the plan still holds one record
+
 ### Requirement: The completion action is a closing review, never a verdict
-Rule 9's completion action for a fully-checked active plan (item 4 / D-G)
+The completion action for a fully-checked active plan (the design's ninth
+ranking rule; item 4 / D-G)
 SHALL be composed from the plan's **end assessment**, read through the preview
 path — `PlanApplication().assess(AssessPlan(plan_id, phase="end",
-record=False))` — exactly once per fully-checked plan per `build_now_plan`. The
+record=False))` — exactly once per fully-checked plan per `build_now_plan`.
+
+#### Scenario: The ranker never changes a status
+- **WHEN** `build_now_plan` runs against a fully-checked active plan with the
+  recording writers patched to raise
+- **THEN** exactly one `AssessPlan(plan_id, "end", record=False)` intent is
+  assessed, the document's bytes are unchanged, the status is still `active`
+  and the checkpoint history is empty
+
+### Requirement: Completion action — the preview read writes nothing and only the learner's door closes a plan
+The
 read SHALL write nothing: the document's bytes and status, the plans directory
 and the checkpoint log are unchanged, and the recording writers
 (`evaluate_and_record`, `record_checkpoint`) are never called. The engine
 proposes; the architect asks; the learner decides; `set_study_plan_status`
 remains the only door to `complete`.
 
+#### Scenario: plan close launches the architect with the closing review and moves no status
+- **WHEN** `studyloop plan close <id>` runs on a fully-checked active plan
+- **THEN** the architect launches once in `plan-architect` mode with the
+  closing review — counts, proposal and evidence — as the brief's first
+  section, the intro says the status moves only when the learner agrees, and
+  the plan's document is unchanged by the launch
+
+### Requirement: Completion action — CompletionAction gains the three counts, the proposal and the evidence, and keeps a changed sentence
 `CompletionAction` SHALL gain `due_reviews: int`, `struggles: int`,
 `unverified_milestones: int`, `proposal: Literal["extend", "close"] | None`
 and `evidence: tuple[str, ...]`, and SHALL keep `action`, the sentence every
 renderer prints — now naming the proposal and the three counts and the one
 door to acting on them, `studyloop plan close <id>`; it SHALL differ from the
-pre-change either-way sentence. The counts and lines SHALL come from one
-definition, `planning.views.CompletionReview.from_evaluation`, consumed by both
-this action and the `plan close` brief so the two surfaces never disagree:
-`proposal == "extend"` iff any count is above zero, else `"close"`; one
-evidence line per counted item, capped at `COMPLETION_EVIDENCE_CAP` (8) with a
-final `… and N more` line. **Due reviews SHALL count only rows that name a
-concept** (owner decision, 2026-09-17): the scheduler's `New topic -- start
-fresh` row (`concept: None`, `evidence: configured_topic`) is a cold-start hint
-for "what should I review now", not a lapsed review, and SHALL NOT be counted;
-`plan evaluate` keeps the row, the exclusion is the completion review's.
-`CompletionAction` and `CompletionReview` SHALL carry `partial: bool`.
-
-**A partial read SHALL NOT propose** (council review 6, F1). `evaluate_plan`
-turns a reader that fails into a warning ending `unavailable — evaluation is
-partial` (`evaluation.PARTIAL_READ_MARKER`, one definition) and an empty
-default, so a count read while that reader was down is unread, not zero. When
-the evaluation carries such a warning the review SHALL keep the counts it did
-read, set `partial` true, set `proposal` `None` — neither `close` (a clean
-slate is a fact about evidence, not its absence) nor `extend` — and name each
-gap among its evidence lines (`Not read: <reader> unavailable — …`); the
-sentence SHALL say the review is partial and could not propose, never "clean";
-the `plan close` brief's proposal line SHALL read `unassessed — the review is
-partial` and its status line SHALL NOT say the review proposes.
-
-When the assessment fails, the recommendation SHALL NOT fail: the action
-SHALL keep the plan-static sentence with `proposal` `None`, the counts `0` and
-`evidence` empty, and `NowPlan.warnings` SHALL carry one entry naming the plan
-and the failure, logged with its traceback first — so no renderer reads a
-clean slate or outstanding work into a failure. The evaluation's own data-gap
-warnings SHALL travel back into `warnings` prefixed with the plan id.
-
-The new keys SHALL appear only inside `completion_actions` entries, which
-exist only when a fully-checked active plan exists; the no-plan payload stays
-byte-identical to `tests/golden/now_plan_no_active.json`. Renderers SHALL
-show the sentence (CLI `now`, the Today card, the daily recap), the CLI SHALL
-print each evidence line beneath it, and none SHALL re-rank.
+pre-change either-way sentence.
 
 #### Scenario: Due work on the plan's concepts proposes extend
 - **WHEN** an active plan's every milestone is done and the end assessment
@@ -792,11 +972,33 @@ print each evidence line beneath it, and none SHALL re-rank.
   line naming the concept, and a sentence naming the plan and `extend`; the
   JSON entry carries all five keys; no `study_plan:` candidate exists
 
+### Requirement: Completion action — counts and evidence lines come from one definition shared with plan close
+The counts and lines SHALL come from one
+definition, `planning.views.CompletionReview.from_evaluation`, consumed by both
+this action and the `plan close` brief so the two surfaces never disagree:
+`proposal == "extend"` iff any count is above zero, else `"close"`; one
+evidence line per counted item, capped at `COMPLETION_EVIDENCE_CAP` (8) with a
+final `… and N more` line.
+
 #### Scenario: A clean assessment proposes close
 - **WHEN** the end assessment finds no due reviews, no struggles and every
   done milestone backed by evidence
 - **THEN** the counts are `(0, 0, 0)`, `proposal == "close"`, `evidence` is
   empty and the sentence names `close`
+
+#### Scenario: The evidence cap keeps the counts and names the overflow
+- **WHEN** the end assessment finds more due reviews on the plan's concepts
+  than `COMPLETION_EVIDENCE_CAP`
+- **THEN** `due_reviews` is the full count, `proposal == "extend"`, `evidence`
+  holds `COMPLETION_EVIDENCE_CAP` lines plus one final `… and N more` line, and
+  the sentence states the full due count
+
+### Requirement: Completion action — due reviews count only rows that name a concept
+**Due reviews SHALL count only rows that name a
+concept** (owner decision, 2026-09-17): the scheduler's `New topic -- start
+fresh` row (`concept: None`, `evidence: configured_topic`) is a cold-start hint
+for "what should I review now", not a lapsed review, and SHALL NOT be counted;
+`plan evaluate` keeps the row, the exclusion is the completion review's.
 
 #### Scenario: New-topic rows are not due
 - **WHEN** `spaced_repetition_due` returns only the `New topic -- start
@@ -804,18 +1006,24 @@ print each evidence line beneath it, and none SHALL re-rank.
   session mentions
 - **THEN** `due_reviews == 0` and `proposal == "close"`
 
-#### Scenario: The ranker never changes a status
-- **WHEN** `build_now_plan` runs against a fully-checked active plan with the
-  recording writers patched to raise
-- **THEN** exactly one `AssessPlan(plan_id, "end", record=False)` intent is
-  assessed, the document's bytes are unchanged, the status is still `active`
-  and the checkpoint history is empty
+### Requirement: Completion action — a partial read is flagged and never proposes
+`CompletionAction` and `CompletionReview` SHALL carry `partial: bool`.
 
-#### Scenario: A failed assessment keeps the sentence and warns
-- **WHEN** `assess` raises for the fully-checked plan
-- **THEN** `completion_actions[0].action` equals the pre-change sentence,
-  `proposal is None`, `warnings` names the plan and the failure, and the
-  primary is still the collected due item
+**A partial read SHALL NOT propose** (council review 6, F1). `evaluate_plan`
+turns a reader that fails into a warning ending `unavailable — evaluation is
+partial` (`evaluation.PARTIAL_READ_MARKER`, one definition) and an empty
+default, so a count read while that reader was down is unread, not zero.
+
+#### Scenario: A reader that raises becomes a partial-read warning and an empty default
+- **WHEN** one of `evaluate_plan`'s history readers raises
+- **THEN** the evaluation still returns, that reader's result is the empty
+  default, and `warnings` carries one entry naming the reader as unavailable
+
+### Requirement: Completion action — a partial review keeps the counts it read, sets partial and names each gap
+When the evaluation carries such a warning the review SHALL keep the counts it did
+read, set `partial` true, set `proposal` `None` — neither `close` (a clean
+slate is a fact about evidence, not its absence) nor `extend` — and name each
+gap among its evidence lines (`Not read: <reader> unavailable — …`).
 
 #### Scenario: A partial assessment never proposes a clean close
 - **WHEN** one of the end assessment's history readers raises inside the
@@ -828,65 +1036,148 @@ print each evidence line beneath it, and none SHALL re-rank.
   `Proposal: unassessed — the review is partial`, the gap is among the first
   section's lines, and its status line does not say the review proposes
 
+### Requirement: Completion action — the partial sentence and the plan close brief never read clean
+When the evaluation carries such a warning the sentence SHALL say the review is
+partial and could not propose, never "clean"; the `plan close` brief's proposal
+line SHALL read `unassessed — the review is partial` and its status line SHALL
+NOT say the review proposes.
+
+#### Scenario: plan close with one reader down presents no clean proposal
+- **WHEN** `studyloop plan close <id>` runs on a fully-checked plan while one of
+  the end assessment's readers raises and the rest is clean
+- **THEN** the architect still launches, the brief's fixed proposal line reads
+  `Proposal: unassessed — the review is partial`, the gap is named in the same
+  first section, and the status line does not say the review proposes `close`
+
+### Requirement: Completion action — a failed assessment keeps the sentence and warns
+When the assessment fails, the recommendation SHALL NOT fail: the action
+SHALL keep the plan-static sentence with `proposal` `None`, the counts `0` and
+`evidence` empty, and `NowPlan.warnings` SHALL carry one entry naming the plan
+and the failure, logged with its traceback first — so no renderer reads a
+clean slate or outstanding work into a failure. The evaluation's own data-gap
+warnings SHALL travel back into `warnings` prefixed with the plan id.
+
+#### Scenario: A failed assessment keeps the sentence and warns
+- **WHEN** `assess` raises for the fully-checked plan
+- **THEN** `completion_actions[0].action` equals the pre-change sentence,
+  `proposal is None`, `warnings` names the plan and the failure, and the
+  primary is still the collected due item
+
+### Requirement: Completion action — the new keys live only inside completion_actions entries and renderers show the sentence
+The new keys SHALL appear only inside `completion_actions` entries, which
+exist only when a fully-checked active plan exists; the no-plan payload stays
+byte-identical to `tests/golden/now_plan_no_active.json`. Renderers SHALL
+show the sentence (CLI `now`, the Today card, the daily recap), the CLI SHALL
+print each evidence line beneath it, and none SHALL re-rank.
+
+#### Scenario: The five keys ride inside the completion entry
+- **WHEN** a fully-checked active plan's end assessment finds one due review
+  and an unrelated due item is collected
+- **THEN** the JSON row inside `completion_actions` carries `due_reviews`,
+  `struggles`, `unverified_milestones`, `proposal` and `evidence`, and the
+  primary is still the collected due item
+
 ### Requirement: The body-double proposal carries one passive first move
 When the `now` engine synthesises the body-double proposal (`source ==
 "body_double"`, design §5's floor), `learning/decision.py::_first_move` SHALL
 derive one first move for it from stored facts only: the first named plan's
 deferred next milestone (`_PlanContext.deferred`) and the indexed lesson
-`_resolve_lesson(concepts)` returns for **that milestone's own concepts** — one
+`_resolve_lesson(concepts)` returns for **that milestone's own concepts**.
+
+#### Scenario: The resolver is asked once, with the deferred milestone's own concepts
+- **WHEN** rubric row 3's world is ranked at `low` energy and the resolver is
+  counted
+- **THEN** the primary is the body double and the resolver was asked exactly
+  once, with `("window frame",)` — the deferred milestone's own concepts, never
+  its title and never the plan's topics
+
+### Requirement: Body double — the resolver is one FTS query per concept, in order, and the first well-formed hit wins
+`_resolve_lesson(concepts)` SHALL be one
 FTS query per concept through the explorer's own search, in order, the first
 **well-formed** hit wins, the hit being `(lesson_id, title, course, concept)` —
 the course the hit's own `course_id` humanised exactly as the explorer's course
-list shows it, the concept the one that matched. A hit lacking its course or
+list shows it, the concept the one that matched.
+
+#### Scenario: The resolver asks one query per concept and lets an unreadable index raise
+- **WHEN** the explorer's search answers nothing for `window frame` and one
+  row for `frame clause`
+- **THEN** `_resolve_lesson(("window frame", "frame clause", "range"))` returns
+  that row's `(lesson_id, title, course, "frame clause")` — the concept that
+  matched, the course humanised from the row's `course_id` — after exactly two
+  queries in that order; a set of concepts with no hits returns `None`; a hit
+  whose row lacks a `course_id` is skipped as a row — the well-formed row
+  beneath it is named, and a concept whose only rows are malformed returns
+  `None`; and a search
+  that raises propagates out of the seam rather than being reported as a miss
+
+### Requirement: Body double — a hit lacking its course or title is skipped as a row, never named
+A hit lacking its course or
 its title SHALL be skipped as a ROW — the seam fetches a handful of rows per
 concept (`_FTS_ROWS_PER_CONCEPT`, 3) so a malformed top row does not hide a
-well-formed lesson beneath it (council review 8) — and never named. A concept
+well-formed lesson beneath it (council review 8) — and never named.
+
+#### Scenario: A malformed top row does not hide the lesson beneath it
+- **WHEN** the explorer's search returns a top row with an empty `course_id`
+  above a well-formed `Advanced Sql 4H` row for the same concept
+- **THEN** the resolver fetches `_FTS_ROWS_PER_CONCEPT` rows, skips the
+  malformed row and names the well-formed lesson beneath it
+
+### Requirement: Body double — a too-short concept is unsearchable and the title and topics are never searched
+A concept
 shorter than the explorer's minimum query (`_MIN_QUERY_CHARS`, 2) is
 UNSEARCHABLE: it SHALL NOT be sent to the resolver and SHALL NOT be reported as
 a searched miss (council review 8, astra F3). The milestone's title and the plan's topics SHALL NOT be searched
 (rubric 3c (c), measured on the owner's vault 2026-09-21: both steps always
-named a lesson, and the wrong one). When a concept resolved the move SHALL be
+named a lesson, and the wrong one).
+
+#### Scenario: The milestone's title and the plan's topics never name a lesson
+- **WHEN** the same world is ranked against a content index shaped like the
+  owner's vault — `Frames` matches a PySpark data-frames lab, `sql` matches an
+  SQL bootcamp introduction, `window frame` matches nothing
+- **THEN** the explorer's search was asked `["window frame"]` only, the move is
+  the milestone sentence with ` — no indexed lesson mentions “window frame”
+  yet.`, no `first_move_lesson_id` is carried, and neither wrong lesson
+  appears anywhere in the serialised recommendation
+
+### Requirement: Body double — a resolved concept names the lesson, its course and the matching word
+When a concept resolved the move SHALL be
 `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and
-read for ten minutes, nothing more.` (`phrase` for a multi-word concept):
+read for ten minutes, nothing more.` (`phrase` for a multi-word concept).
+
+#### Scenario: The move names the lesson the milestone's concepts resolve, with its evidence, and carries its id and title
+- **WHEN** the same world is ranked and the resolver returns
+  `("ztm/advanced-sql/window-frames", "Window Frames and Ranges", "Advanced Sql", "window frame")`
+- **THEN** `metadata["first_move"] == "Open “Window Frames and Ranges” from
+  Advanced Sql — the match is the phrase “window frame” — and read for ten
+  minutes, nothing more."`, `metadata["first_move_lesson_id"] ==
+  "ztm/advanced-sql/window-frames"`, `metadata["first_move_lesson_title"] ==
+  "Window Frames and Ranges"`, and the resolver was asked exactly once, with
+  `("window frame",)` — the milestone's own concepts and nothing else
+
+### Requirement: Body double — a named lesson states the evidence it rests on
+When a concept resolved the move SHALL be:
 rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c
 (d2), owner 2026-09-21 — a named lesson carries implied authority and would be
 opened despite a doubt, so the sentence states the evidence the naming rests
 on and a lexical match into the wrong course is judgeable from the sentence.
+
+#### Scenario: A lexical match into another course is judgeable from the sentence
+- **WHEN** a Python plan's deferred milestone `Decorators` `[decorators]` is
+  ranked at `low` energy against an index shaped like the owner's vault, where
+  `decorators` resolves to `Decorators 29M` in course
+  `udemy/the-ultimate-typescript`
+- **THEN** the move is `Open “Decorators 29M” from The Ultimate Typescript —
+  the match is the word “decorators” — and read for ten minutes, nothing
+  more.` — the course named as the explorer's course list shows it and the
+  match named as a word match — with `first_move_lesson_id` and
+  `first_move_lesson_title` carried
+
+### Requirement: Body double — otherwise the move names the milestone's material and says why no lesson is named
 Otherwise the move SHALL be `Open your <milestone title> material and read for
 ten minutes, nothing more<why>.`, where `<why>` SHALL say why no lesson is
 named so the sentence carries
 information instead of vagueness and points at the fix — a lesson, or a concept
 name on the milestone, not a better search:
-
-- searched, nothing matched: ` — no indexed lesson mentions “<concept>” yet`,
-  every unmatched SEARCHED concept named, joined by ` or ` (a too-short concept
-  is not named here — it was not searched);
-- every concept too short to search: ` — “<concept>” is too short for the
-  index to look up` (`are` for several), and the index SHALL NOT be asked;
-- the milestone names no concept: ` — this milestone names no concept to look
-  up yet`, and the index SHALL NOT be asked;
-- the index could not be read: empty — no claim about an index that was never
-  consulted.
-
-When a lesson resolved, `metadata["first_move_lesson_id"]` and
-`metadata["first_move_lesson_title"]` SHALL carry its id and title so a
-renderer can open it in StudyLoop's own frame without parsing the sentence;
-both SHALL be absent otherwise. The move SHALL be passive — reading; never an exercise,
-a practice task or a question — because it must be consumable at the
-capability the day carries. It SHALL ride as `metadata["first_move"]` on the
-body-double recommendation, and ONLY in `metadata`: the reason SHALL NOT carry
-the sentence (the reason explains the recommendation; the move is an action,
-rendered by each consumer once, beside the session door — rubric 3c (d)); it
-SHALL add no top-level key to the `now` payload, so the
-no-plan golden is byte-identical. The content index is a refinement, never a
-dependency: a lookup that raises SHALL answer the plain milestone form with
-no warning. A body double always has a deferred milestone to draw on — an
-eligible next milestone would have been synthesised as a plan-related
-candidate and suppressed the body double. The one other carrier of a first
-move is the warm-up on a plan-related active primary (the requirement below,
-rubric 3c (e1)); the sentence, its evidence rule and its no-lesson shapes are
-one definition, `_first_move_sentence`, differing only in the material named
-and the tail.
 
 #### Scenario: The move names the deferred milestone and says which concept the index lacks
 - **WHEN** rubric row 3's world is ranked at `low` energy (plan floor 5,
@@ -901,35 +1192,25 @@ and the tail.
   top-level keys are the golden's then `active_plans`, `energy_deferred`,
   `energy_deferred_repairs`
 
-#### Scenario: The move names the lesson the milestone's concepts resolve, with its evidence, and carries its id and title
-- **WHEN** the same world is ranked and the resolver returns
-  `("ztm/advanced-sql/window-frames", "Window Frames and Ranges", "Advanced Sql", "window frame")`
-- **THEN** `metadata["first_move"] == "Open “Window Frames and Ranges” from
-  Advanced Sql — the match is the phrase “window frame” — and read for ten
-  minutes, nothing more."`, `metadata["first_move_lesson_id"] ==
-  "ztm/advanced-sql/window-frames"`, `metadata["first_move_lesson_title"] ==
-  "Window Frames and Ranges"`, and the resolver was asked exactly once, with
-  `("window frame",)` — the milestone's own concepts and nothing else
+### Requirement: Body double — the why-clause when the index was searched or every concept was too short
+- searched, nothing matched: ` — no indexed lesson mentions “<concept>” yet`,
+  every unmatched SEARCHED concept named, joined by ` or ` (a too-short concept
+  is not named here — it was not searched);
+- every concept too short to search: ` — “<concept>” is too short for the
+  index to look up` (`are` for several), and the index SHALL NOT be asked;
 
-#### Scenario: A lexical match into another course is judgeable from the sentence
-- **WHEN** a Python plan's deferred milestone `Decorators` `[decorators]` is
-  ranked at `low` energy against an index shaped like the owner's vault, where
-  `decorators` resolves to `Decorators 29M` in course
-  `udemy/the-ultimate-typescript`
-- **THEN** the move is `Open “Decorators 29M” from The Ultimate Typescript —
-  the match is the word “decorators” — and read for ten minutes, nothing
-  more.` — the course named as the explorer's course list shows it and the
-  match named as a word match — with `first_move_lesson_id` and
-  `first_move_lesson_title` carried
+#### Scenario: A miss names only the concepts that were searched
+- **WHEN** the deferred milestone `Pointers` names the concepts `C` and
+  `pointer arithmetic` and the resolver answers nothing
+- **THEN** the move reads `Open your Pointers material and read for ten
+  minutes, nothing more — no indexed lesson mentions “pointer arithmetic”
+  yet.` and the one-character concept is neither searched nor named as a miss
 
-#### Scenario: The milestone's title and the plan's topics never name a lesson
-- **WHEN** the same world is ranked against a content index shaped like the
-  owner's vault — `Frames` matches a PySpark data-frames lab, `sql` matches an
-  SQL bootcamp introduction, `window frame` matches nothing
-- **THEN** the explorer's search was asked `["window frame"]` only, the move is
-  the milestone sentence with ` — no indexed lesson mentions “window frame”
-  yet.`, no `first_move_lesson_id` is carried, and neither wrong lesson
-  appears anywhere in the serialised recommendation
+### Requirement: Body double — the why-clause when the milestone names no concept or the index could not be read
+- the milestone names no concept: ` — this milestone names no concept to look
+  up yet`, and the index SHALL NOT be asked;
+- the index could not be read: empty — no claim about an index that was never
+  consulted.
 
 #### Scenario: A milestone with no concept is not looked up
 - **WHEN** the deferred milestone has no `concepts`
@@ -938,23 +1219,44 @@ and the tail.
   concept to look up yet.`; with two unmatched concepts the clause reads `— no
   indexed lesson mentions “window frame” or “frame clause” yet.`
 
-#### Scenario: The resolver asks one query per concept and lets an unreadable index raise
-- **WHEN** the explorer's search answers nothing for `window frame` and one
-  row for `frame clause`
-- **THEN** `_resolve_lesson(("window frame", "frame clause", "range"))` returns
-  that row's `(lesson_id, title, course, "frame clause")` — the concept that
-  matched, the course humanised from the row's `course_id` — after exactly two
-  queries in that order; a set of concepts with no hits returns `None`; a hit
-  whose row lacks a `course_id` is skipped as a row — the well-formed row
-  beneath it is named, and a concept whose only rows are malformed returns
-  `None`; and a search
-  that raises propagates out of the seam rather than being reported as a miss
+### Requirement: Body double — a resolved lesson's id and title ride in metadata so a renderer can open it
+When a lesson resolved, `metadata["first_move_lesson_id"]` and
+`metadata["first_move_lesson_title"]` SHALL carry its id and title so a
+renderer can open it in StudyLoop's own frame without parsing the sentence;
+both SHALL be absent otherwise.
 
-#### Scenario: A broken content index degrades to the milestone, silently and without a claim
-- **WHEN** the lesson lookup raises
-- **THEN** the primary is still the body double, the move is `Open your Frames
-  material and read for ten minutes, nothing more.` with no why-clause and no
-  `first_move_lesson_id`, and `warnings` carries nothing about the index
+#### Scenario: "Open X" actually opens X, beside the view
+- **WHEN** the body double is primary and the move names a lesson
+  (`first_move_lesson_id` and `first_move_lesson_title` carried)
+- **THEN** the Today card shows an **Open the lesson** control
+  (`data-testid="today-open-first-move-lesson"`) beside the first-move line
+  and the Body Double picker shows `#bd-first-move-open` beside the move
+  (and the live strip `#bd-live-first-move-open` once the session runs) —
+  each only when a lesson resolved; pressing any dispatches
+  `explorer-open-lesson` `{lessonId, title}` and navigates nowhere; the Course
+  Explorer's `openLessonById` opens its aside if closed and opens that lesson
+  with the existing reader; the `body-double-request` detail carries
+  `firstMoveLessonId` and `firstMoveLessonTitle` beside `firstMove`; a move
+  that names only the milestone shows no control and hands over no lesson
+
+### Requirement: Body double — the move is passive
+The move SHALL be passive — reading; never an exercise,
+a practice task or a question — because it must be consumable at the
+capability the day carries.
+
+#### Scenario: The move asks for reading only
+- **WHEN** the body double is primary at `low` energy and the index holds no
+  lesson for the deferred milestone's concepts
+- **THEN** the move opens the milestone's material and asks to read for ten
+  minutes, nothing more — no exercise, practice task or question
+
+### Requirement: Body double — the move rides only in metadata, never in the reason, and adds no top-level key
+It SHALL ride as `metadata["first_move"]` on the
+body-double recommendation, and ONLY in `metadata`: the reason SHALL NOT carry
+the sentence (the reason explains the recommendation; the move is an action,
+rendered by each consumer once, beside the session door — rubric 3c (d)); it
+SHALL add no top-level key to the `now` payload, so the
+no-plan golden is byte-identical.
 
 #### Scenario: Every renderer shows the move beside the door, once, never instead of it
 - **WHEN** the body double is primary
@@ -983,82 +1285,39 @@ and the tail.
   arrived with the activity in one hand-off and leaves with it, so the strip
   never shows a stale move beneath the next, unrelated activity
 
-#### Scenario: "Open X" actually opens X, beside the view
-- **WHEN** the body double is primary and the move names a lesson
-  (`first_move_lesson_id` and `first_move_lesson_title` carried)
-- **THEN** the Today card shows an **Open the lesson** control
-  (`data-testid="today-open-first-move-lesson"`) beside the first-move line
-  and the Body Double picker shows `#bd-first-move-open` beside the move
-  (and the live strip `#bd-live-first-move-open` once the session runs) —
-  each only when a lesson resolved; pressing any dispatches
-  `explorer-open-lesson` `{lessonId, title}` and navigates nowhere; the Course
-  Explorer's `openLessonById` opens its aside if closed and opens that lesson
-  with the existing reader; the `body-double-request` detail carries
-  `firstMoveLessonId` and `firstMoveLessonTitle` beside `firstMove`; a move
-  that names only the milestone shows no control and hands over no lesson
+### Requirement: Body double — the index is a refinement, never a dependency; a body double always has a deferred milestone
+The content index is a refinement, never a
+dependency: a lookup that raises SHALL answer the plain milestone form with
+no warning. A body double always has a deferred milestone to draw on — an
+eligible next milestone would have been synthesised as a plan-related
+candidate and suppressed the body double.
+
+#### Scenario: A broken content index degrades to the milestone, silently and without a claim
+- **WHEN** the lesson lookup raises
+- **THEN** the primary is still the body double, the move is `Open your Frames
+  material and read for ten minutes, nothing more.` with no why-clause and no
+  `first_move_lesson_id`, and `warnings` carries nothing about the index
+
+### Requirement: Body double — the first-move sentence is one definition shared with the warm-up
+The one other carrier of a first
+move is the warm-up on a plan-related active primary (the requirement below,
+rubric 3c (e1)); the sentence, its evidence rule and its no-lesson shapes SHALL be
+one definition, `_first_move_sentence`, differing only in the material named
+and the tail.
+
+#### Scenario: The warm-up reuses the no-lesson shape
+- **WHEN** a plan-related repair is primary at `medium` energy and the resolver
+  returns `None`
+- **THEN** the warm-up's sentence names the material and says which concept the
+  index lacks in the same shape as the sit-with move, differing only in the
+  material named and the tail
 
 ### Requirement: A plan-related active primary carries one warm-up first move on its own material
 When `build_now_plan` has ranked and applied the plan-backed guarantee, and
 the primary (and only the primary) is plan-related (carries a `PlanRef`), is
 not the body double, and is of an active kind — `action_type` in `hands-on`,
 `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive
-one first move on the primary's own material and carry it as
-`metadata["first_move"]` (with `first_move_lesson_id`/`first_move_lesson_title`
-when a lesson resolved, exactly as on the body double). Rubric 3c (e), owner
-2026-09-21: *no, offer the move at medium energy too*, built as the warm-up
-INTO the primary rather than a passive alternative beside it — the low day's
-move is the whole action and ends `nothing more`; printed beneath a task the
-day can carry, that sentence would contradict the primary and the passive
-option is the easier to take (row 3b (d)). The warm-up therefore SHALL end
-`then start …`, naming what the primary is, in this order of tests:
-
-- a repair (`energy_demand` in the candidate's metadata — both collectors mark
-  repairs and nothing else): the resolver is asked `(concept,)`, the material
-  is `“<concept>”`, the tail `then start the repair` — or `then start the
-  review` when the row's `confidence` is `learning`, whose own reason names a
-  gentle review, not a repair (row 3b (c); coordinator finding at council
-  review 8);
-- the plan's next milestone (a `PlanRef` naming an eligible milestone): the
-  resolver is asked that milestone's own concepts, all of them in order, the
-  material is the milestone's title, the tail `then start the milestone`;
-- any other plan-related active item: `(concept,)`, `“<concept>”`, `then start
-  on “<concept>”`.
-
-A candidate is plan-related by its concept, its topic OR its course, so an
-active item with a blank concept can be the plan-related primary: the repair
-and generic tails, which name and search the concept, SHALL then carry no
-warm-up and the resolver SHALL NOT be asked (council review 8, grok); the
-milestone tail is unaffected, since it names the milestone's own concepts.
-
-Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for
-one — reading the lesson before a retrieval test defeats the test (row 3b (b):
-familiar recall leads as it is); `visual` and `audio` are already passive and
-carry none. A primary off every plan SHALL carry none, so the no-plan golden
-is byte-identical; alternates SHALL carry none (one move). CLI `now` keys on
-`metadata.first_move` and prints `First move:` beneath `Record evidence:`
-without change. The Today card SHALL read `metadata.first_move` and the lesson
-fields for ANY recommendation that carries them — its `firstMoveNote` and
-`firstMoveLesson` gated on `source == "body_double"` and hid the warm-up
-(rubric 3c (e2), correcting (e1)'s record) — and SHALL render the line and the
-**Open the lesson** control for the warm-up as for the sit-with move. Pressing
-**Start** on a study action SHALL hand the Study view the action's `concept` as
-topic, the day's energy, and the move with its lesson when one rides on it,
-over the existing `today-resume` event; the Study picker SHALL show the move
-beneath the topic (`#study-first-move`, `#study-first-move-open`) and the live
-layout SHALL carry it beneath the status bar for the whole session
-(`#study-live-first-move`, `#study-live-first-move-open`), cleared with the
-topic when the session ends; a planning launch SHALL clear it. A hand-off
-without a move (resume, a parked pick-up, a primary the engine gave none)
-SHALL clear any earlier one. The move SHALL never outlive the material it
-arrived beside (council review 8, the finding all three seats converged on):
-in either view, editing the material in the picker (the Study topic input, the
-Body Double activity input), choosing another target from any picker select or
-changing the target kind SHALL clear it; a hand-off that arrives while a
-session is live or starting SHALL leave the running session's move untouched
-(the picker's own fields are still pre-filled, as before); a session adopted
-through `reattachConflictSession()` is not the hand-off's and SHALL carry none.
-Each view SHALL clear the three fields through one writer (`clearFirstMove()`)
-so no transition can clear two of them and leave the third.
+one first move on the primary's own material.
 
 #### Scenario: The row-3 repair at medium energy carries a warm-up into itself
 - **WHEN** rubric row 3's world is ranked at `medium` energy (capability 6)
@@ -1079,17 +1338,112 @@ so no transition can clear two of them and leave the third.
   and no warning; CLI `now --energy medium` prints `First move:` beneath
   `Record evidence:`, once
 
+### Requirement: Warm-up — the move rides as metadata first_move with the lesson fields, exactly as on the body double
+`learning/decision.py::_warm_up` SHALL carry it as
+`metadata["first_move"]` (with `first_move_lesson_id`/`first_move_lesson_title`
+when a lesson resolved, exactly as on the body double).
+
+#### Scenario: The warm-up rides in metadata with the lesson id and title
+- **WHEN** a plan-related repair is primary at `medium` energy and the resolver
+  returns a lesson
+- **THEN** `metadata["first_move"]` carries the sentence and
+  `metadata["first_move_lesson_id"]` / `metadata["first_move_lesson_title"]`
+  carry the lesson's id and title, and no top-level key is added to the payload
+
+### Requirement: Warm-up — offered at medium energy too and built into the primary, so it ends then start
+Rubric 3c (e), owner
+2026-09-21: *no, offer the move at medium energy too*, built as the warm-up
+INTO the primary rather than a passive alternative beside it — the low day's
+move is the whole action and ends `nothing more`; printed beneath a task the
+day can carry, that sentence would contradict the primary and the passive
+option is the easier to take (row 3b (d)). The warm-up therefore SHALL end
+`then start …`, naming what the primary is, in this order of tests:
+
 #### Scenario: A milestone primary ramps on the milestone's own concepts
 - **WHEN** the plan's eligible next milestone `Frames` `[window frame, frame
   clause]` is the primary at `medium` (nothing collected represents it)
 - **THEN** the resolver is asked `("window frame", "frame clause")` and the
   move ends `then start the milestone.`
 
+### Requirement: Warm-up test 1: a repair ramps on its concept and starts the repair, or the review for a learning row
+The warm-up therefore SHALL end
+`then start …`, naming what the primary is, in this order of tests:
+
+- a repair (`energy_demand` in the candidate's metadata — both collectors mark
+  repairs and nothing else): the resolver is asked `(concept,)`, the material
+  is `“<concept>”`, the tail `then start the repair` — or `then start the
+  review` when the row's `confidence` is `learning`, whose own reason names a
+  gentle review, not a repair (row 3b (c); coordinator finding at council
+  review 8);
+
+#### Scenario: A learning row's warm-up ends at the review, not a repair
+- **WHEN** the plan-related primary is a `teachback` whose row's `confidence`
+  is `learning` and whose reason opens `Recorded as learning; a gentle review`
+- **THEN** its warm-up ends `then start the review` and the word `repair`
+  appears nowhere in the move
+
+### Requirement: Warm-up tests 2 and 3: the next milestone ramps on its own concepts, any other plan-related active item on its concept
+The warm-up therefore SHALL end
+`then start …`, naming what the primary is, in this order of tests:
+
+- the plan's next milestone (a `PlanRef` naming an eligible milestone): the
+  resolver is asked that milestone's own concepts, all of them in order, the
+  material is the milestone's title, the tail `then start the milestone`;
+- any other plan-related active item: `(concept,)`, `“<concept>”`, `then start
+  on “<concept>”`.
+
+#### Scenario: A plan-related teach-back that is neither repair nor milestone ramps by concept
+- **WHEN** the primary is a plan-related `teachback` that carries no
+  `energy_demand` and represents no milestone
+- **THEN** the resolver is asked its concept and the move ends `then start on
+  “<concept>”`
+
+### Requirement: Warm-up — a blank-concept primary carries no warm-up on the repair and generic tails
+A candidate is plan-related by its concept, its topic OR its course, so an
+active item with a blank concept can be the plan-related primary: the repair
+and generic tails, which name and search the concept, SHALL then carry no
+warm-up and the resolver SHALL NOT be asked (council review 8, grok); the
+milestone tail is unaffected, since it names the milestone's own concepts.
+
+#### Scenario: No warm-up when the primary names no concept
+- **WHEN** the primary is plan-related by its topic alone and its `concept` is
+  the empty string
+- **THEN** `metadata` carries no `first_move` and no `first_move_lesson_id`,
+  and the resolver is not asked
+
+### Requirement: Warm-up — never on recall, visual or audio, off every plan, or on an alternate
+Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for
+one — reading the lesson before a retrieval test defeats the test (row 3b (b):
+familiar recall leads as it is); `visual` and `audio` are already passive and
+carry none. A primary off every plan SHALL carry none, so the no-plan golden
+is byte-identical; alternates SHALL carry none (one move).
+
 #### Scenario: No warm-up on recall, off the plan, or without a plan
 - **WHEN** the primary is a plan-related `recall`, or an active item matching
   no plan, or there is no active plan at all
 - **THEN** `metadata` carries no `first_move`, the resolver is not asked, and
   the no-plan payload is byte-identical to the golden
+
+### Requirement: Warm-up — CLI now and the Today card render the warm-up as they render the sit-with move
+CLI `now` keys on
+`metadata.first_move` and prints `First move:` beneath `Record evidence:`
+without change. The Today card SHALL read `metadata.first_move` and the lesson
+fields for ANY recommendation that carries them — its `firstMoveNote` and
+`firstMoveLesson` gated on `source == "body_double"` and hid the warm-up
+(rubric 3c (e2), correcting (e1)'s record) — and SHALL render the line and the
+**Open the lesson** control for the warm-up as for the sit-with move.
+
+#### Scenario: CLI now prints the warm-up beneath the evidence door at medium energy
+- **WHEN** `studyloop now --energy medium` runs against a plan-related repair
+  primary that carries a warm-up
+- **THEN** the panel prints `Record evidence:` and, beneath it, one
+  `First move:` line carrying the warm-up sentence
+
+### Requirement: Warm-up — Start hands the Study view the topic, the energy and the move
+Pressing
+**Start** on a study action SHALL hand the Study view the action's `concept` as
+topic, the day's energy, and the move with its lesson when one rides on it,
+over the existing `today-resume` event.
 
 #### Scenario: The warm-up follows Start into the Study view
 - **WHEN** the Today card's primary is a plan-related repair carrying
@@ -1103,6 +1457,29 @@ so no transition can clear two of them and leave the third.
   `explorer-open-lesson` `{lessonId, title}`; `confirmEndSession()` clears the
   move with the topic; a primary without a move hands over `{topic, energy}`
   only; a flashcards primary hands over nothing and navigates as before
+
+### Requirement: Warm-up — the Study picker and live layout show the move, and a planning launch clears it
+Pressing **Start** on a study action SHALL hand the Study view the move: the
+Study picker SHALL show the move
+beneath the topic (`#study-first-move`, `#study-first-move-open`) and the live
+layout SHALL carry it beneath the status bar for the whole session
+(`#study-live-first-move`, `#study-live-first-move-open`), cleared with the
+topic when the session ends; a planning launch SHALL clear it.
+
+#### Scenario: The live layout carries the move beneath the status bar with its opener
+- **WHEN** the Study view's live layout is rendered with a `firstMove`
+- **THEN** `#study-live-first-move` sits beneath the session status bar, shows
+  the same sentence, and `#study-live-first-move-open` beside it is shown only
+  when `firstMoveLessonId` is set and calls `openFirstMoveLesson()`
+
+### Requirement: Warm-up — a hand-off without a move clears an earlier one, and the move never outlives its material
+A hand-off
+without a move (resume, a parked pick-up, a primary the engine gave none)
+SHALL clear any earlier one. The move SHALL never outlive the material it
+arrived beside (council review 8, the finding all three seats converged on):
+in either view, editing the material in the picker (the Study topic input, the
+Body Double activity input), choosing another target from any picker select or
+changing the target kind SHALL clear it.
 
 #### Scenario: The move never outlives the material it arrived beside
 - **WHEN** a Start hand-off has landed a warm-up in the Study picker and the
@@ -1119,3 +1496,17 @@ so no transition can clear two of them and leave the third.
 - **WHEN** `reattachConflictSession()` adopts a session while a picker move is
   pending
 - **THEN** the adopted session shows no move and no **Open the lesson**
+
+### Requirement: Warm-up — a live session keeps its move, an adopted session carries none, and one writer clears the three fields
+In either view, a hand-off that arrives while a
+session is live or starting SHALL leave the running session's move untouched
+(the picker's own fields are still pre-filled, as before); a session adopted
+through `reattachConflictSession()` is not the hand-off's and SHALL carry none.
+Each view SHALL clear the three fields through one writer (`clearFirstMove()`)
+so no transition can clear two of them and leave the third.
+
+#### Scenario: A hand-off during a live or starting session leaves its move alone
+- **WHEN** the `body-double-request` listener receives a hand-off while
+  `sessionActive` or `starting` is true
+- **THEN** the live/starting guard decides before `this.firstMove` is
+  assigned, so the running session's move is not overwritten

@@ -1,0 +1,731 @@
+# Plan 7 split exceptions — lane A (`active-learning-decisions`).
+# Every entry is consumed exactly once by scripts/check-openspec-split.py; the coordinator merges lanes.
+# Kinds: split-sentence, inherit-shall, reference-expansion, context-restated, list-split,
+#        test-sourced, restates-shall, moved-body-text, deleted, fence-rehome, scenario-rehome.
+
+# ---------------------------------------------------------------------------------------------
+# Deletion is confirmed and retains the checkpoint log
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "Deletion is confirmed and retains the checkpoint log"
+ordinal = 1
+reason = "One 513-char sentence; split after the refusal clause. The repeated subject is the intent call `apply(DeletePlan(plan_id, confirmed))`; the trailing `— apply returns a DeleteResult … ` clause stays attached to the SHALL sentence it qualified."
+old = "`apply(DeletePlan(plan_id, confirmed))` SHALL raise `InvalidField` unless `confirmed` is `True` (after `PlanNotFound` for an unknown id), remove the canonical document and its derived index row, retain every row of the durable checkpoint log for that id, and return a frozen `DeleteResult(plan_id)` whose `to_json_dict()` is `{\"deleted\": true, \"plan_id\": \"<id>\"}` — `apply` returns a `DeleteResult` for this intent and a `PlanDetail` for every other, because a detail cannot describe a plan that no longer exists."
+new = [
+  "`apply(DeletePlan(plan_id, confirmed))` SHALL raise `InvalidField` unless `confirmed` is `True` (after `PlanNotFound` for an unknown id).",
+  "`apply(DeletePlan(plan_id, confirmed))` SHALL remove the canonical document and its derived index row, retain every row of the durable checkpoint log for that id, and return a frozen `DeleteResult(plan_id)` whose `to_json_dict()` is `{\"deleted\": true, \"plan_id\": \"<id>\"}` — `apply` returns a `DeleteResult` for this intent and a `PlanDetail` for every other, because a detail cannot describe a plan that no longer exists.",
+]
+added_tokens = ["`apply", "(", "(", "DeletePlan", "plan_id", "confirmed", ")", ")", "`", "SHALL", "."]
+
+# ---------------------------------------------------------------------------------------------
+# Activation is readiness-gated on every entry path
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "Activation is readiness-gated on every entry path"
+ordinal = 2
+reason = "One 532-char sentence: the four entry paths and the refusal. Split at the second SHALL; the subject `apply` is repeated. The two halves cannot share one ≤500 fragment (541), so the original heading stays on the entry-path half and the refusal half is `Readiness gate — the refusal is PlanNotReady …` (cross-lane stem)."
+old = "`apply` SHALL evaluate readiness whenever the *resulting* document would be `active` — create with `status=\"active\"` (`CreatePlan`), import of a document whose frontmatter says `active` (`ImportDocument`), replacement of an existing document with one whose frontmatter says `active` (`ReplaceDocument`), and a lifecycle transition to `active` (`TransitionLifecycle`) — and SHALL raise `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when the plan has no mission `why`, no success criteria, or no milestones."
+new = [
+  "`apply` SHALL evaluate readiness whenever the *resulting* document would be `active` — create with `status=\"active\"` (`CreatePlan`), import of a document whose frontmatter says `active` (`ImportDocument`), replacement of an existing document with one whose frontmatter says `active` (`ReplaceDocument`), and a lifecycle transition to `active` (`TransitionLifecycle`).",
+  "`apply` SHALL raise `PlanNotReady` carrying a `ReadinessView` **before any canonical write** when the plan has no mission `why`, no success criteria, or no milestones.",
+]
+added_tokens = ["`apply`", "."]
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "Every adapter writes plans through the seam"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_adapters_import_plans_only_through_the_seam"
+reason = "Fragment `Readiness gate — one application seam is the only writer` holds unit #1 alone; none of the eight original scenarios exercises the one-seam/only-writer sentence. The test parses every adapter module (>30, asserting cli/_plan.py, web/routes/plans.py, mcp/tools.py are scanned) and requires zero seam bypasses."
+
+# ---------------------------------------------------------------------------------------------
+# Active-plan guidance is a deterministic read
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "Active-plan guidance is a deterministic read"
+ordinal = 1
+reason = "One 1445-char sentence whose predicate is a `with:` list of per-entry fields; the fields have no verb of their own, so each fission sentence repeats the per-entry subject `Each ActivePlanGuidance` with SHALL and the spec's own field verb `carry` (RULING CORRECTION in the lane log: the closed additions set has no verb; without one the appositive items cannot form sentences). The readiness item (≈520 chars) is itself split after `paused or repaired`; its gating parenthetical follows `with no second inspect per plan` in the second half (token multiset unchanged, `it` = the ReadinessView). Dropped: 3 `;` and 1 `,` at the new sentence boundaries."
+old = "`get_active_guidance(*, today=None)` SHALL return a frozen `ActiveGuidance` holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by `plan_id`, with: the `PlanSummary`; the plan's `ReadinessView` (`readiness`) — the same view every write is judged by, so an active-but-unready document (a hand edit or pre-gate import with no mission) is still listed but its entry says that every `SetMilestone`, `RevisePlan` or document-appending recorded assessment on it will be `PlanNotReady` until it is paused or repaired (a preview, or a recording with `append_to_plan=False`, touches no document and is not gated — see \"Assessment reports each recording sink independently\"), with no second `inspect` per plan; `next_milestone` (the first unchecked milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of `normalise_match_key` over the topics and every milestone's concepts (casefold, punctuation replaced by spaces, whitespace collapsed — matching is equality on the key, never a substring test; a tuple, not a `frozenset`, because D-3 binds every view to tuples and a consumer that wants a set builds one); `target_urgency` in `overdue` (days until target `< 0`), `soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a `completion_action` string only when the plan has milestones and every one is done; and per-plan `warnings` for defects worked around (no milestones, a target date that is not a date)."
+new = [
+  "`get_active_guidance(*, today=None)` SHALL return a frozen `ActiveGuidance` holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by `plan_id`, with: the `PlanSummary`.",
+  "Each `ActivePlanGuidance` SHALL carry the plan's `ReadinessView` (`readiness`) — the same view every write is judged by, so an active-but-unready document (a hand edit or pre-gate import with no mission) is still listed but its entry says that every `SetMilestone`, `RevisePlan` or document-appending recorded assessment on it will be `PlanNotReady` until it is paused or repaired.",
+  "Each `ActivePlanGuidance` SHALL carry it with no second `inspect` per plan (a preview, or a recording with `append_to_plan=False`, touches no document and is not gated — see \"Assessment reports each recording sink independently\").",
+  "Each `ActivePlanGuidance` SHALL carry `next_milestone` (the first unchecked milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of `normalise_match_key` over the topics and every milestone's concepts (casefold, punctuation replaced by spaces, whitespace collapsed — matching is equality on the key, never a substring test; a tuple, not a `frozenset`, because D-3 binds every view to tuples and a consumer that wants a set builds one).",
+  "Each `ActivePlanGuidance` SHALL carry `target_urgency` in `overdue` (days until target `< 0`), `soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a `completion_action` string only when the plan has milestones and every one is done; and per-plan `warnings` for defects worked around (no milestones, a target date that is not a date).",
+]
+added_tokens = ["Each", "Each", "Each", "Each", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "`ActivePlanGuidance`", "SHALL", "SHALL", "SHALL", "SHALL", "carry", "carry", "carry", "carry", "it", ".", ".", ".", "."]
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "Active-plan guidance is a deterministic read"
+ordinal = 5
+reason = "Closing sentence `This view is the one plan-static read the now decision engine consumes` has no modal and no ≤500 SHALL-bearing partner left in order (#2+#3+#4+#5 = 622); `is` → `SHALL be`. It restates what the now engine's first sentence already requires (exactly one call to get_active_guidance). Logged as a RULING CORRECTION candidate: the unit is not a list item under a lead-in."
+new = "This view SHALL be the one plan-static read the `now` decision engine consumes (see \"The now engine is plan-aware with tested ranking rules\")."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "One load per document, blockers on the entry itself"
+test = "packages/studyloop/tests/test_plan_guidance.py::test_active_guidance_names_readiness_blockers_on_unready_active_plan"
+reason = "Fragment `Active-plan guidance — readiness rides on one parse per document` (the `with no second inspect per plan` half). The test counts store.load_plan while reading a husk beside a healthy plan and asserts one load per document and the blockers on the husk's own entry."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "One clock for urgency and the nested day count"
+test = "packages/studyloop/tests/test_plan_guidance.py::test_guidance_summary_days_and_urgency_use_one_effective_date[today]"
+reason = "Fragment `Active-plan guidance — one effective date for the read the now engine consumes` (units #4, #5). The test reads a dated plan with a frozen `today` and asserts target_urgency and days_until_target share that date."
+
+# ---------------------------------------------------------------------------------------------
+# Adapters reach study plans only through the seam
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "Adapters reach study plans only through the seam"
+ordinal = 1
+reason = "One 528-char sentence listing seven import forms in a parenthesis. Split the list after `the whole package`; the negative subject `No module under studyloop/cli, studyloop/web/routes or studyloop/mcp` and its verb `import` are repeated so the prohibition stays attached to the same subject and verb in both halves (`No` is the subject's determiner, not a moved polarity word: both halves keep it on the same verb); `them` stands for the four modules. Nothing dropped."
+old = "No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp` SHALL import `studyloop.planning.store`, `.index`, `.authoring` or `.evaluation` (directly, relatively, as a whole-package handle, by wildcard `from studyloop.planning import *`, by a literal string naming a forbidden module or the whole package, by name through `from studyloop.planning import …` for the names those modules contribute, or transitively through one of the four allowed seam modules — `from studyloop.planning.application import store`)."
+new = [
+  "No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp` SHALL import `studyloop.planning.store`, `.index`, `.authoring` or `.evaluation` (directly, relatively, as a whole-package handle, by wildcard `from studyloop.planning import *`, by a literal string naming a forbidden module or the whole package).",
+  "No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp` SHALL import them by name through `from studyloop.planning import …` for the names those modules contribute, or transitively through one of the four allowed seam modules — `from studyloop.planning.application import store`.",
+]
+added_tokens = ["No", "module", "under", "`studyloop/cli`", "`studyloop/web/routes`", "or", "`studyloop/mcp`", "SHALL", "import", "them", "."]
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A direct store import planted in an adapter is a violation"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_planted_violation_is_rejected[store-module]"
+reason = "Fragment `Adapters reach study plans only through the seam` (first half of the split sentence: direct/relative/whole-package/wildcard/literal-string forms). The parametrised case plants `from studyloop.planning.store import save_plan` into a copy of web/routes/plans.py and asserts a violation while the fixture itself is clean."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A transitive import through an allowed seam module is a violation"
+test = "packages/studyloop/tests/test_architecture_plan_seam.py::test_planted_violation_is_rejected[transitive-via-allowed-module]"
+reason = "Fragment `Adapters — the seam's re-exported names and its own modules are not a side door` (second half: by-name and transitive forms). The case plants `from studyloop.planning.application import store`."
+
+# ---------------------------------------------------------------------------------------------
+# The learning-record rule has one copy
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "Appending through the seam numbers once and refuses a blank title"
+test = "packages/studyloop/tests/test_plan_application.py::test_revise_learning_record_appends_once_and_is_idempotent"
+reason = "Fragment `Learning record — the store wraps the one function and the seam calls it on the revision candidate` (unit #2). The original scenario (swap the store's function → InvalidField) is the one-copy proof and stays on the heading fragment; this test applies the same record twice (one record, one save) and a blank title (InvalidField)."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A duplicate-only revision leaves the file untouched"
+test = "packages/studyloop/tests/test_plan_application_mutations.py::test_duplicate_learning_record_only_revision_writes_nothing"
+reason = "Fragment `Learning record — a revision whose only content is a duplicate record writes nothing` (unit #3). The test counts saves, moves the clock, re-applies the same record and asserts no save and byte-identical text."
+
+# ---------------------------------------------------------------------------------------------
+# The completion action is a closing review, never a verdict
+# ---------------------------------------------------------------------------------------------
+
+[[reference-expansion]]
+spec = "active-learning-decisions"
+heading = "The completion action is a closing review, never a verdict"
+ordinal = 1
+phrase = "Rule 9"
+reason = "`Rule 9's completion action` cites the plan-integration design's rule numbering (the spec's own list has eight rules; its rule 8 is this completion case), so `rule 9` never resolved inside the spec and cannot resolve inside a fragment. Rewritten to a nominal reference that names its origin; nothing else in the sentence changed."
+new = "The completion action for a fully-checked active plan (the design's ninth ranking rule; item 4 / D-G) SHALL be composed from the plan's **end assessment**, read through the preview path — `PlanApplication().assess(AssessPlan(plan_id, phase=\"end\", record=False))` — exactly once per fully-checked plan per `build_now_plan`."
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "The completion action is a closing review, never a verdict"
+ordinal = 10
+reason = "One 529-char sentence with four SHALLs under one conditional `When the evaluation carries such a warning`. Split at the `; the sentence SHALL …` boundary; the governing conditional is repeated on the second half (convention rule 2: a lead-in travels with every governed SHALL — here the lead-in is a clause inside the sentence), because the clause after `;` opens with lowercase `the`, which a capitalised sentence start would turn into a token change. One `;` dropped."
+old = "When the evaluation carries such a warning the review SHALL keep the counts it did read, set `partial` true, set `proposal` `None` — neither `close` (a clean slate is a fact about evidence, not its absence) nor `extend` — and name each gap among its evidence lines (`Not read: <reader> unavailable — …`); the sentence SHALL say the review is partial and could not propose, never \"clean\"; the `plan close` brief's proposal line SHALL read `unassessed — the review is partial` and its status line SHALL NOT say the review proposes."
+new = [
+  "When the evaluation carries such a warning the review SHALL keep the counts it did read, set `partial` true, set `proposal` `None` — neither `close` (a clean slate is a fact about evidence, not its absence) nor `extend` — and name each gap among its evidence lines (`Not read: <reader> unavailable — …`).",
+  "When the evaluation carries such a warning the sentence SHALL say the review is partial and could not propose, never \"clean\"; the `plan close` brief's proposal line SHALL read `unassessed — the review is partial` and its status line SHALL NOT say the review proposes.",
+]
+added_tokens = ["When", "the", "evaluation", "carries", "such", "a", "warning", "."]
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "plan close launches the architect with the closing review and moves no status"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_launches_the_architect_with_the_assessment_in_the_brief"
+reason = "Fragment `Completion action — the preview read writes nothing and only the learner's door closes a plan` (units #2, #3). The test runs `plan close` on a fully-checked plan, asserts one architect launch in plan-architect mode with the closing review as the brief's first section, the `only when the learner agrees` intro, documents unchanged and status still active."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The evidence cap keeps the counts and names the overflow"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_completion_evidence_cap_keeps_the_counts_and_names_the_overflow"
+reason = "Second scenario on `Completion action — counts and evidence lines come from one definition shared with plan close` (unit #5): plants COMPLETION_EVIDENCE_CAP + 3 due rows and asserts the cap, the `… and N more` line, the uncapped count and the sentence."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A reader that raises becomes a partial-read warning and an empty default"
+test = "packages/studyloop/tests/test_planning_evaluation.py::test_reader_exception_is_caught_by_the_safe_wrapper"
+reason = "Fragment `Completion action — a partial read is flagged and never proposes` (units #7, #8, #9). The test makes a history reader raise inside evaluate_plan and asserts the empty default and a warning naming the reader."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "plan close with one reader down presents no clean proposal"
+test = "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_with_a_partial_assessment_does_not_present_a_clean_proposal"
+reason = "Fragment `Completion action — the partial sentence and the plan close brief never read clean` (second half of the split sentence #10). The test runs `plan close` with one reader raising and asserts the fixed `Proposal: unassessed — the review is partial` line, the gap in the first section and a status line that does not propose."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The five keys ride inside the completion entry"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_completion_action_carries_the_end_assessment_and_proposes_extend_when_concepts_are_due"
+reason = "Fragment `Completion action — the new keys live only inside completion_actions entries and renderers show the sentence` (units #13, #14). The test asserts the five keys are a subset of the JSON row inside completion_actions and the primary is the collected due item. searched_tests for the renderer clause (#14): grep completion|Walk the evidence|evidence line over test_now_plan_guidance.py, test_cli_plan_seam.py, test_web_now.py — no test asserts the CLI/Today/recap completion rendering; recorded in the lane log as a gap."
+
+# ---------------------------------------------------------------------------------------------
+# The body-double proposal carries one passive first move
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+ordinal = 1
+reason = "One 663-char sentence: what the move is derived from, then (after `—`) how the resolver finds the lesson. Split at that dash; the resolver `_resolve_lesson(concepts)` is the repeated subject of the second half, with SHALL + the copula `be` (the dash clause is a description of the resolver, not an obligation with its own verb)."
+old = "When the `now` engine synthesises the body-double proposal (`source == \"body_double\"`, design §5's floor), `learning/decision.py::_first_move` SHALL derive one first move for it from stored facts only: the first named plan's deferred next milestone (`_PlanContext.deferred`) and the indexed lesson `_resolve_lesson(concepts)` returns for **that milestone's own concepts** — one FTS query per concept through the explorer's own search, in order, the first **well-formed** hit wins, the hit being `(lesson_id, title, course, concept)` — the course the hit's own `course_id` humanised exactly as the explorer's course list shows it, the concept the one that matched."
+new = [
+  "When the `now` engine synthesises the body-double proposal (`source == \"body_double\"`, design §5's floor), `learning/decision.py::_first_move` SHALL derive one first move for it from stored facts only: the first named plan's deferred next milestone (`_PlanContext.deferred`) and the indexed lesson `_resolve_lesson(concepts)` returns for **that milestone's own concepts**.",
+  "`_resolve_lesson(concepts)` SHALL be one FTS query per concept through the explorer's own search, in order, the first **well-formed** hit wins, the hit being `(lesson_id, title, course, concept)` — the course the hit's own `course_id` humanised exactly as the explorer's course list shows it, the concept the one that matched.",
+]
+added_tokens = ["`_resolve_lesson", "(", "concepts", ")", "`", "SHALL", "be", "."]
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+ordinal = 5
+reason = "One 506-char sentence: the resolved-lesson sentence shape, then after the colon its rubric grounding (`a deliberate lesson whenever the vault holds one`, the evidence rule). Split at the colon; the governing conditional and the subject+modal+verb `When a concept resolved the move SHALL be` are repeated so the second half keeps its condition (convention rule 2) and its modal; the colon moves with the second half (punctuation count unchanged)."
+old = "When a concept resolved the move SHALL be `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and read for ten minutes, nothing more.` (`phrase` for a multi-word concept): rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c (d2), owner 2026-09-21 — a named lesson carries implied authority and would be opened despite a doubt, so the sentence states the evidence the naming rests on and a lexical match into the wrong course is judgeable from the sentence."
+new = [
+  "When a concept resolved the move SHALL be `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and read for ten minutes, nothing more.` (`phrase` for a multi-word concept).",
+  "When a concept resolved the move SHALL be: rubric 3c (b), a deliberate lesson whenever the vault holds one, and rubric 3c (d2), owner 2026-09-21 — a named lesson carries implied authority and would be opened despite a doubt, so the sentence states the evidence the naming rests on and a lexical match into the wrong course is judgeable from the sentence.",
+]
+added_tokens = ["When", "a", "concept", "resolved", "the", "move", "SHALL", "be", "."]
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+ordinal = 20
+reason = "Closing sentence (`… its no-lesson shapes are one definition, _first_move_sentence …`) has no modal; it closes the requirement alone because #18+#19+#20 = 583. `are` → `SHALL be`. RULING CORRECTION candidate (not a list item under a lead-in) — same case as active-guidance #5."
+new = "The one other carrier of a first move is the warm-up on a plan-related active primary (the requirement below, rubric 3c (e1)); the sentence, its evidence rule and its no-lesson shapes SHALL be one definition, `_first_move_sentence`, differing only in the material named and the tail."
+
+# The checker records `Otherwise the move SHALL be … not a better search:` (unit #6, 307 chars) as the lead-in of
+# every later unit in this requirement (#7–#20): the four why-clause bullets it really governs, and — because
+# nothing after it is a lexical lead-in — the six closing sentences too. #6 + bullet 1 measures 505, so the
+# bullets cannot carry it verbatim; a shortened copy would be `unit-added`. The bullets sit in two fragments
+# whose HEADINGS restate the lead-in (`Body double — the why-clause when …`), immediately after the fragment
+# that holds #6 verbatim. The six closing sentences were never governed by #6 in prose; their fragments carry
+# their own context. One entry per governed unit, as the checker consumes them.
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "- searched, nothing matched: ` — no indexed lesson mentions “<concept>” yet`,"
+new = "heading: Body double — the why-clause when the index was searched or every concept was too short (follows the fragment holding `Otherwise the move SHALL be … <why> …:` verbatim)"
+reason = "why-clause bullet 1, first line; #6 + bullet 1 = 505 > 500"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "every unmatched SEARCHED concept named, joined by ` or ` (a too-short concept is not named here — it was not searched);"
+new = "heading: Body double — the why-clause when the index was searched or every concept was too short"
+reason = "why-clause bullet 1, continuation"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "- every concept too short to search: ` — “<concept>” is too short for the"
+new = "heading: Body double — the why-clause when the index was searched or every concept was too short"
+reason = "why-clause bullet 2, first line"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "index to look up` (`are` for several), and the index SHALL NOT be asked;"
+new = "heading: Body double — the why-clause when the index was searched or every concept was too short"
+reason = "why-clause bullet 2, continuation (carries the fragment's SHALL)"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "- the milestone names no concept: ` — this milestone names no concept to look"
+new = "heading: Body double — the why-clause when the milestone names no concept or the index could not be read"
+reason = "why-clause bullet 3, first line"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "up yet`, and the index SHALL NOT be asked;"
+new = "heading: Body double — the why-clause when the milestone names no concept or the index could not be read"
+reason = "why-clause bullet 3, continuation (carries the fragment's SHALL)"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "- the index could not be read: empty — no claim about an index that was never"
+new = "heading: Body double — the why-clause when the milestone names no concept or the index could not be read"
+reason = "why-clause bullet 4, first line"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "consulted."
+new = "heading: Body double — the why-clause when the milestone names no concept or the index could not be read"
+reason = "why-clause bullet 4, continuation"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "When a lesson resolved, `metadata[\"first_move_lesson_id\"]` and `metadata[\"first_move_lesson_title\"]` SHALL carry its id and title so a renderer can open it in StudyLoop's own frame without parsing the sentence; both SHALL be absent otherwise."
+new = "own conditional (`When a lesson resolved`); not governed by the why-clause lead-in in prose"
+reason = "checker artefact: #6 persists as lead-in past the bullet list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "The move SHALL be passive — reading; never an exercise, a practice task or a question — because it must be consumable at the capability the day carries."
+new = "self-contained sentence; not governed by the why-clause lead-in in prose"
+reason = "checker artefact: #6 persists as lead-in past the bullet list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "It SHALL ride as `metadata[\"first_move\"]` on the body-double recommendation, and ONLY in `metadata`: the reason SHALL NOT carry the sentence (the reason explains the recommendation; the move is an action, rendered by each consumer once, beside the session door — rubric 3c (d)); it SHALL add no top-level key to the `now` payload, so the no-plan golden is byte-identical."
+new = "self-contained sentence (`It` = the move, named in the heading); not governed by the why-clause lead-in in prose"
+reason = "checker artefact: #6 persists as lead-in past the bullet list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "The content index is a refinement, never a dependency: a lookup that raises SHALL answer the plain milestone form with no warning."
+new = "self-contained sentence; not governed by the why-clause lead-in in prose"
+reason = "checker artefact: #6 persists as lead-in past the bullet list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The body-double proposal carries one passive first move"
+unit = "A body double always has a deferred milestone to draw on — an eligible next milestone would have been synthesised as a plan-related candidate and suppressed the body double."
+new = "self-contained sentence; not governed by the why-clause lead-in in prose"
+reason = "checker artefact: #6 persists as lead-in past the bullet list"
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The resolver is asked once, with the deferred milestone's own concepts"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_body_double_first_move_names_the_lesson_the_content_index_resolves"
+reason = "Fragment `The body-double proposal carries one passive first move` (first half of #1: derive from the deferred milestone and the lesson resolved for that milestone's own concepts). The test counts resolver calls and asserts exactly one, with ('window frame',)."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A malformed top row does not hide the lesson beneath it"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_resolve_lesson_skips_a_malformed_top_row_and_names_the_well_formed_hit_beneath_it"
+reason = "Fragment `Body double — a hit lacking its course or title is skipped as a row, never named` (#2). The test fakes an FTS result with an empty-course_id top row above a well-formed row and asserts the fetch limit and the named lesson."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A miss names only the concepts that were searched"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_a_miss_names_only_the_concepts_that_were_searched"
+reason = "Fragment `Body double — the why-clause when the index was searched or every concept was too short` (bullets 1–2). Mixed concepts `C` and `pointer arithmetic`: the move names only the searched miss."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The move asks for reading only"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_body_double_carries_one_passive_first_move_on_the_deferred_milestone"
+reason = "Fragment `Body double — the move is passive` (#16). The test asserts the move is `Open your Frames material and read for ten minutes, nothing more — …` — reading, nothing else."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The warm-up reuses the no-lesson shape"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_the_warm_up_names_the_material_and_says_why_when_nothing_is_indexed"
+reason = "Fragment `Body double — the first-move sentence is one definition shared with the warm-up` (#20′). The test drives the warm-up with a resolver returning None and asserts the same no-lesson shape (material + which concept the index lacks)."
+
+# ---------------------------------------------------------------------------------------------
+# A plan-related active primary carries one warm-up first move on its own material
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+ordinal = 1
+reason = "One 502-char sentence: the condition + `derive one first move`, then `and carry it as metadata[…]`. Split at that `and`; the subject `learning/decision.py::_warm_up` is repeated with SHALL in front of the sentence's own `carry it`. The condition is not repeated: `it` is the move the first half derives, and the heading names it."
+old = "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive one first move on the primary's own material and carry it as `metadata[\"first_move\"]` (with `first_move_lesson_id`/`first_move_lesson_title` when a lesson resolved, exactly as on the body double)."
+new = [
+  "When `build_now_plan` has ranked and applied the plan-backed guarantee, and the primary (and only the primary) is plan-related (carries a `PlanRef`), is not the body double, and is of an active kind — `action_type` in `hands-on`, `conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive one first move on the primary's own material.",
+  "`learning/decision.py::_warm_up` SHALL carry it as `metadata[\"first_move\"]` (with `first_move_lesson_id`/`first_move_lesson_title` when a lesson resolved, exactly as on the body double).",
+]
+added_tokens = ["`learning/decision", ".", "py", ":", ":", "_warm_up`", "SHALL", "."]
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+ordinal = 15
+reason = "One 526-char sentence with four SHALLs (Start hands over; the picker shows; the live layout carries; a planning launch clears). Split after the first clause. The later clauses open lowercase (`the Study picker`), and a capitalised start would be a token change, so the second half re-opens with the sentence's own subject, modal, verb and object — `Pressing Start on a study action SHALL hand the Study view the move:` — and keeps the three clauses verbatim after the colon. One `;` dropped."
+old = "Pressing **Start** on a study action SHALL hand the Study view the action's `concept` as topic, the day's energy, and the move with its lesson when one rides on it, over the existing `today-resume` event; the Study picker SHALL show the move beneath the topic (`#study-first-move`, `#study-first-move-open`) and the live layout SHALL carry it beneath the status bar for the whole session (`#study-live-first-move`, `#study-live-first-move-open`), cleared with the topic when the session ends; a planning launch SHALL clear it."
+new = [
+  "Pressing **Start** on a study action SHALL hand the Study view the action's `concept` as topic, the day's energy, and the move with its lesson when one rides on it, over the existing `today-resume` event.",
+  "Pressing **Start** on a study action SHALL hand the Study view the move: the Study picker SHALL show the move beneath the topic (`#study-first-move`, `#study-first-move-open`) and the live layout SHALL carry it beneath the status bar for the whole session (`#study-live-first-move`, `#study-live-first-move-open`), cleared with the topic when the session ends; a planning launch SHALL clear it.",
+]
+added_tokens = ["Pressing", "Start", "on", "a", "study", "action", "SHALL", "hand", "the", "the", "Study", "view", "move", ":", "."]
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+ordinal = 17
+reason = "One 586-char sentence: the rule (`SHALL never outlive … SHALL clear it`), then two further clauses on live sessions and adopted sessions. Split after `SHALL clear it`. The sentence's subject carries `never`, which may not be repeated, so the second half re-opens with the sentence's own scope phrase `In either view,` (capitalised), which governs those clauses as it governs the first. One `;` dropped."
+old = "The move SHALL never outlive the material it arrived beside (council review 8, the finding all three seats converged on): in either view, editing the material in the picker (the Study topic input, the Body Double activity input), choosing another target from any picker select or changing the target kind SHALL clear it; a hand-off that arrives while a session is live or starting SHALL leave the running session's move untouched (the picker's own fields are still pre-filled, as before); a session adopted through `reattachConflictSession()` is not the hand-off's and SHALL carry none."
+new = [
+  "The move SHALL never outlive the material it arrived beside (council review 8, the finding all three seats converged on): in either view, editing the material in the picker (the Study topic input, the Body Double activity input), choosing another target from any picker select or changing the target kind SHALL clear it.",
+  "In either view, a hand-off that arrives while a session is live or starting SHALL leave the running session's move untouched (the picker's own fields are still pre-filled, as before); a session adopted through `reattachConflictSession()` is not the hand-off's and SHALL carry none.",
+]
+added_tokens = ["In", "either", "view", ",", "."]
+
+[[list-split]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+fragments = "lead-in `The warm-up therefore SHALL end then start …, in this order of tests:` carried verbatim by three fragments: `Warm-up — offered at medium energy too …` (with its rationale, no bullets), `Warm-up test 1: …` (bullet 1, the repair tail), `Warm-up tests 2 and 3: …` (bullets 2–3, the milestone and generic tails); headings carry the test ordinals"
+reason = "`in this order of tests` is an order marker; the three tail tests span two fragments because lead-in + three bullets = 893 and lead-in + bullet 1 alone = 485."
+
+# The checker records bullet 1's continuation (`repairs and nothing else): the resolver is asked … when the
+# row's confidence is learning … review 8);` — it contains `when` and ends with `;`) as the lead-in of every
+# later unit (#6–#18). Only bullet 1 is really governed by the list lead-in (#3), which every bullet fragment
+# carries verbatim. One entry per unit the checker names.
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "- the plan's next milestone (a `PlanRef` naming an eligible milestone): the"
+new = "the real lead-in `The warm-up therefore SHALL end then start …, in this order of tests:` is carried verbatim in the same fragment (`Warm-up tests 2 and 3`)"
+reason = "checker artefact: bullet 1's continuation line is read as a lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "resolver is asked that milestone's own concepts, all of them in order, the material is the milestone's title, the tail `then start the milestone`;"
+new = "the real lead-in is carried verbatim in the same fragment (`Warm-up tests 2 and 3`)"
+reason = "checker artefact: bullet 1's continuation line is read as a lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "- any other plan-related active item: `(concept,)`, `“<concept>”`, `then start"
+new = "the real lead-in is carried verbatim in the same fragment (`Warm-up tests 2 and 3`)"
+reason = "checker artefact: bullet 1's continuation line is read as a lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "on “<concept>”`."
+new = "the real lead-in is carried verbatim in the same fragment (`Warm-up tests 2 and 3`)"
+reason = "checker artefact: bullet 1's continuation line is read as a lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "A candidate is plan-related by its concept, its topic OR its course, so an active item with a blank concept can be the plan-related primary: the repair and generic tails, which name and search the concept, SHALL then carry no warm-up and the resolver SHALL NOT be asked (council review 8, grok); the milestone tail is unaffected, since it names the milestone's own concepts."
+new = "self-contained sentence (own fragment); not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for one — reading the lesson before a retrieval test defeats the test (row 3b (b): familiar recall leads as it is); `visual` and `audio` are already passive and carry none."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "A primary off every plan SHALL carry none, so the no-plan golden is byte-identical; alternates SHALL carry none (one move)."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "CLI `now` keys on `metadata.first_move` and prints `First move:` beneath `Record evidence:` without change."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "The Today card SHALL read `metadata.first_move` and the lesson fields for ANY recommendation that carries them — its `firstMoveNote` and `firstMoveLesson` gated on `source == \"body_double\"` and hid the warm-up (rubric 3c (e2), correcting (e1)'s record) — and SHALL render the line and the **Open the lesson** control for the warm-up as for the sit-with move."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "A hand-off without a move (resume, a parked pick-up, a primary the engine gave none) SHALL clear any earlier one."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "A plan-related active primary carries one warm-up first move on its own material"
+unit = "Each view SHALL clear the three fields through one writer (`clearFirstMove()`) so no transition can clear two of them and leave the third."
+new = "self-contained sentence; not governed by the bullet list in prose"
+reason = "checker artefact: bullet 1's continuation persists as lead-in past the list"
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The warm-up rides in metadata with the lesson id and title"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_a_plan_related_repair_at_medium_energy_carries_a_warm_up_on_its_own_material"
+reason = "Fragment `Warm-up — the move rides as metadata first_move …` (second half of #1). The test asserts metadata first_move plus first_move_lesson_id/title on the repair primary and the top-level keys unchanged."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A learning row's warm-up ends at the review, not a repair"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_a_learning_row_s_warm_up_ends_at_the_review_not_a_repair"
+reason = "Fragment `Warm-up test 1: …` (bullet 1). The test asserts a learning-row teachback's move ends `then start the review` and contains no `repair`."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A plan-related teach-back that is neither repair nor milestone ramps by concept"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_a_plan_related_active_item_that_is_neither_repair_nor_milestone_ramps_by_concept"
+reason = "Fragment `Warm-up tests 2 and 3: …` (bullets 2–3). The test asserts the third tail `then start on “<concept>”` and the resolver asked its concept; bullet 2 is proved by the re-homed scenario on the lead-in fragment and by test_a_plan_milestone_primary_carries_a_warm_up_on_the_milestone_s_concepts."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "No warm-up when the primary names no concept"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_no_warm_up_when_the_primary_names_no_concept"
+reason = "Fragment `Warm-up — a blank-concept primary carries no warm-up …` (#10). The test makes a topic-matched primary with concept '' and asserts no first_move and a resolver that would fail if asked."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "CLI now prints the warm-up beneath the evidence door at medium energy"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy"
+reason = "Fragment `Warm-up — CLI now and the Today card render …` (#13, #14). The test asserts `Record evidence:` precedes `First move:` in the Rich output at medium energy."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The live layout carries the move beneath the status bar with its opener"
+test = "packages/studyloop/tests/test_web_study_first_move.py::test_study_live_layout_carries_the_first_move_beneath_the_status_bar"
+reason = "Fragment `Warm-up — the Study picker and live layout show the move …` (second half of #15). The test parses index.html for #study-live-first-move beneath the status bar with x-text=firstMove and the #study-live-first-move-open control gated on firstMoveLessonId calling openFirstMoveLesson()."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A hand-off during a live or starting session leaves its move alone"
+test = "packages/studyloop/tests/test_web_body_double_first_move.py::test_a_hand_off_during_a_live_or_starting_session_leaves_its_move_alone"
+reason = "Fragment `Warm-up — a live session keeps its move, an adopted session carries none, and one writer clears the three fields` (second half of #17 + #18). The test asserts the body-double-request listener's sessionActive||starting guard runs before this.firstMove is assigned."
+
+# ---------------------------------------------------------------------------------------------
+# The now engine is plan-aware with tested ranking rules
+# ---------------------------------------------------------------------------------------------
+
+[[list-split]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+fragments = "lead-in `It SHALL apply these rules, in this order (…):` + rule 1 → `Now-engine rule 1`; rule 2 → four fragments `Now-engine rule 2: …` (floor/recall; repair demand; deferral as DeferredRepair; low-demand carried); rule 3 → two `Now-engine rule 3: …`; rule 4 → `Now-engine rule 4`; rule 5 → six `Now-engine rule 5: …` (synthesised milestone; body double synthesised; scored as a proposal; plan_refs; reason; door + no-plan case); rule 6 → `Now-engine rule 6`; rule 7 → `Now-engine rule 7`; rule 8 → `Now-engine rule 8`; then `Now-engine payload …` (NowPlan fields, ordered as rule 6), `Now-engine rule 2's repair half …` ×2, `Now-engine renderers …` ×2. Every heading carries the ordinal of the rule(s) it holds."
+reason = "`in this order` + `rule N` order markers; the eight rules cannot share a fragment (7378 chars). The `:` lead-in travels only with rule 1 — see the lane log's RULING CORRECTION: a second verbatim copy would be `unit-added`, because the checker does not record it as a governing lead-in (rule 1's first line, which contains `before`, immediately replaces it)."
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 21
+reason = "One 1211-char sentence: condition + `one body-double candidate SHALL be synthesised …:` followed by a colon list of the candidate's attributes (source/type; scoring and the proposal-not-filter rule; plan_refs; reason; evidence_command). Five sentences: the first keeps the condition and the first two attributes; the second repeats the subject with the sentence's own verb `SHALL be synthesised:` for the scoring clause; the remaining three repeat the subject with SHALL + `carry` (the attribute idiom used throughout this spec; RULING CORRECTION in the lane log — the appositive items have no verb). Dropped: 3 `,` and 1 `and` at the new boundaries. Polarity words (`no`, `never`, `not`) are untouched."
+old = "When, after rules 2 and 5, **no candidate is plan-related** and at least one matchable active plan exists, one **body-double** candidate SHALL be synthesised instead of leaving the plan to the least-bad task: `source = \"body_double\"`, `action_type = \"conversation\"`, base score below every real candidate's base and then scored like any other candidate — so every due and conversation candidate outranks it at every energy while a hands-on task the low-energy rule penalises may not; a proposal, never a filter: nothing is removed from the ranking — `plan_refs` `(plan_id, None)` for every **ready** matchable plan (rule 7 may add a reference to an unready plan whose topic the proposal shares; the proposal itself names ready plans only), a reason that opens with the progress the plan records (`N of M milestones of <plan> done.`, omitted when none is done — never invented) before naming the deferred milestones and repairs it stands in for, and describes the door by what the co-study persona guarantees (the learner drives; the companion stays quiet unless asked), and `evidence_command` the co-study session door — `studyloop study \"<plan title>\" --mode co-study` — set explicitly, never a progress write."
+new = [
+  "When, after rules 2 and 5, **no candidate is plan-related** and at least one matchable active plan exists, one **body-double** candidate SHALL be synthesised instead of leaving the plan to the least-bad task: `source = \"body_double\"`, `action_type = \"conversation\"`.",
+  "The **body-double** candidate SHALL be synthesised: base score below every real candidate's base and then scored like any other candidate — so every due and conversation candidate outranks it at every energy while a hands-on task the low-energy rule penalises may not; a proposal, never a filter: nothing is removed from the ranking.",
+  "The **body-double** candidate SHALL carry `plan_refs` `(plan_id, None)` for every **ready** matchable plan (rule 7 may add a reference to an unready plan whose topic the proposal shares; the proposal itself names ready plans only).",
+  "The **body-double** candidate SHALL carry a reason that opens with the progress the plan records (`N of M milestones of <plan> done.`, omitted when none is done — never invented) before naming the deferred milestones and repairs it stands in for, and describes the door by what the co-study persona guarantees (the learner drives; the companion stays quiet unless asked).",
+  "The **body-double** candidate SHALL carry `evidence_command` the co-study session door — `studyloop study \"<plan title>\" --mode co-study` — set explicitly, never a progress write.",
+]
+added_tokens = ["The", "The", "The", "The", "body-double", "body-double", "body-double", "body-double", "candidate", "candidate", "candidate", "candidate", "SHALL", "SHALL", "SHALL", "SHALL", "be", "synthesised", ":", "carry", "carry", "carry", ".", ".", ".", "."]
+
+[[split-sentence]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 35
+reason = "One 546-char sentence with four SHALLs on one subject `Renderers`. Split after the first SHALL clause; `Renderers` repeated. One `,` dropped. `SHALL NOT re-rank` untouched."
+old = "Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy deferral — one line per deferred milestone **and** one per deferred repair — and the engine's warnings from these fields, SHALL label a body-double primary's command as the session door it is (\"Sit with the plan\", and the Today card starts it in the Body Double view) rather than as evidence to record, SHALL escape learner-authored text before any markup (Rich or HTML), and SHALL NOT re-rank."
+new = [
+  "Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy deferral — one line per deferred milestone **and** one per deferred repair — and the engine's warnings from these fields.",
+  "Renderers SHALL label a body-double primary's command as the session door it is (\"Sit with the plan\", and the Today card starts it in the Body Double view) rather than as evidence to record, SHALL escape learner-authored text before any markup (Rich or HTML), and SHALL NOT re-rank.",
+]
+added_tokens = ["Renderers", "."]
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 8
+reason = "Rule 2's repair-demand sentence (365 chars) is keyword-less and governed by `It SHALL apply these rules`; it must stand alone (#7+#8 = 455 but #7 is keyword-less too; #8+#9 = 767). `derived once … and carried` → `which SHALL be derived once … and carried`."
+new = "A struggle **repair** carries an energy demand of its own, which SHALL be derived once in the struggle collector from its own row classes and carried in the candidate's `metadata[\"energy_demand\"]`: `struggling` seen within 14 days → `high` (asks for 6/10); `struggling` older than that, or a row whose only signal is a weak teach-back → `medium` (4/10); `learning` → `low` (0/10)."
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 11
+reason = "Rule 2's closing pair (#10 `A low-demand repair is always carried.`, #11) is keyword-less; #9+#10+#11 = 519. `a repair is never folded into it` → `a repair SHALL never be folded into it` (polarity word unmoved)."
+new = "`energy_deferred` stays milestone-shaped; a repair SHALL never be folded into it."
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 13
+reason = "Rule 3 (#12+#13+#14 = 595) is entirely keyword-less under `It SHALL apply these rules`. Its first sentence (first line #12 + continuation #13) takes the modal on the prohibition: `; no substring test.` → `; there SHALL be no substring test.` (`there` is the expletive subject; `no` unmoved). #12 stays verbatim so it remains the checker's lead-in for #13 inside the same fragment."
+new = "topic or course **equals** one of the plan's `match_keys`; there SHALL be no substring test."
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 14
+reason = "Rule 3's second sentence (443 chars, `It names the plan's next milestone … only when …`) must stand alone (#13+#14 = 521) and has no `is`/`are` whose replacement would keep the meaning; `names → SHALL name` is a verb-form change the token rule forbids. The modal is added as a frame that repeats the rule's own name: `Rule 3 SHALL be: It names …` (subject `Rule 3` + `be`; 4 extra tokens). RULING CORRECTION in the lane log: the natural inherited form `It SHALL name …` should be allowed."
+new = "Rule 3 SHALL be: It names the plan's next milestone (`milestone_index`) only when the key equals one of that milestone's concepts **and** the plan is eligible — ready and within the energy capability; a topic or finished-milestone match, or any match on an energy-deferred or active-but-unready plan, carries `milestone_index = None` (plan-related repair), so a payload never names a milestone it also reports as deferred or that the seam would refuse to tick."
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 15
+reason = "Rule 4 is keyword-less under `It SHALL apply these rules`; its first line `4. Scoring is today's scoring …` → `4. Scoring SHALL be today's scoring …`."
+new = "4. Scoring SHALL be today's scoring plus one bounded bias for plan-related"
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 33
+reason = "The `NowPlan` tail's `Exactly two changes are plan-independent (rule 2's repair half): …` (411 chars) is keyword-less and has no ≤500 SHALL partner (#32+#33 = 697, #33+#34 = 538). `are` → `SHALL be`. It sits under the `It SHALL apply these rules …:` lead-in by the convention's `after it` reading and in the checker's governance map; RULING CORRECTION candidate (not a list item)."
+new = "Exactly two changes SHALL be plan-independent (rule 2's repair half): every struggle-collector candidate's `metadata` carries `energy_demand` at every energy, and repair above the day's capability — a live struggle, an older struggle or a weak teach-back at low energy — is deferred into `energy_deferred_repairs` (with the starter, if nothing else was collected) where the learner used to receive the repair itself."
+
+[[inherit-shall]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 34
+reason = "`medium and high demand both need at least medium self-reported energy today; …` (126 chars) is keyword-less; pairing it with the Renderers sentence (377) would mix repair-demand and rendering in one fragment. `both need` → `both SHALL need` (bare infinitive already; only SHALL added). Same RULING CORRECTION candidate as #33."
+new = "`medium` and `high` demand both SHALL need at least medium self-reported energy today; the class is carried so the payload says why."
+
+[[reference-expansion]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+ordinal = 36
+phrase = "this requirement's"
+reason = "`with row 3b re-run after this requirement's repair half` — the requirement is now 23 fragments; `this requirement's` → `the now engine's` (the fragment's subject; the repair half is named in `Now-engine rule 2's repair half …`)."
+new = "Ranking tests prove ranking compliance, not learner benefit (D-16); a five-scenario human rubric receipt accompanies the change, with row 3b re-run after the now engine's repair half."
+
+# Context entries. The checker's governance map (lane log, point 2): rule 1's first line governs rule 2; rule
+# 3's first line governs rule 4; rule 7's first line governs rule 8, the NowPlan tail and the rubric sentence.
+# None of those "lead-ins" is a lead-in in prose; the real one (`It SHALL apply these rules, in this order:`)
+# cannot be duplicated (unit-added). The context each fragment carries is its heading's rule ordinal.
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "2. The energy capability is `low|medium|high → 3|6|10`. For an active plan"
+new = "heading `Now-engine rule 2: …` carries the ordinal; the lead-in `It SHALL apply these rules, in this order:` is on `Now-engine rule 1`"
+reason = "checker names rule 1's first line (`… as before; a failure …`) as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "whose `energy_floor` exceeds it, the next milestone SHALL be listed in `energy_deferred` and SHALL NOT become a candidate."
+new = "heading `Now-engine rule 2: …`"
+reason = "checker names rule 1's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "Plan-related due recall stays eligible and plan-related whatever its recorded confidence."
+new = "heading `Now-engine rule 2: …`"
+reason = "checker names rule 1's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "A repair whose demand exceeds the capability SHALL be deferred exactly like new milestone work — listed in `energy_deferred_repairs` as a `DeferredRepair` (`plan_id`/`plan_title` when plan-related, else `None`, `concept`, `topic`, `confidence`, `energy_demand`, `required_capability`, `energy_capability`, `reason` naming the struggle) and never ranked; the deferral does not depend on a plan existing."
+new = "heading `Now-engine rule 2: …`"
+reason = "checker names rule 1's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "A `low`-demand repair is always carried."
+new = "heading `Now-engine rule 2: …`"
+reason = "checker names rule 1's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "candidates: within one urgency class plan-related beats unrelated, and a globally more-urgent unrelated candidate still wins — a bias, not a filter."
+new = "heading `Now-engine rule 4: …`; the item's own first line (`4. Scoring SHALL be …`) is in the same fragment"
+reason = "checker names rule 3's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "No active plan (a draft is not one) → no body-double candidate; when every real candidate was deferred and no plan exists, the starter stands in and its reason says the energy deferred the repair work, not that no evidence exists."
+new = "heading `Now-engine rule 5: …`; the body-double sentences it qualifies precede it in the same fragment"
+reason = "checker names rule 5's first line as this unit's lead-in; rule 5 spans six fragments (1211-char sentence)"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "8. A fully-checked active plan SHALL appear in `completion_actions` and SHALL"
+new = "heading `Now-engine rule 8: …`"
+reason = "checker names rule 7's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "be neither matched nor synthesised."
+new = "heading `Now-engine rule 8: …`"
+reason = "checker names rule 7's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "An active-but-unready plan SHALL be listed and matched (bias and a `milestone_index = None` reference) but never synthesised and never named as a milestone, with a warning naming its blockers."
+new = "heading `Now-engine rule 8: …`"
+reason = "checker names rule 7's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "`NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`, `energy_deferred_repairs`, `completion_actions` and `warnings`; `LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`."
+new = "heading `Now-engine payload: …`; the tail paragraph after the list was never governed by rule 7 in prose"
+reason = "checker names rule 7's first line as this unit's lead-in"
+
+[[context-restated]]
+spec = "active-learning-decisions"
+heading = "The now engine is plan-aware with tested ranking rules"
+unit = "`to_json_dict()` SHALL omit each of these when empty, so a learner with no active plan, no struggle candidate and nothing deferred receives the pre-#10 payload **byte for byte** — the golden world, pinned by `tests/golden/now_plan_no_active.json`, captured before any of this shipped."
+new = "heading `Now-engine payload: …`"
+reason = "checker names rule 7's first line as this unit's lead-in"
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "One plan-static read per ranking, on the engine's own date"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_guidance_read_once_with_no_checkpoint_history_calls"
+reason = "Fragment `The now engine is plan-aware with tested ranking rules` (unit #1: one ranker, exactly one get_active_guidance call on the engine's date). The test counts the read and forbids checkpoint_history."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "A failed plan read warns and logs without failing the recommendation"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_guidance_failure_warns_and_logs_without_failing_now"
+reason = "Fragment `Now-engine rule 1: …` (lead-in + rule 1). The test makes the guidance read raise and asserts the warning tuple, the primary, empty active_plans and one logged WARNING with exc_info."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "Two ready plans below the floor share one proposal"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_body_double_two_ready_plans_has_deterministic_context"
+reason = "Fragment `Now-engine rule 5: the body double references every ready matchable plan` (fission 3 of #21). The test asserts plan_refs for both ready plans with None in updated order and the door on the first plan."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "The reason leads with recorded progress and names the door by the persona's promise"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_body_double_reason_leads_with_recorded_progress_and_describes_the_door_truthfully"
+reason = "Fragment `Now-engine rule 5: the body double's reason …` (fission 4 of #21). The test asserts the `1 of 2 milestones of SQL Windows done.` opener, progress before the struggle, the persona promise, and no `no new material`/`no repair`."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "With no plan, the live struggle is deferred once and the starter stands in"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_due_copy_of_a_live_struggle_defers_with_no_plan_too"
+reason = "Fragment `Now-engine rule 2's repair half: exactly two changes are plan-independent` (#33′). The test runs both collectors with no plan and asserts the starter primary, the concept ranked nowhere and one deferred repair with plan_id None, demand high."
+
+[[test-sourced]]
+spec = "active-learning-decisions"
+scenario = "Low energy defers medium and high demand and carries low"
+test = "packages/studyloop/tests/test_now_plan_guidance.py::test_repair_demand_capability_matrix[low-deferred0]"
+reason = "Fragment `Now-engine rule 2's repair half: medium and high demand need medium energy` (#34′). The low-energy row of the matrix: live and stale struggles deferred, the learning row ranked, deferred and ranked sets disjoint."
