@@ -21,3 +21,28 @@ heading = "PracticeDeck `timeoutSeconds` is per phase and `solution` is not coup
 scenario = "a solution without a scaffolding level is accepted by the schema"
 test = "packages/studyloop/tests/test_module_schema.py::test_solution_without_scaffolding_is_accepted_by_the_schema"
 reason = "Fragment holds the SHALL NOT couple `solution` to `scaffolding`; the test validates a task with `solution` and no `scaffolding` and asserts acceptance, naming MC010 as the owner of the coupling."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/drill-runner
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — core never touches a cluster it did not create and refuses a name collision"
+scenario = "a cluster already carrying the attempt's name is refused, not reused"
+test = "packages/studyloop/tests/test_module_cluster.py::test_provision_refuses_a_name_collision_without_creating"
+reason = "Fragment holds 'A name collision SHALL be refused, never reused' and 'Core SHALL never use ... a cluster it did not create'; the test plants a cluster with the derived name, asserts ClusterError naming it, that the only kind call was the read-only listing, and that no kubeconfig was written."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — a failed delete keeps the kubeconfig and any exception after create still tears down"
+scenario = "a failed delete keeps the attempt's kubeconfig and names it in the by-hand command"
+test = "packages/studyloop/tests/test_module_cluster.py::test_failed_delete_after_a_provable_failed_create_keeps_the_kubeconfig"
+reason = "Fragment holds the 'When a delete fails, the attempt's kubeconfig SHALL be kept and the reported command SHALL name it' sentence; the test fails the create after kind wrote the kubeconfig, fails the delete too, and asserts the kubeconfig is still a file and the message carries the exact kind delete command with --kubeconfig."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — core's own `kind` runs with an allowlisted environment"
+scenario = "kind sees the allowlisted variables and nothing else"
+test = "packages/studyloop/tests/test_module_cluster.py::test_kind_runs_with_an_allowlisted_environment"
+reason = "Fragment holds the allowlisted-environment SHALL; the test plants AWS/GitHub secrets and KUBECONFIG in the parent environment beside Docker, kind, proxy, certificate and locale variables and asserts the fake kind saw the allowlisted set and neither the secrets nor KUBECONFIG."
