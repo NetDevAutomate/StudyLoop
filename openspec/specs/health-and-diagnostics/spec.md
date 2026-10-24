@@ -20,9 +20,7 @@ The system SHALL model each diagnostic result as a frozen
 `info`), a human `message`, an optional `fix_command` (an exact,
 copy-pasteable command and nothing else), an optional `fix_note`
 (prose), and a boolean `fix_auto` flag indicating whether `--fix` can
-resolve it. `fix_hint` SHALL be derived, read-only, as
-`<fix_command>  (<fix_note>)` (whichever parts exist) for readers that
-predate the split.
+resolve it.
 
 #### Scenario: A checker returns an invalid status string
 - **WHEN** a checker function attempts to construct a `CheckResult`
@@ -34,6 +32,11 @@ predate the split.
 - **THEN** the output is a JSON array where each element has keys
   `category`, `name`, `status`, `message`, `fix_command`, `fix_note`,
   `fix_hint`, `fix_auto` — matching the `to_dict()` contract
+
+### Requirement: CheckResult fix_hint is derived read-only from fix_command and fix_note
+`fix_hint` SHALL be derived, read-only, as
+`<fix_command>  (<fix_note>)` (whichever parts exist) for readers that
+predate the split.
 
 #### Scenario: A producer still passes the one-line hint
 - **WHEN** a checker constructs `CheckResult(..., fix_hint="...")` or passes
@@ -63,13 +66,7 @@ rather than aborting the entire run.
 `studyloop doctor --fix` (`cli/_doctor.py::_apply_fixes`) SHALL apply
 repairs only for results where `fix_auto=True` and `status` is `warn`
 or `fail`. After applying fixes it SHALL re-run all checks so the
-output reflects post-fix state. Current auto-fixable repairs include:
-creating a default config (`ensure_default_config`), creating missing
-review directories (`ensure_review_directories`), migrating the review
-database (`ensure_review_database`), reinstalling workspace tools
-(`install_workspace_tools`), refreshing agent definitions
-(`install_agent_definitions`), wiring session-export steering mandates
-(`install_session_db_mandate`), and upgrading packages.
+output reflects post-fix state.
 
 #### Scenario: Config file missing on a fresh install
 - **WHEN** `studyloop doctor --fix` runs and the `config_file` check
@@ -83,6 +80,16 @@ database (`ensure_review_database`), reinstalling workspace tools
   `fix_auto=False` (Python too old)
 - **THEN** `--fix` does not attempt to upgrade Python; the failure
   persists in the re-run output
+
+#### Scenario: The current auto-fixable repair inventory
+- **WHEN** `studyloop doctor --fix` selects the repairs it may apply
+- **THEN** current auto-fixable repairs include: creating a default
+  config (`ensure_default_config`), creating missing review directories
+  (`ensure_review_directories`), migrating the review database
+  (`ensure_review_database`), reinstalling workspace tools
+  (`install_workspace_tools`), refreshing agent definitions
+  (`install_agent_definitions`), wiring session-export steering mandates
+  (`install_session_db_mandate`), and upgrading packages
 
 ### Requirement: Exit codes reflect severity with a critical-core-fail distinction
 `_compute_exit_code()` SHALL return exit 2 when any `core` category
@@ -186,8 +193,7 @@ happen without mutating state.
 install agents`, and run smoke checks. The smoke checks validate that
 `studyloop self-test --json` emits valid JSON with exit 0 or 1 (warn
 acceptable), and `studyloop doctor --json` emits valid JSON with exit
-0, 1, or 2 (all acceptable). The script accepts `--tools-only`,
-`--agents-only`, `--no-smoke`, and `--non-interactive` flags.
+0, 1, or 2 (all acceptable).
 
 #### Scenario: Fresh machine with uv not installed
 - **WHEN** `./scripts/install.sh` runs and `uv` is not on PATH
@@ -200,33 +206,40 @@ acceptable), and `studyloop doctor --json` emits valid JSON with exit
 - **THEN** `install.sh` prints an error and exits non-zero, halting
   the installation
 
+#### Scenario: install.sh accepts scoping and non-interactive flags
+- **WHEN** `./scripts/install.sh` is invoked with command-line flags
+- **THEN** the script accepts `--tools-only`, `--agents-only`,
+  `--no-smoke`, and `--non-interactive` flags
+
 ### Requirement: doctor names each active-but-unready study plan
 `check_study_plans()` (`cli/_doctor.py`, beside `check_unknown_config_keys`)
 SHALL be registered under the existing `config` category — the category set
 is enumerated verbatim elsewhere in this spec and gains none here — and SHALL
 report on the plans `PlanApplication.husks()` returns: active plans that are
 not ready and therefore refuse every write (item 3 / D-C; deviation 12 kept).
+
+#### Scenario: The checker is registered
+- **WHEN** `_get_registry()` is built
+- **THEN** `("config", "check_study_plans")` is among its registered checkers
+
+### Requirement: Study-plan check: one warn row per husk, never auto-fixed
 It SHALL emit one `warn` row per husk with `name="study_plans"`,
 `fix_auto=False` (the repair is a conversation with the architect, not a
-script), a message naming the plan id, its title, the exact
+script).
+
+#### Scenario: Every husk row is a config warn that --fix will not touch
+- **WHEN** `check_study_plans()` runs over two husks
+- **THEN** both rows are `warn`, `category == "config"`, `name == "study_plans"`
+  and `fix_auto is False`
+
+### Requirement: Study-plan check: the husk message names id, title, blockers and provenance
+It SHALL emit a message naming the plan id, its title, the exact
 `ReadinessView.blockers`, and the shared provenance sentence
 (`husk_provenance`: `This plan's creation stamp predates the readiness gate
 (<READINESS_GATE_DATE>); the seam cannot tell when it became incomplete` only
 for a `created` that parses as a date before `READINESS_GATE_DATE`, else
-`cannot tell how it got that way`; never `hand edit`, never `never judged` —
-a stamp establishes when the document was created, not what judged it or
-when it became incomplete; council review 6 F4), and a `fix_hint` naming both
+`cannot tell how it got that way`), and a `fix_hint` naming both
 exits: `studyloop plan repair <id>  (or: studyloop plan status <id> paused)`.
-When every active plan is ready it SHALL emit one `pass` row counting the
-active plans and saying they are ready *as they stand* — never a promise
-about writes that have not happened (`will pass`, `every write`); when no
-plan is active it SHALL emit one `info` row, not a warning. A draft is
-unready by nature and is never reported. A plans directory that cannot be
-read SHALL be one `warn` row, not a crash of doctor; a single document the
-seam cannot read (`PlanApplication.survey_husks().unreadable`: a filename
-that is not a valid id, a file that is not UTF-8) SHALL be its own `warn` row
-naming the id beside the readiness rows, so a parse failure never reads as
-health (F4).
 
 #### Scenario: Two husks, one ready active plan, one draft
 - **WHEN** `check_study_plans()` runs over a ready active plan, a draft with
@@ -238,6 +251,24 @@ health (F4).
   each `fix_hint` names `studyloop plan repair <id>` and `studyloop plan
   status <id> paused`; neither the ready plan nor the draft is named
 
+### Requirement: Study-plan check: the provenance sentence never claims hand edit or never judged
+The shared provenance sentence SHALL never `hand edit`, never `never judged` —
+a stamp establishes when the document was created, not what judged it or
+when it became incomplete; council review 6 F4.
+
+#### Scenario: A husk created after the gate date is not accused of a hand edit
+- **WHEN** `check_study_plans()` runs over a husk whose `created` stamp is
+  after `READINESS_GATE_DATE`
+- **THEN** its message says `cannot tell how it got that way` and does not
+  contain `hand edit`
+
+### Requirement: Study-plan check: all ready is one pass row, none active is info, drafts are not reported
+When every active plan is ready it SHALL emit one `pass` row counting the
+active plans and saying they are ready *as they stand* — never a promise
+about writes that have not happened (`will pass`, `every write`); when no
+plan is active it SHALL emit one `info` row, not a warning. A draft is
+unready by nature and is never reported.
+
 #### Scenario: All active plans ready is one pass row; no plans is info
 - **WHEN** `check_study_plans()` runs with one ready active plan, and again
   with no plans at all
@@ -245,12 +276,16 @@ health (F4).
   `ready` and neither `will pass` nor `every write`; the second returns one
   `info` row
 
+### Requirement: Study-plan check: an unreadable directory or document is a warn row, not a crash
+A plans directory that cannot be
+read SHALL be one `warn` row, not a crash of doctor; a single document the
+seam cannot read (`PlanApplication.survey_husks().unreadable`: a filename
+that is not a valid id, a file that is not UTF-8) SHALL be its own `warn` row
+naming the id beside the readiness rows, so a parse failure never reads as
+health (F4).
+
 #### Scenario: An unreadable document is named, not hidden behind all-ready
 - **WHEN** `check_study_plans()` runs over one ready active plan and one
   `.md` file the seam cannot read (not UTF-8)
 - **THEN** it returns a `warn` row naming the unreadable id (`could not be
   read`, `fix_auto=False`) and the `pass` row for the readable plan
-
-#### Scenario: The checker is registered
-- **WHEN** `_get_registry()` is built
-- **THEN** `("config", "check_study_plans")` is among its registered checkers

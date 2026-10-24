@@ -60,3 +60,49 @@ heading = "`mutate_raw_config()` is the single mutation owner for every configur
 scenario = "write_raw_config delegates to the shared mutation owner"
 test = "packages/studyloop/tests/test_settings_mutation.py::test_write_raw_config_delegates_to_shared_mutation_owner"
 reason = "The single-owner SHALL (original ordinal 3) has no base scenario; the four existing scenarios all exercise the procedure/invariants fragment."
+
+# ---------------------------------------------------------------------------------------------
+# health-and-diagnostics
+# ---------------------------------------------------------------------------------------------
+
+[[moved-body-text]]
+spec = "health-and-diagnostics"
+heading = "doctor --fix applies safe automatic repairs and re-runs checks"
+ordinal = 3
+text = "Current auto-fixable repairs include: creating a default config (`ensure_default_config`), creating missing review directories (`ensure_review_directories`), migrating the review database (`ensure_review_database`), reinstalling workspace tools (`install_workspace_tools`), refreshing agent definitions (`install_agent_definitions`), wiring session-export steering mandates (`install_session_db_mandate`), and upgrading packages."
+scenario = "The current auto-fixable repair inventory"
+reason = "Non-normative illustration ('Current ... include'); no SHALL, not a list item, not governed. The two SHALL sentences stay together (237) under the original heading."
+
+[[moved-body-text]]
+spec = "health-and-diagnostics"
+heading = "install.sh guarantees a working CLI with self-test and doctor validation"
+ordinal = 3
+text = "The script accepts `--tools-only`, `--agents-only`, `--no-smoke`, and `--non-interactive` flags."
+scenario = "install.sh accepts scoping and non-interactive flags"
+reason = "Keyword-less flag inventory; the body has one SHALL (ordinal 1) and two descriptive sentences. Moving the flag sentence (the smaller, 96 chars) brings 539 to 442 and keeps the self-test/doctor smoke sentence beside the heading's conjuncts."
+
+[[split-sentence]]
+spec = "health-and-diagnostics"
+heading = "doctor names each active-but-unready study plan"
+ordinal = 2
+new = [
+  "It SHALL emit one `warn` row per husk with `name=\"study_plans\"`, `fix_auto=False` (the repair is a conversation with the architect, not a script).",
+  "It SHALL emit a message naming the plan id, its title, the exact `ReadinessView.blockers`, and the shared provenance sentence (`husk_provenance`: `This plan's creation stamp predates the readiness gate (<READINESS_GATE_DATE>); the seam cannot tell when it became incomplete` only for a `created` that parses as a date before `READINESS_GATE_DATE`, else `cannot tell how it got that way`), and a `fix_hint` naming both exits: `studyloop plan repair <id>  (or: studyloop plan status <id> paused)`.",
+  "The shared provenance sentence SHALL never `hand edit`, never `never judged` — a stamp establishes when the document was created, not what judged it or when it became incomplete; council review 6 F4.",
+]
+added_tokens = ["It", "SHALL", "emit", ".", "The", "shared", "provenance", "sentence", "SHALL", "."]
+reason = "790-char single-SHALL sentence. Sentence 2 repeats the subject+modal+predicate head 'It SHALL emit' (the source has one main verb; a grammatical second sentence needs it — the one addition outside the closed list, declared). Sentence 3 adds only the repeated subject noun phrase 'The shared provenance sentence' and SHALL; the two 'never' clauses keep their object (`hand edit`, `never judged`) and 'not' stays in its stamp clause — polarity counts unchanged. The never-clause now follows the fix_hint clause; otherwise clause order is the source's. Dropped: one ',' and one ';'."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "Study-plan check: one warn row per husk, never auto-fixed"
+scenario = "Every husk row is a config warn that --fix will not touch"
+test = "packages/studyloop/tests/test_cli_doctor.py::TestStudyPlansCheck::test_doctor_names_each_active_but_unready_plan_with_its_blockers"
+reason = "The base scenario 'Two husks, one ready active plan, one draft' exercises all three fission sentences and can have one home (the message fragment); this test asserts status/category/name/fix_auto on every husk row."
+
+[[test-sourced]]
+spec = "health-and-diagnostics"
+heading = "Study-plan check: the provenance sentence never claims hand edit or never judged"
+scenario = "A husk created after the gate date is not accused of a hand edit"
+test = "packages/studyloop/tests/test_cli_doctor.py::TestStudyPlansCheck::test_doctor_names_each_active_but_unready_plan_with_its_blockers"
+reason = "Same test: asserts 'hand edit' not in the post-gate husk's message and 'cannot tell how it got that way' is."
