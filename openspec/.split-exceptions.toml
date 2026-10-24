@@ -46,13 +46,21 @@ reason = "Proves the session-scoped sentence (ordinal 5, indicative, riding with
 # configuration-and-secrets
 # ---------------------------------------------------------------------------------------------
 
-[[moved-body-text]]
+[[modalise]]
 spec = "configuration-and-secrets"
 heading = "Provider credentials are verified before persistence via test_provider_auth"
 ordinal = 2
-text = "A `(bool, str)` tuple is returned."
-scenario = "Every verification returns a bool and message tuple"
-reason = "Keyword-less return-type sentence; the body's only other unit is a 468-char SHALL sentence (under 500, so split-sentence does not apply). Moving this 34-char sentence is the only legal way to bring the 503-char body under the limit."
+old = "A `(bool, str)` tuple is returned."
+new = "A `(bool, str)` tuple SHALL be returned."
+verb = ["is", "be"]
+reason = "Rework (ruling L5): the return contract of test_provider_auth() is behaviour the implementer must honour, not an illustration, so it may not sit in a scenario. It cannot rejoin its SHALL sibling (468 + 34 > 500) and that sibling is under 500 so split-sentence does not apply; it heads a fragment of its own with exactly one modal added ('is' -> 'SHALL be')."
+
+[[test-sourced]]
+spec = "configuration-and-secrets"
+heading = "Provider credential verification returns a (bool, str) tuple"
+scenario = "A network timeout still returns a bool and message tuple"
+test = "packages/studyloop/tests/test_secrets.py::TestProviderAuthMocked::test_network_timeout_returns_false"
+reason = "Proves the tuple contract on a failure path: the HTTP client raises httpx.TimeoutException and the call still returns (False, msg) with the timeout/network named, no exception escaping. The base scenarios all exercise the verification procedure (ordinal 1) and stay with it."
 
 [[test-sourced]]
 spec = "configuration-and-secrets"

@@ -108,10 +108,6 @@ equivalent); for `bedrock` it delegates to
 `provider_auth.test_ollama_generate()` which runs a real generation and
 validates schema output.
 
-#### Scenario: Every verification returns a bool and message tuple
-- **WHEN** `test_provider_auth()` finishes verifying any credential
-- **THEN** a `(bool, str)` tuple is returned
-
 #### Scenario: Valid OpenAI key tested
 - **WHEN** `test_provider_auth("openai", "sk-valid...")` is called
 - **THEN** an HTTP GET to `https://api.openai.com/v1/models` with a
@@ -124,6 +120,15 @@ validates schema output.
 - **THEN** `test_ollama_generate()` discovers installed models via
   `/api/tags`, generates a flashcard deck from a test source, and returns
   `(True, ...)` only if the output is a schema-valid non-empty deck
+
+### Requirement: Provider credential verification returns a (bool, str) tuple
+A `(bool, str)` tuple SHALL be returned.
+
+#### Scenario: A network timeout still returns a bool and message tuple
+- **WHEN** `test_provider_auth("openai", "sk-timeout-test")` runs and the
+  HTTP client raises `httpx.TimeoutException`
+- **THEN** the call returns `(False, msg)` with `msg` naming the timeout or
+  the network, and no exception escapes
 
 ### Requirement: The setup wizard writes merged config non-destructively
 `studyloop setup` (`cli/_setup.py`) SHALL guide the user through 5
