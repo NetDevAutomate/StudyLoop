@@ -1,0 +1,126 @@
+# Split exceptions — lane E (plan 7): the module-contract-v1 deltas and e2e-representative-journey.
+# Read by scripts/check-openspec-split.py. Every entry is consumed exactly once; `spec` is the
+# capability id for a living spec or `changes/module-contract-v1/<capability>` for a delta.
+# Lane E rule (ARBITRATION-pass9 §8.2 R6): no `restates-shall` in the deltas — a fragment with no
+# scenario gets one from a test (`test-sourced`) or from moved non-normative prose only.
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/content-generation
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/content-generation"
+heading = "PracticeDeck `timeoutSeconds` is per phase and `solution` is not coupled to `scaffolding`"
+scenario = "a task's timeout bounds each phase on its own"
+test = "packages/studyloop/tests/test_module_runner.py::test_runner_timeout_is_error_and_child_is_terminated"
+reason = "Fragment holds the schema's per-phase `timeoutSeconds` SHALL; the runner test's docstring states `timeoutSeconds` applies per phase and asserts a 1 s check phase is stopped on its own timeout as an error. No schema-level test exercises the per-phase application (searched test_module_schema.py, test_content_schemas.py for timeoutSeconds: only parse/round-trip assertions)."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/content-generation"
+heading = "PracticeDeck `timeoutSeconds` is per phase and `solution` is not coupled to `scaffolding`"
+scenario = "a solution without a scaffolding level is accepted by the schema"
+test = "packages/studyloop/tests/test_module_schema.py::test_solution_without_scaffolding_is_accepted_by_the_schema"
+reason = "Fragment holds the SHALL NOT couple `solution` to `scaffolding`; the test validates a task with `solution` and no `scaffolding` and asserts acceptance, naming MC010 as the owner of the coupling."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/drill-runner
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — core never touches a cluster it did not create and refuses a name collision"
+scenario = "a cluster already carrying the attempt's name is refused, not reused"
+test = "packages/studyloop/tests/test_module_cluster.py::test_provision_refuses_a_name_collision_without_creating"
+reason = "Fragment holds 'A name collision SHALL be refused, never reused' and 'Core SHALL never use ... a cluster it did not create'; the test plants a cluster with the derived name, asserts ClusterError naming it, that the only kind call was the read-only listing, and that no kubeconfig was written."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — a failed delete keeps the kubeconfig and any exception after create still tears down"
+scenario = "a failed delete keeps the attempt's kubeconfig and names it in the by-hand command"
+test = "packages/studyloop/tests/test_module_cluster.py::test_failed_delete_after_a_provable_failed_create_keeps_the_kubeconfig"
+reason = "Fragment holds the 'When a delete fails, the attempt's kubeconfig SHALL be kept and the reported command SHALL name it' sentence; the test fails the create after kind wrote the kubeconfig, fails the delete too, and asserts the kubeconfig is still a file and the message carries the exact kind delete command with --kubeconfig."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/drill-runner"
+heading = "Disposable cluster — core's own `kind` runs with an allowlisted environment"
+scenario = "kind sees the allowlisted variables and nothing else"
+test = "packages/studyloop/tests/test_module_cluster.py::test_kind_runs_with_an_allowlisted_environment"
+reason = "Fragment holds the allowlisted-environment SHALL; the test plants AWS/GitHub secrets and KUBECONFIG in the parent environment beside Docker, kind, proxy, certificate and locale variables and asserts the fake kind saw the allowlisted set and neither the secrets nor KUBECONFIG."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/optional-modules
+# ---------------------------------------------------------------------------------------------
+
+[[split-sentence]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Modules are installed from a local path into an immutable snapshot recorded in a lockfile"
+ordinal = 1
+old = "`studyloop module add <path>` SHALL first copy the module into a private staging area (regular files only — a symlink, hard link or special file anywhere in the tree is refused by name, never skipped), run `module check` on the staged copy and refuse on any finding, digest the staged copy, and publish it atomically as an immutable snapshot keyed by that digest (an existing snapshot at that digest is re-digested and refused on mismatch); and record `id`, `version`, digest and, when the path is a git checkout, the remote URL and HEAD sha read locally with no fetch, into `modules.lock.json`."
+new = [
+  "`studyloop module add <path>` SHALL first copy the module into a private staging area (regular files only — a symlink, hard link or special file anywhere in the tree is refused by name, never skipped).",
+  "`studyloop module add <path>` SHALL run `module check` on the staged copy and refuse on any finding.",
+  "`studyloop module add <path>` SHALL digest the staged copy, and publish it atomically as an immutable snapshot keyed by that digest (an existing snapshot at that digest is re-digested and refused on mismatch).",
+  "`studyloop module add <path>` SHALL record `id`, `version`, digest and, when the path is a git checkout, the remote URL and HEAD sha read locally with no fetch, into `modules.lock.json`.",
+]
+# Each new sentence repeats the subject noun phrase `studyloop module add <path>` and the modal
+# SHALL, and ends in a full stop; two commas, one semicolon and one 'and' are dropped at the
+# former clause joins. The checker tokenises the subject as the six tokens listed three times.
+added_tokens = [
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+  "`studyloop", "module", "add", "path", "`", "SHALL", ".",
+]
+reason = "The sentence measures 595 on its own, over the 500 limit, so no fragment could hold it unsplit; it is a delta sentence and so absent from evidence/pass9-long-normative-sentences.txt, which measured living bodies only. Four clauses, one SHALL each, kept in document order: staging and check stay under the original heading, digest/publish and the lockfile record open the next requirement (the three repeated subjects made a staging/check/publish grouping measure 512)."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Re-add replaces the lock entry, list and remove read the lockfile only, and v1 touches no network"
+scenario = "re-adding an installed id replaces its entry and drops the orphaned snapshot"
+test = "packages/studyloop/tests/test_module_lifecycle.py::test_re_adding_the_same_id_replaces_the_entry_and_drops_the_orphaned_snapshot"
+reason = "Fragment holds the re-add SHALL (replace the lock entry, remove the orphaned snapshot, lockfile records the new digest); the test adds a module twice with a content change between, asserts the digests differ, the lockfile lists only the second digest, the first snapshot directory is gone and the second exists."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Conformance precedence: the most specific rule wins, and MC009 runs the keyword detector unfiltered"
+scenario = "a bad contract is reported as MC002 alone, never MC001"
+test = "packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC002]"
+reason = "Fragment holds the most-specific-rule-wins sentence, whose first example is 'a bad contract is MC002 ... never MC001'; the MC002 broken fixture carries contract: 99 and the parametrised test asserts the reported rule set is exactly {MC002}."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/optional-modules"
+heading = "Conformance precedence: the most specific rule wins, and MC009 runs the keyword detector unfiltered"
+scenario = "a secret after a placeholder on the same line is still caught"
+test = "packages/studyloop/tests/test_module_check.py::test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line"
+reason = "Fragment holds the MC009 SHALL (keyword detector with heuristic filters disabled); the test writes one script line with a placeholder first and a real-shaped token second and asserts exactly MC009 at scripts/check.sh line 2, the key named and the value not echoed. The scenario names no key literal so the repository's own secret hooks are not tripped."
+
+# ---------------------------------------------------------------------------------------------
+# changes/module-contract-v1/session-transports
+# ---------------------------------------------------------------------------------------------
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "Delivery queue discipline: the envelope is never retried and prompts keep their callers' order"
+scenario = "the learner's prompt and the envelope reach the agent in the order they were sent"
+test = "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn"
+reason = "Fragment holds 'Prompts SHALL go to the agent in the order their callers asked, learner input and deliveries alike'; the test sends the learner's prompt, delivers while the mentor holds that turn open, and asserts turn 1 is the learner's prompt intact with zero overlapping session/prompt and turn 2 is the labelled envelope. ADR-0012 maps this test to the 'delivery on ACP does not interleave with a learner turn' scenario, which stays under the envelope's delivery requirement in this file; this scenario states the ordering half the same run proves."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "The transient `practice_check` event records the delivery outcome and learner history is untouched"
+scenario = "the event row carries the delivery outcome"
+test = "packages/studyloop/tests/test_module_runner.py::test_practice_check_event_row_carries_identity_outcome_and_delivery"
+reason = "Fragment holds 'The transient practice_check event SHALL record the outcome'; the test records a check that exited 1 with DeliveryOutcome('delivered') and asserts one practice_check_events row with identity, attempt id, phase, exit class/code, duration, truncation flags, delivery_status 'delivered', and no output columns."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "The transient `practice_check` event records the delivery outcome and learner history is untouched"
+scenario = "a recorded check leaves learner history unchanged"
+test = "packages/studyloop/tests/test_module_runner.py::test_drill_writes_no_observation"
+reason = "Fragment holds 'nothing SHALL be written to learner history'; the test snapshots every learner-history table, runs and records a passing check, and asserts the tables are unchanged and exactly one practice_check event exists."
+
+[[test-sourced]]
+spec = "changes/module-contract-v1/session-transports"
+heading = "A drill run outside the web server process reaches the mentor through an authenticated loopback hop"
+scenario = "the CLI's typed fields reach the mentor through the route"
+test = "packages/studyloop/tests/test_module_drill_cli.py::test_mentor_told_when_the_loopback_route_accepts_the_typed_fields"
+reason = "The original heading's fragment holds only the route-exposure SHALL; its three scenarios all exercise the token/dedup/CLI sentences and moved with them. The test claims a session, runs drill check, and asserts one request to the route with the token header and exactly the envelope's typed fields (no message), 'Mentor told.' in the output and delivery_status 'delivered' on the event row."
