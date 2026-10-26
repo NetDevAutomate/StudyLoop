@@ -586,6 +586,21 @@ experience may change before `1.0.0`.
   renderer when only the connection is missing: a known transport with no
   connection URL now reads *The server did not return a connection for this
   session*.
+- The test suite's own isolation no longer depends on how `pytest` is
+  invoked. Run with a directory above the tests as its argument
+  (`pytest packages`, or `pytest .` from the checkout), the suite used to
+  reach the developer's real tmux server for the whole run, and its
+  end-of-run guards reported every existing file under `~/.config/studyloop`
+  and the Obsidian vault's `Study` folder as written by the run. pytest loads
+  `packages/studyloop/tests/conftest.py` lazily under those arguments, after
+  its `pytest_sessionstart` hook would have fired, so the tmux socket
+  redirect and the guards' "before" snapshots never ran. The redirect now
+  happens when the workspace-root `conftest.py` is imported (and in the
+  package conftest under the same marker for a package-rooted run), the
+  snapshots are taken when the package conftest is imported, and a
+  regression test runs `pytest packages` in a child pytest against a decoy
+  home that already holds files, with a control proving the guards still
+  catch a planted write. `just test` and CI were never affected.
 
 ### Security
 

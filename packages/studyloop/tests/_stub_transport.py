@@ -8,9 +8,9 @@ It used to be defined in ``conftest.py`` and imported with
 ``from conftest import StubTransport`` from 13 test modules. Under the
 workspace default ``--import-mode=importlib`` pytest registers that file as
 ``packages.studyloop.tests.conftest``, so the bare-name import executed it a
-SECOND time as a separate module -- its own ``mkdtemp`` state/vault/tmux roots,
-its own copy of every hook, a different ``_TMUX_TMPDIR_ROOT`` from the plugin's
-(the pid marker in ``conftest.py`` keeps the env from moving, but the duplicate
+SECOND time as a separate module -- its own ``mkdtemp`` state and vault roots,
+its own copy of every hook, and at the time its own ``_TMUX_TMPDIR_ROOT`` too
+(the pid markers in ``conftest.py`` keep the env from moving, but the duplicate
 module remained). A pytest hook file is not a public helper module; this is.
 """
 

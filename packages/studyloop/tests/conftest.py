@@ -320,9 +320,6 @@ def _isolate_second_brain_vault(
     monkeypatch.setattr(_settings_mod, "load_settings", _patched_load_settings)
 
 
-_real_vault_snapshot: dict[str, float] = {}
-
-
 # The session-runtime surface the fixture above targets and the guard below
 # watches, PLUS the real config.yaml. The rest of ~/.config/studyloop stays
 # unwatched: sessions.db (the real learner's history database, governed by
@@ -370,7 +367,24 @@ def _snapshot_studyloop_session_runtime() -> dict[str, float]:
     return snapshot
 
 
-_studyloop_session_runtime_snapshot: dict[str, float] = {}
+# The two "before" baselines the session-finish backstops compare against
+# (C8 / R-49d and R-84), taken HERE, at import time, and not in
+# ``pytest_sessionstart``. pytest loads this file as an initial plugin -- and so
+# calls its session hooks -- only when a path argument is this directory or a
+# file under it, which ``testpaths`` guarantees. Hand pytest a directory ABOVE
+# the tests (``pytest packages``) and this file is imported lazily during
+# collection, after ``pytest_sessionstart`` has already fired for the plugins
+# that were initial: the hook defined here never ran, the baselines stayed
+# empty, and at session finish both backstops reported every pre-existing file
+# under the real ``~/.config/studyloop`` and the real vault as "created" (two
+# full gates on 2026-10-24). Import time is the earliest moment this file can
+# act under every invocation, and under the initial-plugin invocations it is
+# the same moment as before: before any test module in this directory is
+# imported, before any test runs. A later execution of this file by name
+# (``from conftest import ...``) takes its own copies; the backstops read the
+# plugin copy's, so those are inert.
+_studyloop_session_runtime_snapshot: dict[str, float] = _snapshot_studyloop_session_runtime()
+_real_vault_snapshot: dict[str, float] = _vault_isolation.snapshot_real_vault()
 
 
 # ---------------------------------------------------------------------------
@@ -389,27 +403,32 @@ _studyloop_session_runtime_snapshot: dict[str, float] = {}
 # unrelated "start line" flag, not a socket path -- no code path in this
 # repository bypasses TMUX_TMPDIR with an explicit socket path.
 #
-# Set here, in pytest_sessionstart, before any test imports studyloop.tmux
-# or spawns a tmux subprocess: every tmux invocation reads os.environ
-# fresh at call time (none of them capture it at import time), including
-# subprocess children spawned by the harness (they build their env from
-# `**os.environ`), so this redirects the WHOLE suite's tmux traffic to a
-# private, throwaway socket directory. TMUX is also unset, so a test
-# process run from inside a real tmux session on this machine is never
-# treated as "already inside" one (studyloop.tmux.is_in_tmux()).
-_TMUX_TMPDIR_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-tmux-"))
-
-
-def pytest_sessionstart(session) -> None:
-    """Snapshot the real session-runtime surface (C8) and the real vault's
-    StudyLoop folder (R-84), and isolate tmux's own socket directory (C11),
-    before any test runs."""
-    global _studyloop_session_runtime_snapshot, _real_vault_snapshot
-    _studyloop_session_runtime_snapshot = _snapshot_studyloop_session_runtime()
-    _real_vault_snapshot = _vault_isolation.snapshot_real_vault()
-
-    os.environ["TMUX_TMPDIR"] = str(_TMUX_TMPDIR_ROOT)
+# Set at import time, before any test imports studyloop.tmux or spawns a
+# tmux subprocess: every tmux invocation reads os.environ fresh at call time
+# (none of them capture it at import time), including subprocess children
+# spawned by the harness (they build their env from `**os.environ`), so this
+# redirects the WHOLE suite's tmux traffic to a private, throwaway socket
+# directory. TMUX is also unset, so a test process run from inside a real
+# tmux session on this machine is never treated as "already inside" one
+# (studyloop.tmux.is_in_tmux()).
+#
+# The workspace-root conftest.py claims this first, under the same pid marker,
+# for the same reason the baselines above moved out of ``pytest_sessionstart``:
+# that file is initial for every invocation rooted at the workspace, this one
+# is not. This block acts only when that file has not claimed in this process,
+# which means a run rooted at this package, where the root conftest is not
+# loaded at all (a child pytest rooted here included: it inherits the marker
+# with its parent's pid, so it claims a directory of its own). Either way
+# ``_TMUX_TMPDIR_ROOT`` is read back from the environment, so the directory the
+# session-finish backstop sweeps is the one the suite's tmux processes used,
+# whichever file exported it -- and a second execution of this file by name
+# shares it instead of minting its own.
+_TMUX_OWNER_ENV = "_STUDYLOOP_SUITE_TMUX_PID"
+if os.environ.get(_TMUX_OWNER_ENV) != str(os.getpid()):
+    os.environ["TMUX_TMPDIR"] = tempfile.mkdtemp(prefix="studyloop-test-tmux-")
     os.environ.pop("TMUX", None)
+    os.environ[_TMUX_OWNER_ENV] = str(os.getpid())
+_TMUX_TMPDIR_ROOT = Path(os.environ["TMUX_TMPDIR"])
 
 
 # ---------------------------------------------------------------------------

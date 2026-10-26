@@ -2,13 +2,14 @@
 
 Under the workspace's ``--import-mode=importlib`` a test module's
 ``from conftest import ...`` executes ``packages/studyloop/tests/conftest.py`` a
-second time as a separate module object: a second mkdtemp'd
-``_TMUX_TMPDIR_ROOT``, a second ``_SESSION_SCALE``, hook functions that are not
-the ones pytest calls. The pid markers inside that conftest keep the re-run from
-re-pointing the sandbox, but a test that patches or calls the copy is testing a
-module nothing else runs. :func:`loaded_package_conftest` returns the module
-pytest registered as a plugin, so tests of the conftest's hooks exercise the
-real ones -- and ``test_suite_isolation.py`` proves the conftest is loaded once.
+second time as a separate module object: a second ``_SESSION_SCALE``, second
+copies of the guard baselines, hook functions that are not the ones pytest
+calls. The pid markers inside that conftest keep the re-run from re-pointing the
+sandbox or the tmux socket directory, but a test that patches or calls the copy
+is testing a module nothing else runs. :func:`loaded_package_conftest` returns
+the module pytest registered as a plugin, so tests of the conftest's hooks
+exercise the real ones -- and ``test_suite_isolation.py`` proves the conftest is
+loaded once.
 
 Not a test module (leading underscore, per ``docs/contributor-conventions.md``).
 """

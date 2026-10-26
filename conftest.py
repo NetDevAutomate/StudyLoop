@@ -60,3 +60,30 @@ if os.environ.get(_SANDBOX_OWNER_ENV) != str(os.getpid()):
     os.environ["STUDYLOOP_DB"] = str(_TEST_STATE_ROOT / "sessions.db")
     os.environ["STUDYLOOP_CONFIG"] = str(_TEST_STATE_ROOT / "config.yaml")
     os.environ[_SANDBOX_OWNER_ENV] = str(os.getpid())
+
+# tmux socket isolation for the WHOLE repo (C11 / R-49e): the developer's real
+# tmux server must be unreachable from the suite. tmux resolves its socket
+# directory from ``TMUX_TMPDIR`` for the default ``-L`` addressing every call
+# site in this repository uses, and treats a set ``TMUX`` as "already inside a
+# session" (``studyloop.tmux.is_in_tmux()``), so a private directory plus an
+# unset ``TMUX`` redirects every tmux process the suite starts, including
+# subprocess children, which build their environment from ``os.environ``.
+#
+# Set HERE, at import time, and not in a session hook. This used to live in
+# ``packages/studyloop/tests/conftest.py``'s ``pytest_sessionstart``, and pytest
+# loads that conftest as an initial plugin only when a path argument is its
+# directory or a file under it (``testpaths`` makes it one). Hand pytest a
+# directory ABOVE the tests -- ``pytest packages`` -- and the conftest is
+# imported lazily during collection, after ``pytest_sessionstart`` has fired:
+# on 2026-10-24 two full gates ran that way against the developer's real tmux
+# server for 25 minutes each, and only the guard test noticed. This file is
+# initial for every invocation rooted at the workspace, and import time has no
+# such dependency. The studyloop package conftest claims the same thing under
+# the same marker for a run rooted at that package, where this file is not
+# loaded at all, and reads the directory back from the environment, so the
+# two never disagree about which directory the suite is using.
+_TMUX_OWNER_ENV = "_STUDYLOOP_SUITE_TMUX_PID"
+if os.environ.get(_TMUX_OWNER_ENV) != str(os.getpid()):
+    os.environ["TMUX_TMPDIR"] = tempfile.mkdtemp(prefix="studyloop-test-tmux-")
+    os.environ.pop("TMUX", None)
+    os.environ[_TMUX_OWNER_ENV] = str(os.getpid())
