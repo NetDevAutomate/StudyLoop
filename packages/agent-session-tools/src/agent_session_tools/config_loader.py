@@ -25,6 +25,11 @@ CONFIG_DIR = Path.home() / ".config" / "studyloop"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ENV_FILE = CONFIG_DIR / ".env"
 
+# Where sessions.db lives on any peer, written for the remote shell to expand.
+# Deliberately not derived from CONFIG_DIR: that is this machine's absolute home
+# (/Users/<me> on macOS), which is the wrong path on a Linux peer.
+DEFAULT_REMOTE_DB = "~/.config/studyloop/sessions.db"
+
 # Fallback defaults
 DEFAULT_CONFIG = {
     "memory": {
@@ -203,7 +208,7 @@ def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, A
 
             endpoints[name] = {
                 "username": host.get("user", ""),
-                "path": host.get("sessions_db", str(get_config_dir() / "sessions.db")),
+                "path": host.get("sessions_db", DEFAULT_REMOTE_DB),
                 # Tier-aware sync: remote full-history DB path (optional).
                 "full_path": host.get("full_db", ""),
                 "ip_address": ip_address,

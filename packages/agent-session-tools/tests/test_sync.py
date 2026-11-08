@@ -12,6 +12,7 @@ import typer
 
 from agent_session_tools.migrations import migrate
 from agent_session_tools.sync import (
+    DEFAULT_REMOTE_DB,
     GLOBAL_SYNC_TABLES,
     _dump_delta_sql,
     _get_sync_state,
@@ -43,6 +44,27 @@ class TestResolveRemote:
         host, path = _resolve_remote("user@host:/path/with:colon/db.sqlite")
         assert host == "user@host"
         assert path == "/path/with:colon/db.sqlite"
+
+    def test_user_at_host_defaults_to_the_config_dir_db(self):
+        """The DB always lives in ~/.config/studyloop, so the path is optional."""
+        host, path = _resolve_remote("ataylor@192.168.125.15")
+        assert host == "ataylor@192.168.125.15"
+        assert path == DEFAULT_REMOTE_DB == "~/.config/studyloop/sessions.db"
+
+    def test_trailing_colon_also_defaults(self):
+        host, path = _resolve_remote("ataylor@192.168.125.15:")
+        assert host == "ataylor@192.168.125.15"
+        assert path == DEFAULT_REMOTE_DB
+
+    def test_default_is_portable_not_the_local_home(self):
+        """A Mac pushing to Linux must not send /Users/<me>/... as the remote path."""
+        _, path = _resolve_remote("user@host")
+        assert path.startswith("~/")
+        assert str(Path.home()) not in path
+
+    def test_full_tier_has_no_default_path(self):
+        with pytest.raises(typer.BadParameter, match="full"):
+            _resolve_remote("user@host", tier="full")
 
 
 class TestTimestampKey:

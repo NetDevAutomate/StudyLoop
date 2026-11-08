@@ -23,6 +23,7 @@ from rich.console import Console
 from rich.table import Table
 
 from agent_session_tools.config_loader import (
+    DEFAULT_REMOTE_DB,
     get_backup_dir,
     get_db_path,
     get_endpoints,
@@ -327,13 +328,19 @@ def _ensure_mux_dir() -> None:
 def _resolve_remote(remote: str, tier: str = "hot") -> tuple[str, str]:
     """Resolve a remote target to (user@host, db_path).
 
-    Accepts either:
+    Accepts any of:
     - An endpoint name from config (e.g. "macmini")
-    - A full remote path (e.g. "user@host:/path/to/db")
+    - ``user@host`` or ``user@host:`` — the DB is always at
+      ``~/.config/studyloop/sessions.db`` on a peer, so the path is optional
+    - ``user@host:/path/to/db`` for a non-standard location
+
+    A bare word with neither ``@`` nor ``:`` is rejected: it is almost always
+    a mistyped endpoint name, and treating it as an ssh host would only fail
+    later with a less useful message.
 
     ``tier`` selects which remote DB an endpoint entry points at: "hot"
-    uses ``sessions_db``, "full" uses ``full_db``. Explicit user@host:path
-    remotes ignore tier (the path is already explicit).
+    uses ``sessions_db``, "full" uses ``full_db``. The default path applies
+    to the hot tier only; the full tier has no conventional location.
     """
     # Check if it's a configured endpoint name
     endpoints = get_endpoints(_get_config())
@@ -371,12 +378,23 @@ def _resolve_remote(remote: str, tier: str = "hot") -> tuple[str, str]:
                 continue
         raise typer.BadParameter(f"Endpoint '{remote}': all IPs unreachable")
 
-    # Fall back to user@host:/path format
-    if ":" not in remote:
+    # Fall back to user@host[:path]
+    if ":" in remote:
+        host, db_path = remote.split(":", 1)
+    elif "@" in remote:
+        host, db_path = remote, ""
+    else:
         raise typer.BadParameter(
-            f"'{remote}' is not a configured endpoint or valid remote (user@host:/path)"
+            f"'{remote}' is not a configured endpoint or valid remote "
+            "(user@host or user@host:/path)"
         )
-    host, db_path = remote.split(":", 1)
+    if not db_path:
+        if tier == "full":
+            raise typer.BadParameter(
+                f"'{remote}' has no path and the full tier has no default location — "
+                "use user@host:/path or an endpoint with 'full_db' configured."
+            )
+        db_path = DEFAULT_REMOTE_DB
     return host, db_path
 
 
@@ -430,39 +448,122 @@ def _quote_remote_path(path: str) -> str:
     return shlex.quote(path)
 
 
-def _remote_db_exists(host: str, db_path: str) -> bool:
-    """Check if a usable database exists on the remote host.
+def _remote_path_for_scp(path: str) -> str:
+    """Form of ``path`` to use after ``host:`` in an scp destination.
 
-    Verifies both that the file exists AND contains the sessions table.
-    An empty file or wrong-schema DB returns False.
+    scp resolves a relative remote path against the remote home in both the
+    legacy and SFTP protocols, whereas a literal ``~`` depends on the server
+    supporting path expansion. ``~/x`` therefore becomes ``x``.
+    """
+    if path.startswith("~/"):
+        return path[2:]
+    return path
+
+
+class RemoteProbeError(RuntimeError):
+    """The remote database's state could not be determined.
+
+    Raised by ``_remote_db_exists`` instead of returning False, because the
+    callers that act on False create or replace the remote file. "Could not
+    tell" must never be read as "nothing there".
+    """
+
+
+# Exit codes the probe script reserves so the caller can tell outcomes apart.
+# Anything else is UNKNOWN: 1 = sqlite3 refused the file (malformed, locked,
+# wrong schema), 127 = the remote shell found no such command, 255 = ssh
+# itself failed. None of those may be read as "absent".
+_PROBE_ABSENT = 3
+_PROBE_NO_SQLITE3 = 4
+
+
+def _remote_db_exists(host: str, db_path: str) -> bool:
+    """Return True if a usable DB is at ``db_path`` on ``host``, False if nothing is.
+
+    False means exactly "no file, directory, or link at that path". Every
+    other failure raises ``RemoteProbeError`` with the remote's stderr: the
+    ``sqlite3`` CLI missing from the non-interactive ssh PATH, an ssh
+    failure, or a file that exists but sqlite3 cannot read.
+
+    The checks run in order of what the user must fix first: a remote
+    without sqlite3 cannot take a delta sync even after a seed, so that is
+    reported before anything is transferred.
     """
     _ensure_mux_dir()
     remote_path = _quote_remote_path(db_path)
-    # Check file exists AND has the sessions table
+    query = shlex.quote("SELECT COUNT(*) FROM sessions LIMIT 1")
+    # sqlite3 creates a missing file on open, so it runs only after test -e.
+    script = (
+        f"command -v sqlite3 >/dev/null 2>&1 || exit {_PROBE_NO_SQLITE3}; "
+        f"test -e {remote_path} || exit {_PROBE_ABSENT}; "
+        f"sqlite3 {remote_path} {query} >/dev/null"
+    )
     result = subprocess.run(
-        [
-            "ssh",
-            *_SSH_MUX_OPTS,
-            host,
-            f"test -f {remote_path} && sqlite3 {remote_path} "
-            f"{shlex.quote('SELECT COUNT(*) FROM sessions LIMIT 1')}",
-        ],
+        ["ssh", *_SSH_MUX_OPTS, host, script],
         capture_output=True,
         text=True,
     )
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    if result.returncode == _PROBE_ABSENT:
+        return False
+
+    stderr = result.stderr.strip() or "(no stderr)"
+    if result.returncode == _PROBE_NO_SQLITE3:
+        raise RemoteProbeError(
+            f"sqlite3 CLI not found on {host} (non-interactive ssh PATH). "
+            "Install it there first: Debian/Ubuntu `apt install sqlite3`, "
+            "NixOS `pkgs.sqlite`, macOS ships it."
+        )
+    if result.returncode == 255:
+        raise RemoteProbeError(f"ssh to {host} failed: {stderr}")
+    if result.returncode == 1:
+        raise RemoteProbeError(
+            f"{host}:{db_path} exists but sqlite3 could not read it: {stderr}"
+        )
+    raise RemoteProbeError(
+        f"could not verify {host}:{db_path} (exit {result.returncode}): {stderr}"
+    )
+
+
+def _snapshot_db(source: Path, destination: Path) -> None:
+    """Write a consistent copy of ``source`` to ``destination``.
+
+    Uses the SQLite backup API, so commits still sitting in the source's WAL
+    are included and a writer mid-transaction cannot tear the copy — both of
+    which a byte-for-byte copy of the main file gets wrong.
+    """
+    src = sqlite3.connect(source)
+    dst = sqlite3.connect(destination)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
 
 
 def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
-    """Copy local DB to remote for first-time sync. Creates remote directory."""
+    """Seed ``remote_db`` on ``host`` from a snapshot of ``local_db``.
+
+    The destination is never written in place. The snapshot lands at a
+    sibling staging name and is renamed with ``mv -n`` only after the copy
+    completed, so an interrupted transfer, or a file that appeared at the
+    destination meanwhile, cannot leave a truncated database there.
+    Creates the remote directory if needed.
+    """
     legacy_guard.check_path(local_db, whole_file=True)
     _ensure_mux_dir()
     remote_dir = _quote_remote_path(str(Path(remote_db).parent))
-    # Ensure remote directory exists
     subprocess.run(
         ["ssh", *_SSH_MUX_OPTS, host, f"mkdir -p {remote_dir}"],
         capture_output=True,
     )
+
+    # Sibling path: same filesystem, so the final rename is atomic.
+    staging = f"{remote_db}.seeding.{os.getpid()}"
+    staging_q = _quote_remote_path(staging)
+    remote_q = _quote_remote_path(remote_db)
+
     # SQLite online backup includes committed WAL pages without copying a live DB.
     with tempfile.TemporaryDirectory(prefix="session-sync-seed-") as tmp:
         snapshot = Path(tmp) / "sessions.db"
@@ -479,17 +580,46 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
             source.backup(dest)
             legacy_guard.check_database(dest)
         legacy_guard.check_path(local_db, whole_file=True)
-        result = subprocess.run(
+        copied = subprocess.run(
             [
                 "scp",
                 *_SSH_MUX_OPTS,
                 str(snapshot),
-                f"{host}:{remote_db}",
+                f"{host}:{_remote_path_for_scp(staging)}",
             ],
             capture_output=True,
             text=True,
         )
-    return result.returncode == 0
+    if copied.returncode != 0:
+        logger.error(f"Seed copy to {host}:{staging} failed: {copied.stderr.strip()}")
+        subprocess.run(
+            ["ssh", *_SSH_MUX_OPTS, host, f"rm -f {staging_q}"], capture_output=True
+        )
+        return False
+
+    # mv -n never clobbers. If the destination appeared meanwhile the staging
+    # file is left behind, which the trailing test turns into a failure
+    # regardless of how this coreutils version reports a skipped move.
+    moved = subprocess.run(
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            host,
+            f"mv -n {staging_q} {remote_q} && test ! -e {staging_q}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if moved.returncode != 0:
+        logger.error(
+            f"Seed rename refused: {host}:{remote_db} already exists; "
+            f"{moved.stderr.strip() or 'staging file left in place'}"
+        )
+        subprocess.run(
+            ["ssh", *_SSH_MUX_OPTS, host, f"rm -f {staging_q}"], capture_output=True
+        )
+        return False
+    return True
 
 
 def _remote_sql(host: str, db_path: str, query: str) -> str:
@@ -1204,6 +1334,12 @@ def show_db_stats(db_path: Path, label: str = "Database") -> None:
     console.print(table)
 
 
+_remote_argument = typer.Argument(
+    help="Endpoint name, user@host (DB at ~/.config/studyloop/sessions.db), "
+    "or user@host:/path"
+)
+
+
 _tier_option = typer.Option(
     "--tier",
     help="Which DB tier to sync: 'hot' (local sessions.db, default) or "
@@ -1213,7 +1349,7 @@ _tier_option = typer.Option(
 
 @app.command()
 def pull(
-    remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
+    remote: Annotated[str, _remote_argument],
     db: Annotated[
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
@@ -1252,7 +1388,12 @@ def pull(
 
     show_db_stats(local_db, "Local (before)")
 
-    if not _remote_db_exists(host, remote_db):
+    try:
+        remote_has_db = _remote_db_exists(host, remote_db)
+    except RemoteProbeError as exc:
+        console.print(f"[red]❌ {exc}[/red]")
+        raise typer.Exit(1) from exc
+    if not remote_has_db:
         console.print("[yellow]⚠ Remote database not found — nothing to pull.[/yellow]")
         console.print(
             f"[dim]Use 'session-sync push {remote}' to seed the remote first.[/dim]"
@@ -1350,7 +1491,7 @@ def pull(
 
 @app.command()
 def push(
-    remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
+    remote: Annotated[str, _remote_argument],
     db: Annotated[
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
@@ -1381,8 +1522,16 @@ def push(
 
     show_db_stats(local_db, "Local")
 
-    # If remote DB doesn't exist, seed it with a full copy
-    if not _remote_db_exists(host, remote_db):
+    # Seed only when the probe is certain nothing is at the remote path. An
+    # unknown state (no sqlite3 there, ssh failure, unreadable file) aborts:
+    # seeding on a guess is how a remote DB got overwritten on 2026-11-08.
+    try:
+        remote_has_db = _remote_db_exists(host, remote_db)
+    except RemoteProbeError as exc:
+        console.print(f"[red]❌ {exc}[/red]")
+        console.print("[dim]Not seeding: the remote path was left untouched.[/dim]")
+        raise typer.Exit(1) from exc
+    if not remote_has_db:
         console.print(
             "\n[bold]Remote database not found — seeding with full copy...[/bold]"
         )
@@ -1442,7 +1591,7 @@ def push(
 
 @app.command()
 def sync(
-    remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
+    remote: Annotated[str, _remote_argument],
     db: Annotated[
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,

@@ -599,6 +599,9 @@ session-query tag|note SESSION_ID        # Manage session tags / notes
 session-query check-size                 # Check DB size against thresholds
 session-query profiles                   # Manage export profiles/templates
 session-sync push|pull|sync REMOTE       # Sync database across machines
+                                          # REMOTE: endpoint name, user@host
+                                          # (DB at ~/.config/studyloop/sessions.db),
+                                          # or user@host:/path
 session-sync all                         # Push all peers before pulling all peers
 session-sync status|endpoints            # Show configured peers / listener status
 session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
