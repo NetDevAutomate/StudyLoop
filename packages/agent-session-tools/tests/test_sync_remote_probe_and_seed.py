@@ -150,8 +150,10 @@ def _never_seed(*_args, **_kwargs):
 
 
 class TestCliRefusesToActOnUnknownRemoteState:
-    def test_push_aborts_before_seeding(self, temp_db, monkeypatch):
-        _, db_path = temp_db
+    def test_push_aborts_before_seeding(self, migrated_db, monkeypatch):
+        # migrated_db, not temp_db: push runs the schema pre-flight before the
+        # remote probe, and an unmigrated DB would refuse there instead.
+        _, db_path = migrated_db
         monkeypatch.setattr(sync, "_remote_db_exists", _raise_probe_error)
         monkeypatch.setattr(sync, "_seed_remote_db", _never_seed)
         monkeypatch.setattr(sync, "_get_sync_state", _never_seed)
@@ -164,8 +166,8 @@ class TestCliRefusesToActOnUnknownRemoteState:
         assert "sqlite3 CLI not found" in result.output
         assert "left untouched" in result.output
 
-    def test_pull_aborts_before_reading_remote(self, temp_db, monkeypatch):
-        _, db_path = temp_db
+    def test_pull_aborts_before_reading_remote(self, migrated_db, monkeypatch):
+        _, db_path = migrated_db
         monkeypatch.setattr(sync, "_remote_db_exists", _raise_probe_error)
         monkeypatch.setattr(sync, "_remote_sql", _never_seed)
 
