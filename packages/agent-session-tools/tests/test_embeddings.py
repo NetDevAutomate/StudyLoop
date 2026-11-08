@@ -315,9 +315,7 @@ def test_get_model_non_nomic_passes_trust_remote_code_false(mock_model):
 @requires_numpy
 def test_get_model_dimension_mismatch_logs_warning(mock_model, caplog):
     """Actual dim != config dim must warn, not raise."""
-    mock_model.get_embedding_dimension.return_value = (
-        999  # intentional mismatch
-    )
+    mock_model.get_embedding_dimension.return_value = 999  # intentional mismatch
 
     with (
         patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
