@@ -116,6 +116,12 @@ experience may change before `1.0.0`.
 
 ### Changed
 
+- The legacy-sync refusal (`Legacy SQL sync cannot transfer scoped or source-grounded memory`)
+  no longer says the structured path is "not yet exposed" in this build. It names the path that
+  carries protected context -- the structured replication protocol, selected when `memory.sync`
+  names the peer and `session-sync push <peer>` is given that name rather than a `user@host:path`
+  -- so a learner refused on a current-schema database can see what to configure instead of
+  reading the refusal as a missing feature.
 - `session-maint sync-full` keeps `database.full_db_path` as a one-way mirror of the everyday
   database, bound to it on the first run, and copies whole sessions together with the memory
   captured from them (never this machine's own replication, access or policy state), so

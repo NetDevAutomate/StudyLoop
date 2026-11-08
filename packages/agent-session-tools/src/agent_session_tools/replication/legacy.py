@@ -11,10 +11,18 @@ import re
 
 from ..config_loader import load_config
 
+# Every entry point that raises this shares the text: the config refusal
+# (memory.sync / memory.projects / an explicit default_scope), the content
+# refusal (rows in a context_* table) and the remote-side check. It therefore
+# names the mechanism and the command that selects it, not one caller's remedy:
+# `session-sync push <peer>` takes the structured path only when memory.sync
+# names that peer (sync._structured); a user@host:path argument never does.
 MESSAGE = (
     "Legacy SQL sync cannot transfer scoped or source-grounded memory. "
-    "The structured sync coordinator and lifecycle reconciliation are required; "
-    "this build does not yet expose that complete path. No legacy fallback is allowed."
+    "Protected context moves only through the structured replication protocol, "
+    "which session-sync uses when memory.sync names the peer "
+    "(`session-sync push <peer>`, not a remote path); every legacy SQL entry point "
+    "is refused. No legacy fallback is allowed."
 )
 
 
