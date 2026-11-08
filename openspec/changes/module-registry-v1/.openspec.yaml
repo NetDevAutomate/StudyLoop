@@ -1,2 +1,12 @@
 schema: spec-driven
 created: 2026-10-04
+# Read by scripts/check-release-consistency.py (validate_openspec_changes_shipped):
+# a change with commits since the last tag must be archived or carry a reason here.
+# `deferred` is this repository's release-gate key, not an OpenSpec field, so the CLI
+# (1.14.1) reports it as an unrecognized key: a WARNING that `validate --strict` on
+# this change turns into a failure. No gate runs strict validation on active changes.
+deferred: >-
+  Planning-only change (proposal.md): 0 of 39 tasks, no registry code exists and none ships in
+  the next release. It starts after module-contract-v1 is archived (task 1.2 agrees the
+  manifest/checker boundary with that change) and after the owner names the registry
+  repository, reviewers and security contact (task 1.1). Deferred 2026-11-08 by the owner.
