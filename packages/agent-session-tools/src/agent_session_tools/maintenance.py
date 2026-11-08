@@ -73,6 +73,9 @@ def _setup_logging() -> None:
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
     )
+    # Hugging Face model downloads log every HTTP request (including expected
+    # 404 probes for optional module configs) at INFO; keep that out of the CLI.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # Global database path option

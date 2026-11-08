@@ -309,7 +309,7 @@ def get_model(
         )
         _current_model_name = model_name
 
-        actual_dim = _models[model_name].get_sentence_embedding_dimension()
+        actual_dim = _models[model_name].get_embedding_dimension()
         if actual_dim != config["dimensions"]:
             logger.warning(
                 f"  Actual dimensions ({actual_dim}) differ from expected ({config['dimensions']})"

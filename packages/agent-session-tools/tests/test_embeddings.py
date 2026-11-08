@@ -110,7 +110,7 @@ def mock_model():
         pytest.skip("numpy not installed (install [semantic] extra)")
 
     model = MagicMock()
-    model.get_sentence_embedding_dimension.return_value = 384
+    model.get_embedding_dimension.return_value = 384
     mock_array = MagicMock()
     mock_array.astype.return_value = _make_embedding(384)
     model.encode.return_value = mock_array
@@ -315,7 +315,7 @@ def test_get_model_non_nomic_passes_trust_remote_code_false(mock_model):
 @requires_numpy
 def test_get_model_dimension_mismatch_logs_warning(mock_model, caplog):
     """Actual dim != config dim must warn, not raise."""
-    mock_model.get_sentence_embedding_dimension.return_value = (
+    mock_model.get_embedding_dimension.return_value = (
         999  # intentional mismatch
     )
 
@@ -605,7 +605,7 @@ def embed_db():
 def test_get_model_passes_local_files_only_through(monkeypatch):
     """The search path loads local-only whatever HF_HUB_OFFLINE says (Stage 4 council, astra 3)."""
     captured = {}
-    mock_model = type("M", (), {"get_sentence_embedding_dimension": lambda self: 384})()
+    mock_model = type("M", (), {"get_embedding_dimension": lambda self: 384})()
 
     def capture_st(hf_name, trust_remote_code=False, local_files_only=False):
         captured["local_files_only"] = local_files_only

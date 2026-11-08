@@ -241,12 +241,13 @@ class SentenceTransformerEncoder:
     def count_tokens(self, text: str) -> int:
         """Length of the sequence the model would actually see, special tokens included.
 
-        ``tokenize`` rather than ``encode``: the latter logs a warning for every
-        text over the model's window, and chunking exists precisely to feed it
-        those texts.
+        ``verbose=False``: the tokenizer otherwise logs a "longer than the
+        specified maximum sequence length" warning for a text over the model's
+        window, and chunking exists precisely to measure and then split those
+        texts. No truncation here; the chunker decides where to cut.
         """
         tokenizer = self._model.tokenizer
-        return len(tokenizer.tokenize(text)) + tokenizer.num_special_tokens_to_add()
+        return len(tokenizer(text, add_special_tokens=True, verbose=False)["input_ids"])
 
     def encode(self, texts: Sequence[str]) -> list[bytes]:
         import numpy as np
