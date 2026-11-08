@@ -5,7 +5,7 @@
 Five tools, one sync, two smoke checks: install uv, just, tmux, Node and Playwright's Chromium,
 run `just sync-dev`, then prove that `studyloop` imports from *your* checkout and answers
 `--version`. Every command on this page was run on 2026-10-04 and its output is receipted in
-`openspec/changes/contributor-guide-v1/evidence/W-A/commands.txt`.
+`openspec/changes/archive/2026-11-08-contributor-guide-v1/evidence/W-A/commands.txt`.
 
 ## 1. Install the tools
 

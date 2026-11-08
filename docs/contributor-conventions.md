@@ -65,9 +65,10 @@ small fix with a test goes straight to a pull request.
    lead-in ("When the learner has an active plan: ...") is part of every requirement it governs, so
    repeat it rather than leave a SHALL without its condition.
 2. Add `.openspec.yaml` (`schema: spec-driven`, `created:`). A documentation-only change declares
-   `skip_specs: true` there, as `openspec/changes/contributor-guide-v1/.openspec.yaml` does: the
-   `openspec` CLI refuses a change with no spec delta unless the flag is set (this change failed
-   `spec-check` until it was added), so the flag is the reviewer's cue that "no delta" was a choice.
+   `skip_specs: true` there, as the archived
+   `openspec/changes/archive/2026-11-08-contributor-guide-v1/.openspec.yaml` does: the `openspec`
+   CLI refuses a change with no spec delta unless the flag is set (this change failed `spec-check`
+   until it was added), so the flag is the reviewer's cue that "no delta" was a choice.
 3. Validate the structure with `openspec validate --specs --all --strict`: every warning fails, so
    the output is a gate and not a list nobody reads. The recipe resolves the CLI through `scripts/openspec-cli.sh` at the one pinned
    release (`OPENSPEC_VERSION` in the `Justfile`): a local `openspec` at that version is used; at

@@ -1,8 +1,8 @@
 """The twenty contributor-guide pages must stay true to the tree they describe.
 
-The drift test of ``openspec/changes/contributor-guide-v1/design.md`` §6. ``GUIDE_PAGES``
-is the §2 inventory, ``(stem, group, line_cap)``; every test is parameterised over it
-(``-k contributor-cli`` runs one page) and ``_pins`` is the §2 "Pin" column. Default
+The drift test of ``openspec/changes/archive/2026-11-08-contributor-guide-v1/design.md`` §6.
+``GUIDE_PAGES`` is the §2 inventory, ``(stem, group, line_cap)``; every test is parameterised over
+it (``-k contributor-cli`` runs one page) and ``_pins`` is the §2 "Pin" column. Default
 tier, no network, nothing written outside ``tmp_path``. What each test proves:
 
 C  ``test_fenced_command_resolves`` -- each fenced shell line (bash/sh/console/untagged

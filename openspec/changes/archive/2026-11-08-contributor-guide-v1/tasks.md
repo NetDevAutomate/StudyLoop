@@ -82,18 +82,26 @@ contributor-issues-prioritisation, contributor-ai, contributor-modules, contribu
 
 ## 5. Merge and release of the lease
 
-- [ ] 5.1 Owner reads design.md §2 and §4 (objection window) — amendments applied before merge.
+- [x] 5.1 Owner reads design.md §2 and §4 (objection window) — amendments applied before merge.
+      (Re-scoped at archive, 2026-11-08, by the owner: the post-merge objection window that 5.2
+      opened stays open as ordinary `docs(contributing)` commits; listed in §6.)
 - [x] 5.2 (merged 6a3f45d2 before 5.1 — owner away; 5.1 becomes a post-merge objection window, amendments are ordinary docs(contributing) commits) `git merge --no-ff feat/contributor-guide` into local `main`; verify `just docs` and the
       three drift test files green on `main`; update the module-contract ledger: lease released,
       S3 and W5 unblocked.
-- [ ] 5.3 Owner pushes `main`; owner schedules DoD 7 (Bruno or the second contributor walks
+- [x] 5.3 Owner pushes `main`; owner schedules DoD 7 (Bruno or the second contributor walks
       *Welcome* on a clean machine); findings land as `docs(contributing)` fixes with evidence under
-      `evidence/reader/`.
-- [ ] 5.4 Archive this change to `openspec/changes/archive/<date>-contributor-guide-v1/` once DoD 7
-      is recorded.
+      `evidence/reader/`. (Push done: `origin/main` contains 6a3f45d2, checked 2026-11-08. DoD 7 is
+      not yet recorded; at the owner's direction it moves to §6 rather than holding the archive.)
+- [x] 5.4 Archive this change to `openspec/changes/archive/<date>-contributor-guide-v1/` once DoD 7
+      is recorded. (Archived 2026-11-08 before DoD 7, at the owner's direction; see 5.3.)
 
 ## 6. Follow-ups (not tasks here)
 
+- DoD 7, carried from 5.3: a second contributor (Bruno, or whoever is next) walks *Welcome* on a
+  clean machine; each finding lands as a `docs(contributing)` fix that records the walkthrough in
+  its commit body.
+- The owner's read of design.md §2 and §4, carried from 5.1: amendments as `docs(contributing)`
+  commits.
 - A CI check that a PR title matches the §4 grammar (GLM's proposal) — a `ci(...)` change after
   the standard has been used for a few PRs.
 - Issue templates under `.github/ISSUE_TEMPLATE/` matching page 15.
